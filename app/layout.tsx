@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PokéDex",
-  description: "Uma Pokédex feita com Next.js",
+  title: "PokéArena",
+  description: "Capture pokémons, monte seu deck e batalhe contra outros treinadores.",
 };
 
 export default function RootLayout({

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { SwordsIcon } from "@/components/icons";
 
 interface DeckCard {
   id: string;
@@ -71,61 +72,55 @@ export default function BattleQueuePage() {
   };
 
   return (
-    <div
-      className="bg-no-repeat bg-cover min-h-screen pb-12"
-      style={{ backgroundImage: "url('https://wallpaperaccess.com/full/45664.jpg')" }}
-    >
-      <nav className="grid grid-cols-[1fr_2fr_1fr] w-full items-center justify-items-center h-max">
-        <Link href="/">
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Pok%C3%A9_Ball_icon.svg/1200px-Pok%C3%A9_Ball_icon.svg.png"
-            alt="Home"
-            className="w-20 h-20 cursor-pointer"
-          />
-        </Link>
-        <Link href="/pokedex">
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/2000px-International_Pok%C3%A9mon_logo.svg.png"
-            alt="Pokémon"
-            className="w-[300px] h-[70px] p-2.5 cursor-pointer"
-          />
-        </Link>
-      </nav>
+    <div className="flex flex-col items-center pt-16 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-poke/15">
+        <SwordsIcon size={40} className="text-poke" />
+      </div>
+      <h1 className="mt-4 text-3xl font-extrabold">Arena de Batalha</h1>
+      <p className="mt-1 max-w-md text-sm text-ink-dim">
+        Batalhas PvP por turnos contra outros treinadores, com seu deck de até 6 pokémons.
+      </p>
 
-      <div className="flex flex-col items-center mt-12 text-white gap-4 px-4 text-center">
-        <h1 className="text-2xl font-bold">Batalha Online</h1>
-
-        {loading && <p>Carregando seu deck...</p>}
+      <div className="mt-8 w-full max-w-sm rounded-2xl border border-edge bg-surface p-6">
+        {loading && <p className="text-ink-dim">Carregando seu deck...</p>}
 
         {!loading && deck && (
           <>
-            <p>
-              Deck: {deck.name} — {deck.deckCards.length} pokémon(s)
+            <p className="text-sm">
+              <span className="text-ink-dim">Deck:</span>{" "}
+              <span className="font-bold">{deck.name}</span>{" "}
+              <span className="text-ink-dim">— {deck.deckCards.length}/6 pokémons</span>
             </p>
+
             {deck.deckCards.length === 0 && (
-              <p className="text-yellow-300 max-w-md">
-                Seu deck está vazio. Vá até a{" "}
+              <p className="mt-3 text-sm text-warn">
+                Seu deck está vazio. Monte-o na{" "}
                 <Link href="/pokedex" className="underline">
-                  coleção
+                  sua coleção
                 </Link>{" "}
-                e adicione pokémons ao deck antes de batalhar.
+                antes de batalhar.
               </p>
             )}
-            {error && <p className="text-red-400">{error}</p>}
+
+            {error && <p className="mt-3 text-sm text-bad">{error}</p>}
+
             {!queued ? (
               <button
                 onClick={enterQueue}
                 disabled={deck.deckCards.length === 0}
-                className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-lg cursor-pointer border-0"
+                className="mt-5 w-full rounded-xl bg-poke py-3 font-bold text-white hover:bg-poke-dark disabled:opacity-40 cursor-pointer border-0 transition-colors"
               >
-                Procurar Partida
+                Procurar oponente
               </button>
             ) : (
               <>
-                <p className="animate-pulse">Procurando oponente...</p>
+                <div className="mt-5 flex items-center justify-center gap-2 text-ink-dim">
+                  <span className="h-2 w-2 animate-ping rounded-full bg-poke" />
+                  Procurando oponente...
+                </div>
                 <button
                   onClick={leaveQueue}
-                  className="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded cursor-pointer border-0"
+                  className="mt-4 w-full rounded-xl border border-edge py-2.5 text-sm text-ink-dim hover:text-ink cursor-pointer bg-transparent transition-colors"
                 >
                   Cancelar
                 </button>
