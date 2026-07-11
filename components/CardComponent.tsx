@@ -58,7 +58,8 @@ export default function CardComponent({ nomePokemon, urlPokemon }: CardComponent
         ))}
       </div>
 
-      <div className="grid grid-cols-2">
+      {/* relative+z-index: sem isso o sprite do card vizinho (margens negativas) cobre os botões e rouba o clique */}
+      <div className="grid grid-cols-2 relative z-10">
         <button
           onClick={salvarPokemon}
           disabled={salvando || salvo}

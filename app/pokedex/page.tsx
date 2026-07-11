@@ -16,10 +16,18 @@ interface BattleStat {
   stat: { name: string };
 }
 
+interface DeckInfo {
+  id: string;
+  deckCards: { id: string; userCardId: string }[];
+}
+
+const DECK_LIMIT = 6;
+
 export default function PokedexPage() {
   const router = useRouter();
   const [userCards, setUserCards] = useState<UserCard[]>([]);
   const [details, setDetails] = useState<Record<number, NormalizedPokemon>>({});
+  const [deck, setDeck] = useState<DeckInfo | null>(null);
   const [listaBatalha1, setListaBatalha1] = useState<BattleStat[]>([]);
   const [listaBatalha2, setListaBatalha2] = useState<BattleStat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +54,10 @@ export default function PokedexPage() {
         });
       })
       .finally(() => setLoading(false));
+
+    fetch("/api/deck")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: DeckInfo | null) => { if (data) setDeck(data); });
   }, [router]);
 
   const pokemonsBatalha = (uc: UserCard) => {
@@ -57,6 +69,32 @@ export default function PokedexPage() {
   const removerPokemon = async (userCardId: string) => {
     await fetch(`/api/cards/${userCardId}`, { method: "DELETE" });
     setUserCards((prev) => prev.filter((c) => c.id !== userCardId));
+    setDeck((prev) =>
+      prev ? { ...prev, deckCards: prev.deckCards.filter((dc) => dc.userCardId !== userCardId) } : prev
+    );
+  };
+
+  const deckCardFor = (userCardId: string) =>
+    deck?.deckCards.find((dc) => dc.userCardId === userCardId);
+
+  const toggleDeck = async (userCardId: string) => {
+    if (!deck) return;
+    const existing = deckCardFor(userCardId);
+    if (existing) {
+      await fetch(`/api/deck/${existing.id}`, { method: "DELETE" });
+      setDeck({ ...deck, deckCards: deck.deckCards.filter((dc) => dc.id !== existing.id) });
+    } else {
+      if (deck.deckCards.length >= DECK_LIMIT) return;
+      const res = await fetch("/api/deck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userCardId }),
+      });
+      if (res.ok) {
+        const dc = await res.json();
+        setDeck({ ...deck, deckCards: [...deck.deckCards, { id: dc.id, userCardId }] });
+      }
+    }
   };
 
   return (
@@ -91,10 +129,17 @@ export default function PokedexPage() {
 
       {loading && <p className="text-white text-center mt-8">Carregando...</p>}
 
+      {deck && (
+        <p className="text-white text-center mt-4 font-bold">
+          Deck de batalha: {deck.deckCards.length}/{DECK_LIMIT}
+        </p>
+      )}
+
       {/* Cards da PokéDex */}
       <div className="grid grid-cols-2 justify-items-center md:grid-cols-5">
         {userCards.map((uc) => {
           const pokemon = details[uc.pokemonId];
+          const inDeck = Boolean(deckCardFor(uc.id));
           return (
             <div
               key={uc.id}
@@ -138,6 +183,15 @@ export default function PokedexPage() {
                   Detalhes
                 </button>
               </div>
+              <button
+                onClick={() => toggleDeck(uc.id)}
+                disabled={!deck || (!inDeck && deck.deckCards.length >= DECK_LIMIT)}
+                className={`w-full py-1 mb-1 rounded-b-[10px] border-0 cursor-pointer text-xs font-bold disabled:opacity-40 ${
+                  inDeck ? "bg-orange-600 text-white" : "bg-black/40 text-orange-300"
+                }`}
+              >
+                {inDeck ? "No deck ✓ (tirar)" : "+ Deck"}
+              </button>
             </div>
           );
         })}

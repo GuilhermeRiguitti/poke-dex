@@ -84,7 +84,8 @@ export async function POST(req: NextRequest) {
       buildTeamSnapshot(userId, deckId),
       buildTeamSnapshot(opponent.userId, opponent.deckId),
     ]);
-  } catch {
+  } catch (err) {
+    console.error("buildTeamSnapshot failed:", err);
     // Devolve o oponente pra fila pra não deixar ele travado esperando.
     await prisma.matchmakingQueueEntry.upsert({
       where: { userId: opponent.userId },
