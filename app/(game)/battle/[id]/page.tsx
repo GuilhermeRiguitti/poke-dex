@@ -158,10 +158,10 @@ export default function BattlePage() {
   }, [params.id]);
 
   useEffect(() => {
-    loadFullState();
-  }, [loadFullState]);
-
-  useEffect(() => {
+    // carga inicial + polling no mesmo efeito; o setState acontece só depois
+    // do await (não é síncrono no corpo do efeito — falso positivo da regra)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadFullState();
     pollRef.current = setInterval(async () => {
       const res = await fetch(`/api/battle/${params.id}/status`);
       if (!res.ok) return;
