@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRequestData } from "@/hooks/useRequestData";
 import { useRouter } from "next/navigation";
 
@@ -11,18 +12,22 @@ interface CardComponentProps {
 export default function CardComponent({ nomePokemon, urlPokemon }: CardComponentProps) {
   const router = useRouter();
   const [, id, name, data, sprites] = useRequestData(urlPokemon);
+  const [salvando, setSalvando] = useState(false);
+  const [salvo, setSalvo] = useState(false);
 
-  const salvarPokemon = () => {
-    const listaPokemons: object[] = JSON.parse(
-      localStorage.getItem("lista-pokemons") ?? "[]"
-    );
-    listaPokemons.push({
-      id,
-      nome: name,
-      status: data,
-      foto: sprites.front_default,
-    });
-    localStorage.setItem("lista-pokemons", JSON.stringify(listaPokemons));
+  const salvarPokemon = async () => {
+    setSalvando(true);
+    try {
+      const res = await fetch("/api/cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pokemonId: id }),
+      });
+      if (res.ok) setSalvo(true);
+      else if (res.status === 401) router.push("/login");
+    } finally {
+      setSalvando(false);
+    }
   };
 
   return (
@@ -56,9 +61,10 @@ export default function CardComponent({ nomePokemon, urlPokemon }: CardComponent
       <div className="grid grid-cols-2">
         <button
           onClick={salvarPokemon}
-          className="bg-transparent px-0 py-1.5 rounded-[15px] mx-1 border-0 text-green-600 cursor-pointer text-[7px] md:text-[13px]"
+          disabled={salvando || salvo}
+          className="bg-transparent px-0 py-1.5 rounded-[15px] mx-1 border-0 text-green-600 cursor-pointer text-[7px] md:text-[13px] disabled:opacity-50"
         >
-          Adicionar
+          {salvo ? "Salvo!" : salvando ? "..." : "Adicionar"}
         </button>
         <button
           onClick={() => router.push(`/pokemon/${id}`)}

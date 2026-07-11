@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// Better Auth core tables
+// ──────────────────────────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean
+  image         String?   @db.Text
+  createdAt     DateTime
+  updatedAt     DateTime
+
+  sessions  Session[]
+  accounts  Account[]
+  userCards UserCard[]
+  decks     Deck[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?  @db.Text
+  createdAt DateTime
+  updatedAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime
+  updatedAt  DateTime
+}
+
+// ──────────────────────────────────────────────
+// Pokémon data (seeded from PokéAPI)
+// ──────────────────────────────────────────────
+
+model Pokemon {
+  id             Int      @id // PokéAPI id
+  name           String   @unique
+  baseExperience Int?
+  height         Int // decimetres
+  weight         Int // hectograms
+  spriteDefault  String?  @db.Text
+  spriteShiny    String?  @db.Text
+  spriteArtwork  String?  @db.Text
+  cryUrl         String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  types     PokemonType[]
+  stats     PokemonStat[]
+  abilities PokemonAbility[]
+  moves     PokemonMove[]
+  userCards UserCard[]
+}
+
+// 18 standard types (normal, fire, water, …)
+model Type {
+  id   Int    @id // PokéAPI id
+  name String @unique
+
+  pokemonTypes  PokemonType[]
+  moves         Move[]
+  attackingTo   TypeEffectiveness[] @relation("Attacker")
+  defendingFrom TypeEffectiveness[] @relation("Defender")
+}
+
+// damage multiplier when attackerType hits defenderType (0 / 0.5 / 2 only stored; absent = 1)
+model TypeEffectiveness {
+  attackerTypeId Int
+  defenderTypeId Int
+  multiplier     Float
+
+  attacker Type @relation("Attacker", fields: [attackerTypeId], references: [id])
+  defender Type @relation("Defender", fields: [defenderTypeId], references: [id])
+
+  @@id([attackerTypeId, defenderTypeId])
+}
+
+// Junction: a Pokémon has 1-2 types
+model PokemonType {
+  pokemonId Int
+  typeId    Int
+  slot      Int // 1 or 2
+
+  pokemon Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
+  type    Type    @relation(fields: [typeId], references: [id])
+
+  @@id([pokemonId, slot])
+}
+
+// The 6 base stats (hp / attack / defense / special-attack / special-defense / speed)
+model Stat {
+  id   Int    @id // PokéAPI id
+  name String @unique
+
+  pokemonStats PokemonStat[]
+}
+
+// Junction: a Pokémon's base stat values + EV yield
+model PokemonStat {
+  pokemonId Int
+  statId    Int
+  baseStat  Int
+  effort    Int // EV yield
+
+  pokemon Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
+  stat    Stat    @relation(fields: [statId], references: [id])
+
+  @@id([pokemonId, statId])
+}
+
+// Abilities (e.g. overgrow, blaze, torrent)
+model Ability {
+  id     Int     @id // PokéAPI id
+  name   String  @unique
+  effect String? @db.Text
+
+  pokemonAbilities PokemonAbility[]
+}
+
+// Junction: which abilities a Pokémon has and whether they're hidden
+model PokemonAbility {
+  pokemonId Int
+  abilityId Int
+  isHidden  Boolean
+  slot      Int // 1, 2, or 3
+
+  pokemon Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
+  ability Ability @relation(fields: [abilityId], references: [id])
+
+  @@id([pokemonId, slot])
+}
+
+// Move data (power, accuracy, pp, type, damage class, effect, meta)
+model Move {
+  id            Int     @id // PokéAPI id
+  name          String  @unique
+  power         Int?
+  accuracy      Int?
+  pp            Int?
+  priority      Int     @default(0)
+  damageClass   String // physical | special | status
+  typeId        Int?
+  effect        String? @db.Text
+  effectChance  Int?
+  ailment       String? // burn, paralysis, freeze, etc.
+  ailmentChance Int?
+  flinchChance  Int?
+  minHits       Int?
+  maxHits       Int?
+  critRate      Int     @default(0)
+  healing       Int     @default(0)
+
+  type         Type?         @relation(fields: [typeId], references: [id])
+  pokemonMoves PokemonMove[]
+}
+
+// Junction: which moves a Pokémon can learn, and how
+model PokemonMove {
+  id             String @id @default(cuid())
+  pokemonId      Int
+  moveId         Int
+  learnMethod    String // level-up | machine | egg | tutor
+  levelLearnedAt Int // 0 for non level-up methods
+
+  pokemon Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
+  move    Move    @relation(fields: [moveId], references: [id])
+
+  @@unique([pokemonId, moveId, learnMethod])
+  @@index([pokemonId])
+}
+
+// ──────────────────────────────────────────────
+// Game / user collection tables
+// ──────────────────────────────────────────────
+
+model UserCard {
+  id        String   @id @default(cuid())
+  userId    String
+  pokemonId Int
+  addedAt   DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pokemon   Pokemon  @relation(fields: [pokemonId], references: [id])
+  deckCards DeckCard[]
+
+  @@unique([userId, pokemonId])
+}
+
+model Deck {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String   @default("Meu Deck")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deckCards DeckCard[]
+}
+
+model DeckCard {
+  id         String   @id @default(cuid())
+  deckId     String
+  userCardId String
+  addedAt    DateTime @default(now())
+
+  deck     Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  userCard UserCard @relation(fields: [userCardId], references: [id], onDelete: Cascade)
+
+  @@unique([deckId, userCardId])
+}

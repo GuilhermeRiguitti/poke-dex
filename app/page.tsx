@@ -17,13 +17,14 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    const pokemonsPokeDex: { nome: string }[] = JSON.parse(
-      localStorage.getItem("lista-pokemons") ?? "[]"
-    );
-    const filtrados = pokemons.filter(
-      ({ name }) => !pokemonsPokeDex.some(({ nome }) => nome === name)
-    );
-    setResultado(filtrados);
+    if (pokemons.length === 0) return;
+    fetch("/api/cards")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((userCards: { pokemon: { name: string } }[]) => {
+        const savedNames = new Set(userCards.map((uc) => uc.pokemon.name));
+        setResultado(pokemons.filter(({ name }) => !savedNames.has(name)));
+      })
+      .catch(() => setResultado(pokemons));
   }, [pokemons]);
 
   return (

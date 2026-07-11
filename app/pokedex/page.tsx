@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import Link from "next/link";
 
-interface SavedPokemon {
-  id: number;
-  nome: string;
-  status: { base_stat: number; stat: { name: string } }[];
-  foto: string;
+interface UserCard {
+  id: string;
+  pokemon: {
+    id: number;
+    name: string;
+    spriteDefault: string | null;
+    spriteArtwork: string | null;
+    stats: { baseStat: number; stat: { name: string } }[];
+  };
 }
 
 interface BattleStat {
@@ -19,36 +22,30 @@ interface BattleStat {
 
 export default function PokedexPage() {
   const router = useRouter();
-  const [pokemons, setPokemons] = useState<SavedPokemon[]>([]);
+  const [userCards, setUserCards] = useState<UserCard[]>([]);
   const [listaBatalha1, setListaBatalha1] = useState<BattleStat[]>([]);
   const [listaBatalha2, setListaBatalha2] = useState<BattleStat[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("lista-pokemons") ?? "[]");
-    if (saved) setPokemons(saved);
-  }, []);
-
-  const pokemonsBatalha = (id: number) => {
-    axios
-      .get(`https://pokeapi.co/api/v2/pokemon/${id}`, {
-        headers: { "Content-Type": "application/json" },
-      })
+    fetch("/api/cards")
       .then((res) => {
-        if (listaBatalha1.length === 0) {
-          setListaBatalha1(res.data.stats);
-        } else {
-          setListaBatalha2(res.data.stats);
-        }
-      });
+        if (res.status === 401) { router.push("/login"); return null; }
+        return res.json();
+      })
+      .then((data) => { if (data) setUserCards(data); })
+      .finally(() => setLoading(false));
+  }, [router]);
+
+  const pokemonsBatalha = (uc: UserCard) => {
+    const stats = uc.pokemon.stats.map((s) => ({ base_stat: s.baseStat, stat: { name: s.stat.name } }));
+    if (listaBatalha1.length === 0) setListaBatalha1(stats);
+    else setListaBatalha2(stats);
   };
 
-  const removerPokemon = (nome: string) => {
-    const listaAtual: SavedPokemon[] = JSON.parse(
-      localStorage.getItem("lista-pokemons") ?? "[]"
-    );
-    const nova = listaAtual.filter((p) => p.nome !== nome);
-    localStorage.setItem("lista-pokemons", JSON.stringify(nova));
-    setPokemons(nova);
+  const removerPokemon = async (userCardId: string) => {
+    await fetch(`/api/cards/${userCardId}`, { method: "DELETE" });
+    setUserCards((prev) => prev.filter((c) => c.id !== userCardId));
   };
 
   return (
@@ -75,49 +72,50 @@ export default function PokedexPage() {
         </Link>
       </nav>
 
+      {loading && <p className="text-white text-center mt-8">Carregando...</p>}
+
       {/* Cards da PokéDex */}
       <div className="grid grid-cols-2 justify-items-center md:grid-cols-5">
-        {pokemons.map((pokemon) => (
-          <div
-            key={pokemon.id}
-            className="border border-green-500 w-[164px] h-[230px] flex flex-col justify-end items-center m-[50px] rounded-[10px] shadow-[3px_3px_4px_#77361a]"
-            style={{
-              backgroundImage: "url('/card.png')",
-              backgroundColor: "#1BB06E99",
-            }}
-          >
-            <button
-              onClick={() => pokemonsBatalha(pokemon.id)}
-              className="bg-transparent border-0 cursor-pointer"
+        {userCards.map((uc) => {
+          const stats: BattleStat[] = uc.pokemon.stats.map((s) => ({ base_stat: s.baseStat, stat: { name: s.stat.name } }));
+          return (
+            <div
+              key={uc.id}
+              className="border border-green-500 w-[164px] h-[230px] flex flex-col justify-end items-center m-[50px] rounded-[10px] shadow-[3px_3px_4px_#77361a]"
+              style={{
+                backgroundImage: "url('/card.png')",
+                backgroundColor: "#1BB06E99",
+              }}
             >
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/1732/1732452.png"
-                alt="batalha"
-                className="w-[30%] -mb-10 mr-[220px]"
-              />
-            </button>
-            <img
-              src={pokemon.foto}
-              alt={pokemon.nome}
-              className="w-full -mb-[15px]"
-            />
-            <p className="text-white font-semibold">{pokemon.nome.toUpperCase()}</p>
-            <div className="grid grid-cols-2">
               <button
-                onClick={() => removerPokemon(pokemon.nome)}
-                className="bg-transparent px-1.5 py-1.5 rounded-[15px] mx-1 border-0 text-green-600 cursor-pointer"
+                onClick={() => pokemonsBatalha(uc)}
+                className="bg-transparent border-0 cursor-pointer"
               >
-                Remover
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/1732/1732452.png"
+                  alt="batalha"
+                  className="w-[30%] -mb-10 mr-[220px]"
+                />
               </button>
-              <button
-                onClick={() => router.push(`/pokemon/${pokemon.id}`)}
-                className="bg-transparent px-1.5 py-1.5 rounded-[15px] mx-1 border-0 text-green-600 cursor-pointer"
-              >
-                Detalhes
-              </button>
+              <img src={uc.pokemon.spriteArtwork ?? uc.pokemon.spriteDefault ?? ""} alt={uc.pokemon.name} className="w-full -mb-[15px]" />
+              <p className="text-white font-semibold">{uc.pokemon.name.toUpperCase()}</p>
+              <div className="grid grid-cols-2">
+                <button
+                  onClick={() => removerPokemon(uc.id)}
+                  className="bg-transparent px-1.5 py-1.5 rounded-[15px] mx-1 border-0 text-green-600 cursor-pointer"
+                >
+                  Remover
+                </button>
+                <button
+                  onClick={() => router.push(`/pokemon/${uc.pokemon.id}`)}
+                  className="bg-transparent px-1.5 py-1.5 rounded-[15px] mx-1 border-0 text-green-600 cursor-pointer"
+                >
+                  Detalhes
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Batalha */}
