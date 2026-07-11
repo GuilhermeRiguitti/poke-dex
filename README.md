@@ -34,3 +34,6 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+use o konva.js, lib de draft e crie uma area utilizando as ferramentas do konva,  pra montar uma "arena de batalha de pokemon" achei interessante a ideia de ser um quadro dragabble pois podoemos adaptar para poder move-los  e dar animacoes predefinidas aos pokemons... achei uma ideia leggal, ainda mais se fosse um draft bem customizavel

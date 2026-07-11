@@ -12,11 +12,12 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "@tailwindcss/postcss": "^4.3.0",
-    "axios": "^1.16.1",
     "better-auth": "^1.6.11",
+    "konva": "^10.3.0",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-konva": "^19.2.5",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
