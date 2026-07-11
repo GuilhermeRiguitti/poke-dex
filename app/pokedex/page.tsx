@@ -81,6 +81,12 @@ export default function PokedexPage() {
             className="w-[300px] h-[70px] p-2.5 cursor-pointer"
           />
         </Link>
+        <Link
+          href="/battle"
+          className="bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold px-4 py-2 rounded-lg"
+        >
+          Batalhar
+        </Link>
       </nav>
 
       {loading && <p className="text-white text-center mt-8">Carregando...</p>}

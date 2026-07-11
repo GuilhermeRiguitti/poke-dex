@@ -50,6 +50,12 @@ export default function HomePage() {
           alt="Pokémon Logo"
           className="w-[300px] h-[70px] p-2.5"
         />
+        <Link
+          href="/battle"
+          className="bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold px-4 py-2 rounded-lg"
+        >
+          Batalhar
+        </Link>
       </nav>
 
       <div className="grid grid-cols-3 justify-items-center md:grid-cols-5">
