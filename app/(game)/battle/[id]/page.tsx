@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import TypeBadge from "@/components/TypeBadge";
+import HpBar from "@/components/HpBar";
 import { typeColor } from "@/lib/typeColors";
 
 interface BattleMoveDTO {
@@ -66,68 +67,80 @@ interface BattleDTO {
   turnLogs: TurnLogDTO[];
 }
 
-function HpBar({ current, max }: { current: number; max: number }) {
-  const pct = Math.max(0, Math.min(100, (current / max) * 100));
-  const color = pct > 50 ? "bg-ok" : pct > 20 ? "bg-warn" : "bg-bad";
-  return (
-    <div className="h-2.5 w-full overflow-hidden rounded-full border border-edge bg-surface-2">
-      <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-    </div>
-  );
-}
-
-function TeamDots({ pokemons }: { pokemons: BattlePokemonDTO[] }) {
+function TeamDots({ pokemons, tone }: { pokemons: BattlePokemonDTO[]; tone: "energy" | "enemy" }) {
   return (
     <div className="flex gap-1">
       {pokemons.map((p) => (
         <span
           key={p.id}
           title={p.name}
-          className={`h-2.5 w-2.5 rounded-full ${p.fainted ? "bg-edge" : "bg-ok"}`}
+          className={`plate h-2.5 w-3 ${
+            p.fainted ? "bg-edge" : tone === "energy" ? "bg-energy" : "bg-enemy"
+          }`}
         />
       ))}
     </div>
   );
 }
 
+// Nameplate estilo versus: lado do jogador em ciano, inimigo em vermelho
 function FighterPanel({
   mon,
   team,
   label,
+  tone,
   mirrored,
 }: {
   mon: BattlePokemonDTO;
   team: BattlePokemonDTO[];
   label: string;
+  tone: "energy" | "enemy";
   mirrored?: boolean;
 }) {
+  const accent = tone === "energy" ? "border-t-energy" : "border-t-enemy";
+  const labelColor = tone === "energy" ? "bg-energy text-bg" : "bg-enemy text-bg";
   return (
-    <div className="rounded-2xl border border-edge bg-surface p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wide text-ink-dim">{label}</span>
-        <TeamDots pokemons={team} />
+    <div className={`clip-card border border-edge border-t-[3px] bg-panel p-4 ${accent}`}>
+      <div className={`flex items-center justify-between ${mirrored ? "flex-row-reverse" : ""}`}>
+        <span className={`plate px-2.5 py-0.5 font-title text-xs uppercase tracking-widest ${labelColor}`}>
+          <span className="plate-inner">{label}</span>
+        </span>
+        <TeamDots pokemons={team} tone={tone} />
       </div>
-      <div className={`mt-2 flex items-center gap-4 ${mirrored ? "flex-row-reverse" : ""}`}>
+      <div className={`mt-3 flex items-center gap-4 ${mirrored ? "flex-row-reverse" : ""}`}>
         {mon.spriteUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- sprite da PokéAPI
           <img
             src={mon.spriteUrl}
             alt={mon.name}
-            className={`h-28 w-28 object-contain ${mon.fainted ? "opacity-30 grayscale" : ""}`}
+            className={`h-28 w-28 object-contain drop-shadow-[0_8px_10px_rgba(0,0,0,.5)] ${
+              mon.fainted ? "opacity-30 grayscale" : ""
+            } ${mirrored ? "-scale-x-100" : ""}`}
           />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-extrabold uppercase">
-            {mon.name} {mon.fainted && <span className="text-bad">✗</span>}
-          </p>
-          <div className="my-1 flex gap-1">
+          <div className={`flex items-center gap-2 ${mirrored ? "flex-row-reverse" : ""}`}>
+            <p className="truncate font-title text-lg uppercase tracking-wide">
+              {mon.name} {mon.fainted && <span className="text-bad">✗</span>}
+            </p>
+            <span className="lv-badge shrink-0">
+              <span>Lv 50</span>
+            </span>
+          </div>
+          <div className={`my-1.5 flex gap-1 ${mirrored ? "flex-row-reverse" : ""}`}>
             {mon.types.map((t) => (
               <TypeBadge key={t} type={t} small />
             ))}
           </div>
           <HpBar current={mon.currentHp} max={mon.maxHp} />
-          <p className="mt-1 text-xs tabular-nums text-ink-dim">
-            {mon.currentHp} / {mon.maxHp} HP
+          {/* key força remount → animação de flash quando o HP muda */}
+          <p
+            key={mon.currentHp}
+            className={`animate-count-flash mt-1 font-title text-sm tracking-wider tabular-nums ${
+              mirrored ? "text-right" : ""
+            }`}
+          >
+            {mon.currentHp} <span className="text-ink-dim">/ {mon.maxHp} HP</span>
           </p>
         </div>
       </div>
@@ -175,7 +188,7 @@ export default function BattlePage() {
   }, [params.id, loadFullState]);
 
   if (!battle || !session?.user) {
-    return <p className="pt-16 text-center text-ink-dim">Carregando partida...</p>;
+    return <p className="pt-16 text-center font-semibold text-ink-dim">Carregando partida...</p>;
   }
 
   const myUserId = session.user.id;
@@ -217,50 +230,77 @@ export default function BattlePage() {
   const iWon = isOver && battle.winnerId === myUserId;
 
   return (
-    <div className="pt-8">
-      <p className="mb-4 text-center text-sm font-bold uppercase tracking-widest text-ink-dim">
-        Turno {battle.currentTurn}
-      </p>
+    <div className="pt-6">
+      {/* placar de turno */}
+      <div className="mb-5 flex justify-center">
+        <div className="plate border border-edge bg-panel px-5 py-1.5">
+          <span className="plate-inner font-title tracking-[0.2em] text-ink-dim">
+            TURNO{" "}
+            <span key={battle.currentTurn} className="animate-count-flash inline-block text-xl text-ink tabular-nums">
+              {String(battle.currentTurn).padStart(2, "0")}
+            </span>
+          </span>
+        </div>
+      </div>
 
+      {/* tela de fim de partida — o momento mais caprichado */}
       {isOver && (
-        <div className="mb-6 flex flex-col items-center gap-3 rounded-2xl border border-edge bg-surface p-6 text-center">
-          <p className={`text-2xl font-extrabold ${iWon ? "text-ok" : "text-bad"}`}>
-            {battle.status === "ABANDONED"
-              ? iWon ? "Vitória por W.O. — oponente abandonou" : "Derrota por abandono"
-              : iWon ? "Você venceu! 🏆" : "Você perdeu."}
-          </p>
+        <div className="relative mb-6 flex flex-col items-center gap-4 overflow-hidden py-10">
+          <span
+            className={`animate-ring-burst absolute top-1/3 h-40 w-40 rounded-full border-4 ${
+              iWon ? "border-gold" : "border-bad"
+            }`}
+          />
+          <div
+            className={`plate animate-slam px-10 py-3 ${
+              iWon ? "bg-gold" : "bg-bad"
+            }`}
+            style={{ filter: iWon ? "drop-shadow(0 0 24px rgba(242,193,78,.5))" : "drop-shadow(0 0 24px rgba(255,92,92,.4))" }}
+          >
+            <span className={`plate-inner font-title text-5xl uppercase tracking-widest ${iWon ? "text-[#241a05]" : "text-white"}`}>
+              {battle.status === "ABANDONED" ? (iWon ? "W.O." : "Abandono") : iWon ? "Vitória" : "Derrota"}
+            </span>
+          </div>
+          {battle.status === "ABANDONED" && (
+            <p className="text-sm font-semibold text-ink-dim">
+              {iWon ? "O oponente abandonou a partida." : "Você abandonou a partida."}
+            </p>
+          )}
           <button
             onClick={() => router.push("/battle")}
-            className="rounded-xl bg-poke px-5 py-2.5 font-bold text-white hover:bg-poke-dark cursor-pointer border-0 transition-colors"
+            className="clip-btn cursor-pointer border-0 bg-flare px-6 py-2.5 font-title uppercase tracking-wider text-white transition-colors hover:bg-flare-dark"
           >
             Nova partida
           </button>
         </div>
       )}
 
+      {/* arena: inimigo × você */}
       <div className="grid gap-4 md:grid-cols-2">
-        <FighterPanel mon={oppActive} team={opponent.pokemons} label="Oponente" mirrored />
-        <FighterPanel mon={myActive} team={me.pokemons} label="Você" />
+        <FighterPanel mon={oppActive} team={opponent.pokemons} label="Inimigo" tone="enemy" mirrored />
+        <FighterPanel mon={myActive} team={me.pokemons} label="Você" tone="energy" />
       </div>
 
+      {/* feed do último turno */}
       {lastLog && (
-        <div className="mt-4 rounded-2xl border border-edge bg-surface-2/60 p-4 text-sm">
-          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-dim">
-            Turno {lastLog.turnNumber}
+        <div className="clip-card mt-4 border border-edge bg-panel-2/70 p-4 text-sm">
+          <p className="mb-1.5 font-title text-xs uppercase tracking-widest text-ink-dim">
+            Turno {String(lastLog.turnNumber).padStart(2, "0")}
           </p>
           {lastLog.events.map((e, i) => (
-            <p key={i} className="text-ink-dim">
+            <p key={i} className="font-semibold text-ink-dim">
               {e.type === "switch" &&
-                `${e.side === mySide ? "Você trocou" : "Oponente trocou"} para ${e.pokemonName}`}
+                `${e.side === mySide ? "Você trocou" : "Inimigo trocou"} para ${e.pokemonName}`}
               {e.type === "attack" &&
                 (e.missed ? (
                   <>
-                    <b className="capitalize text-ink">{e.moveName}</b> errou!
+                    <b className="uppercase text-ink">{e.moveName.replace(/-/g, " ")}</b> errou!
                   </>
                 ) : (
                   <>
-                    <b className="capitalize text-ink">{e.moveName}</b>: {e.damage} de dano
-                    {e.isCrit && <span className="text-gold"> · crítico!</span>}
+                    <b className="uppercase text-ink">{e.moveName.replace(/-/g, " ")}</b>:{" "}
+                    <span className="tabular-nums">{e.damage}</span> de dano
+                    {e.isCrit && <span className="text-gold"> · CRÍTICO!</span>}
                     {e.effectiveness > 1 && <span className="text-ok"> · super efetivo</span>}
                     {e.effectiveness < 1 && e.effectiveness > 0 && (
                       <span className="text-warn"> · pouco efetivo</span>
@@ -275,18 +315,24 @@ export default function BattlePage() {
         </div>
       )}
 
+      {/* comandos */}
       {!isOver && (
         <div className="mt-6">
-          {error && <p className="mb-2 text-sm text-bad">{error}</p>}
+          {error && <p className="mb-2 text-sm font-semibold text-bad">{error}</p>}
 
           {waiting ? (
-            <div className="flex items-center justify-center gap-2 rounded-2xl border border-edge bg-surface p-6 text-ink-dim">
-              <span className="h-2 w-2 animate-ping rounded-full bg-poke" />
-              Aguardando a jogada do oponente...
+            <div className="clip-card flex items-center justify-center gap-3 border border-edge bg-panel p-6">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-radar absolute inline-flex h-full w-full rounded-full bg-energy" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-energy" />
+              </span>
+              <span className="font-title uppercase tracking-wider text-ink-dim">
+                Aguardando a jogada do inimigo...
+              </span>
             </div>
           ) : needsSwitch || showSwitchMenu ? (
             <>
-              <p className="mb-2 font-bold">
+              <p className="mb-2 font-title uppercase tracking-wide">
                 {needsSwitch ? "Seu pokémon desmaiou — escolha o substituto:" : "Trocar para:"}
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -295,15 +341,17 @@ export default function BattlePage() {
                     key={p.id}
                     disabled={submitting}
                     onClick={() => submitAction({ actionType: "SWITCH", switchToSlot: p.slot })}
-                    className="flex items-center gap-2 rounded-xl border border-edge bg-surface p-2 text-left hover:border-ink-dim disabled:opacity-50 cursor-pointer transition-colors"
+                    className="clip-btn flex cursor-pointer items-center gap-2 border border-edge bg-panel p-2 text-left transition-all hover:border-energy/60 hover:bg-panel-2 active:scale-95 disabled:opacity-50"
                   >
                     {p.spriteUrl && (
                       // eslint-disable-next-line @next/next/no-img-element -- sprite da PokéAPI
                       <img src={p.spriteUrl} alt={p.name} className="h-10 w-10 object-contain" />
                     )}
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold uppercase">{p.name}</span>
-                      <span className="text-xs tabular-nums text-ink-dim">
+                      <span className="block truncate font-title text-sm uppercase tracking-wide">
+                        {p.name}
+                      </span>
+                      <span className="text-xs font-bold tabular-nums text-ink-dim">
                         {p.currentHp}/{p.maxHp} HP
                       </span>
                     </span>
@@ -313,7 +361,7 @@ export default function BattlePage() {
               {!needsSwitch && (
                 <button
                   onClick={() => setShowSwitchMenu(false)}
-                  className="mt-3 text-sm text-ink-dim underline cursor-pointer bg-transparent border-0"
+                  className="mt-3 cursor-pointer border-0 bg-transparent text-sm font-bold uppercase tracking-wide text-ink-dim underline"
                 >
                   Cancelar
                 </button>
@@ -327,12 +375,15 @@ export default function BattlePage() {
                     key={move.id + "-" + i}
                     disabled={submitting}
                     onClick={() => submitAction({ actionType: "MOVE", moveSlot: i })}
-                    className="rounded-xl border border-edge bg-surface p-3 text-left hover:border-ink-dim disabled:opacity-50 cursor-pointer transition-colors"
+                    className="clip-btn cursor-pointer border border-edge bg-panel p-3 text-left transition-all hover:-translate-y-0.5 hover:bg-panel-2 active:scale-95 disabled:opacity-50"
                     style={{ borderLeftColor: typeColor(move.type), borderLeftWidth: 4 }}
                   >
-                    <span className="block font-bold uppercase">{move.name.replace(/-/g, " ")}</span>
-                    <span className="text-xs text-ink-dim">
-                      {move.type} · poder {move.power ?? "—"} · precisão {move.accuracy ?? 100}%
+                    <span className="block font-title uppercase tracking-wide">
+                      {move.name.replace(/-/g, " ")}
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-ink-dim">
+                      {move.type} · poder <span className="tabular-nums">{move.power ?? "—"}</span> ·
+                      precisão <span className="tabular-nums">{move.accuracy ?? 100}%</span>
                     </span>
                   </button>
                 ))}
@@ -341,7 +392,7 @@ export default function BattlePage() {
                 <button
                   onClick={() => setShowSwitchMenu(true)}
                   disabled={submitting}
-                  className="mt-3 text-sm text-ink-dim underline cursor-pointer bg-transparent border-0 disabled:opacity-50"
+                  className="mt-3 cursor-pointer border-0 bg-transparent text-sm font-bold uppercase tracking-wide text-ink-dim underline disabled:opacity-50"
                 >
                   Trocar de pokémon
                 </button>
@@ -349,7 +400,9 @@ export default function BattlePage() {
             </>
           )}
 
-          {submitting && <p className="mt-2 text-sm text-ink-dim">Enviando...</p>}
+          {submitting && (
+            <p className="mt-2 text-sm font-semibold text-ink-dim">Enviando...</p>
+          )}
         </div>
       )}
     </div>

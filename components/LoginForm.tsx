@@ -34,27 +34,22 @@ export default function LoginForm() {
   };
 
   const inputClass =
-    "rounded-xl border border-edge bg-surface-2 px-4 py-2.5 text-ink placeholder-ink-dim/60 focus:outline-none focus:border-poke transition-colors";
+    "clip-btn border border-edge bg-panel-2 px-4 py-2.5 font-semibold text-ink placeholder-ink-dim/60 focus:outline-none focus:border-energy transition-colors";
 
   return (
     <>
-      <div className="mb-6 grid grid-cols-2 overflow-hidden rounded-xl border border-edge">
-        <button
-          onClick={() => setModo("login")}
-          className={`py-2.5 text-sm font-bold cursor-pointer border-0 transition-colors ${
-            modo === "login" ? "bg-poke text-white" : "bg-transparent text-ink-dim hover:text-ink"
-          }`}
-        >
-          Entrar
-        </button>
-        <button
-          onClick={() => setModo("cadastro")}
-          className={`py-2.5 text-sm font-bold cursor-pointer border-0 transition-colors ${
-            modo === "cadastro" ? "bg-poke text-white" : "bg-transparent text-ink-dim hover:text-ink"
-          }`}
-        >
-          Criar conta
-        </button>
+      <div className="mb-6 grid grid-cols-2 gap-1">
+        {(["login", "cadastro"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setModo(m)}
+            className={`clip-btn cursor-pointer border-0 py-2.5 text-sm font-bold uppercase tracking-wide transition-colors ${
+              modo === m ? "bg-flare text-white" : "bg-panel-2 text-ink-dim hover:text-ink"
+            }`}
+          >
+            {m === "login" ? "Entrar" : "Criar conta"}
+          </button>
+        ))}
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -86,14 +81,14 @@ export default function LoginForm() {
           className={inputClass}
         />
 
-        {erro && <p className="text-center text-sm text-bad">{erro}</p>}
+        {erro && <p className="text-center text-sm font-semibold text-bad">{erro}</p>}
 
         <button
           type="submit"
           disabled={carregando}
-          className="mt-1 rounded-xl bg-poke py-3 font-bold text-white hover:bg-poke-dark disabled:opacity-50 cursor-pointer border-0 transition-colors"
+          className="clip-btn animate-playable-pulse mt-1 cursor-pointer border-0 bg-flare py-3 font-title text-lg uppercase tracking-wider text-white transition-colors hover:bg-flare-dark disabled:opacity-50"
         >
-          {carregando ? "Aguarde..." : modo === "login" ? "Entrar" : "Começar a jornada"}
+          {carregando ? "Aguarde..." : modo === "login" ? "Entrar na arena" : "Começar a jornada"}
         </button>
       </form>
     </>

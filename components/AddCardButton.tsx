@@ -10,8 +10,8 @@ export default function AddCardButton({ pokemonId, saved }: { pokemonId: number;
 
   if (saved || done) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-lg bg-ok/15 px-3 py-1.5 text-xs font-bold text-ok">
-        ✓ Na coleção
+      <span className="clip-btn inline-flex items-center gap-1 bg-ok/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ok">
+        ✓ Capturado
       </span>
     );
   }
@@ -37,7 +37,7 @@ export default function AddCardButton({ pokemonId, saved }: { pokemonId: number;
     <button
       onClick={capture}
       disabled={busy}
-      className="rounded-lg bg-poke px-3 py-1.5 text-xs font-bold text-white hover:bg-poke-dark disabled:opacity-50 cursor-pointer border-0 transition-colors"
+      className="clip-btn cursor-pointer border-0 bg-flare px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white transition-all hover:bg-flare-dark active:scale-95 disabled:opacity-50"
     >
       {busy ? "..." : "Capturar"}
     </button>

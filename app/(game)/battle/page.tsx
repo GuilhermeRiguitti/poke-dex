@@ -73,27 +73,44 @@ export default function BattleQueuePage() {
 
   return (
     <div className="flex flex-col items-center pt-16 text-center">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-poke/15">
-        <SwordsIcon size={40} className="text-poke" />
+      {/* emblema com radar quando na fila */}
+      <div className="relative flex h-24 w-24 items-center justify-center">
+        {queued && (
+          <>
+            <span className="animate-radar absolute inset-0 rounded-full border-2 border-flare" />
+            <span
+              className="animate-radar absolute inset-0 rounded-full border-2 border-flare"
+              style={{ animationDelay: "0.5s" }}
+            />
+          </>
+        )}
+        <div className="plate flex h-20 w-20 items-center justify-center border border-edge bg-panel">
+          <span className="plate-inner">
+            <SwordsIcon size={38} className="text-flare" />
+          </span>
+        </div>
       </div>
-      <h1 className="mt-4 text-3xl font-extrabold">Arena de Batalha</h1>
-      <p className="mt-1 max-w-md text-sm text-ink-dim">
+
+      <h1 className="mt-5 font-title text-4xl uppercase tracking-wide">
+        Arena de <span className="text-flare">Batalha</span>
+      </h1>
+      <p className="mt-2 max-w-md text-sm font-semibold text-ink-dim">
         Batalhas PvP por turnos contra outros treinadores, com seu deck de até 6 pokémons.
       </p>
 
-      <div className="mt-8 w-full max-w-sm rounded-2xl border border-edge bg-surface p-6">
-        {loading && <p className="text-ink-dim">Carregando seu deck...</p>}
+      <div className="clip-card mt-8 w-full max-w-sm border border-edge bg-panel p-6">
+        {loading && <p className="font-semibold text-ink-dim">Carregando seu deck...</p>}
 
         {!loading && deck && (
           <>
-            <p className="text-sm">
+            <p className="text-sm font-semibold">
               <span className="text-ink-dim">Deck:</span>{" "}
-              <span className="font-bold">{deck.name}</span>{" "}
+              <span className="font-title tracking-wide">{deck.name}</span>{" "}
               <span className="text-ink-dim">— {deck.deckCards.length}/6 pokémons</span>
             </p>
 
             {deck.deckCards.length === 0 && (
-              <p className="mt-3 text-sm text-warn">
+              <p className="mt-3 text-sm font-semibold text-warn">
                 Seu deck está vazio. Monte-o na{" "}
                 <Link href="/pokedex" className="underline">
                   sua coleção
@@ -102,25 +119,24 @@ export default function BattleQueuePage() {
               </p>
             )}
 
-            {error && <p className="mt-3 text-sm text-bad">{error}</p>}
+            {error && <p className="mt-3 text-sm font-semibold text-bad">{error}</p>}
 
             {!queued ? (
               <button
                 onClick={enterQueue}
                 disabled={deck.deckCards.length === 0}
-                className="mt-5 w-full rounded-xl bg-poke py-3 font-bold text-white hover:bg-poke-dark disabled:opacity-40 cursor-pointer border-0 transition-colors"
+                className="clip-btn animate-playable-pulse mt-5 w-full cursor-pointer border-0 bg-flare py-3 font-title text-lg uppercase tracking-wider text-white transition-colors hover:bg-flare-dark disabled:animate-none disabled:opacity-40"
               >
                 Procurar oponente
               </button>
             ) : (
               <>
-                <div className="mt-5 flex items-center justify-center gap-2 text-ink-dim">
-                  <span className="h-2 w-2 animate-ping rounded-full bg-poke" />
+                <p className="mt-5 font-title uppercase tracking-wider text-flare">
                   Procurando oponente...
-                </div>
+                </p>
                 <button
                   onClick={leaveQueue}
-                  className="mt-4 w-full rounded-xl border border-edge py-2.5 text-sm text-ink-dim hover:text-ink cursor-pointer bg-transparent transition-colors"
+                  className="clip-btn mt-4 w-full cursor-pointer border border-edge bg-transparent py-2.5 text-sm font-bold uppercase tracking-wide text-ink-dim transition-colors hover:text-ink"
                 >
                   Cancelar
                 </button>

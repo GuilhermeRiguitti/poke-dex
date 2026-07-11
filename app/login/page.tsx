@@ -12,17 +12,20 @@ export default async function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <PokeballIcon size={64} />
-          <h1 className="text-3xl font-extrabold tracking-tight">
-            Poké<span className="text-poke">Arena</span>
+        {/* tela de título */}
+        <div className="mb-8 flex flex-col items-center gap-4">
+          <PokeballIcon size={72} />
+          <h1 className="plate border border-edge bg-panel px-6 py-2">
+            <span className="plate-inner font-title text-4xl tracking-wide">
+              POKÉ<span className="text-flare">ARENA</span>
+            </span>
           </h1>
-          <p className="text-center text-sm text-ink-dim">
+          <p className="max-w-xs text-center text-sm font-semibold text-ink-dim">
             Capture pokémons, monte seu deck e batalhe contra outros treinadores.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-edge bg-surface p-6">
+        <div className="clip-card border border-edge bg-panel p-6">
           <LoginForm />
         </div>
       </div>

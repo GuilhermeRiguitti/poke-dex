@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { NormalizedPokemon } from "@/lib/pokeapi";
+import { typeColor } from "@/lib/typeColors";
 import TypeBadge from "@/components/TypeBadge";
 import { SwordsIcon } from "@/components/icons";
 
@@ -93,29 +94,31 @@ export default function CollectionPage() {
 
   return (
     <div className="pt-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-extrabold">Minha Coleção</h1>
-          <p className="text-sm text-ink-dim">
-            Monte um deck de até {DECK_LIMIT} pokémons para batalhar.
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="font-title text-3xl uppercase tracking-wide">
+          Minha <span className="text-energy">Coleção</span>
+        </h1>
+        <p className="text-sm font-semibold text-ink-dim">
+          Monte um deck de até {DECK_LIMIT} pokémons para batalhar.
+        </p>
       </div>
 
-      {/* Deck */}
-      <section className="mb-8 rounded-2xl border border-edge bg-surface p-4">
+      {/* Deck — janela de inventário */}
+      <section className="clip-card mb-8 border border-edge bg-panel p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-bold">
-            <SwordsIcon size={18} className="text-poke" />
-            Deck de batalha
-            <span className="text-sm font-normal text-ink-dim">
-              {deckCount}/{DECK_LIMIT}
+          <h2 className="plate border border-edge bg-panel-2 px-3 py-1">
+            <span className="plate-inner flex items-center gap-2 font-title text-sm uppercase tracking-wider">
+              <SwordsIcon size={15} className="text-flare" />
+              Deck de batalha
+              <span className="text-ink-dim">
+                {deckCount}/{DECK_LIMIT}
+              </span>
             </span>
           </h2>
           {deckCount > 0 && (
             <Link
               href="/battle"
-              className="rounded-lg bg-poke px-4 py-2 text-sm font-bold text-white hover:bg-poke-dark transition-colors"
+              className="clip-btn bg-flare px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-flare-dark"
             >
               Batalhar
             </Link>
@@ -128,8 +131,8 @@ export default function CollectionPage() {
             return (
               <div
                 key={i}
-                className={`flex aspect-square flex-col items-center justify-center rounded-xl border ${
-                  member ? "border-poke/50 bg-surface-2" : "border-dashed border-edge"
+                className={`clip-btn flex aspect-square flex-col items-center justify-center gap-1 border ${
+                  member ? "border-flare/50 bg-panel-2" : "border-dashed border-edge"
                 }`}
               >
                 {pokemon ? (
@@ -140,12 +143,17 @@ export default function CollectionPage() {
                       alt={pokemon.name}
                       className="h-14 w-14 object-contain"
                     />
-                    <span className="text-[10px] font-bold uppercase">{pokemon.name}</span>
+                    <span className="font-title text-[10px] uppercase tracking-wide">
+                      {pokemon.name}
+                    </span>
+                    <span className="lv-badge">
+                      <span>Lv 50</span>
+                    </span>
                   </>
                 ) : member ? (
                   <span className="text-xs text-ink-dim">#{member.pokemonId}</span>
                 ) : (
-                  <span className="text-xl text-edge">+</span>
+                  <span className="font-title text-2xl text-edge">+</span>
                 )}
               </div>
             );
@@ -153,17 +161,17 @@ export default function CollectionPage() {
         </div>
       </section>
 
-      {loading && <p className="text-center text-ink-dim">Carregando coleção...</p>}
+      {loading && <p className="text-center font-semibold text-ink-dim">Carregando coleção...</p>}
 
       {!loading && userCards.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-edge p-10 text-center">
-          <p className="mb-2 font-bold">Sua coleção está vazia</p>
-          <p className="mb-4 text-sm text-ink-dim">
+        <div className="clip-card border border-dashed border-edge p-10 text-center">
+          <p className="mb-2 font-title text-lg uppercase tracking-wide">Coleção vazia</p>
+          <p className="mb-4 text-sm font-semibold text-ink-dim">
             Capture pokémons na PokéDex para começar.
           </p>
           <Link
             href="/"
-            className="rounded-lg bg-poke px-4 py-2 text-sm font-bold text-white hover:bg-poke-dark transition-colors"
+            className="clip-btn inline-block bg-flare px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-flare-dark"
           >
             Ir para a PokéDex
           </Link>
@@ -172,18 +180,23 @@ export default function CollectionPage() {
 
       {/* Coleção */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {userCards.map((uc) => {
+        {userCards.map((uc, i) => {
           const pokemon = details[uc.pokemonId];
           const inDeck = Boolean(deckCardFor(uc.id));
           return (
             <div
               key={uc.id}
-              className={`flex flex-col rounded-2xl border bg-surface p-3 transition-colors ${
-                inDeck ? "border-poke/60" : "border-edge hover:border-ink-dim"
-              }`}
+              data-in-deck={inDeck || undefined}
+              className="card-frame clip-card animate-rise flex flex-col p-3 data-[in-deck]:border-flare/60"
+              style={
+                {
+                  "--type-c": typeColor(pokemon?.types[0]?.type.name ?? "normal"),
+                  animationDelay: `${i * 25}ms`,
+                } as React.CSSProperties
+              }
             >
               <div className="flex items-start justify-between">
-                <span className="text-xs font-bold text-ink-dim">
+                <span className="font-title text-xs tracking-wider text-ink-dim">
                   #{String(uc.pokemonId).padStart(4, "0")}
                 </span>
                 <div className="flex flex-col items-end gap-1">
@@ -203,10 +216,10 @@ export default function CollectionPage() {
                     src={pokemon.sprites.artwork ?? pokemon.sprites.front_default ?? ""}
                     alt={pokemon.name}
                     loading="lazy"
-                    className="h-24 w-24 object-contain"
+                    className="h-24 w-24 object-contain drop-shadow-[0_6px_8px_rgba(0,0,0,.45)]"
                   />
                 )}
-                <span className="mt-1 font-bold capitalize">
+                <span className="mt-1 font-title uppercase tracking-wide">
                   {pokemon?.name ?? `#${uc.pokemonId}`}
                 </span>
               </Link>
@@ -215,17 +228,17 @@ export default function CollectionPage() {
                 <button
                   onClick={() => toggleDeck(uc.id)}
                   disabled={!deck || (!inDeck && deckCount >= DECK_LIMIT)}
-                  className={`rounded-lg px-2 py-1.5 text-xs font-bold cursor-pointer border-0 transition-colors disabled:opacity-40 ${
+                  className={`clip-btn cursor-pointer border-0 px-2 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-40 ${
                     inDeck
-                      ? "bg-poke text-white hover:bg-poke-dark"
-                      : "bg-surface-2 text-ink-dim hover:text-ink"
+                      ? "bg-flare text-white hover:bg-flare-dark"
+                      : "bg-panel-2 text-ink-dim hover:text-ink"
                   }`}
                 >
                   {inDeck ? "No deck ✓" : "+ Deck"}
                 </button>
                 <button
                   onClick={() => removerPokemon(uc.id)}
-                  className="rounded-lg bg-surface-2 px-2 py-1.5 text-xs font-bold text-bad/80 hover:text-bad cursor-pointer border-0 transition-colors"
+                  className="clip-btn cursor-pointer border-0 bg-panel-2 px-2 py-1.5 text-xs font-bold uppercase tracking-wide text-bad/80 transition-colors hover:text-bad"
                 >
                   Soltar
                 </button>

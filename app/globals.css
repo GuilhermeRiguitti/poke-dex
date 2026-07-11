@@ -1,18 +1,82 @@
 @import "tailwindcss";
 
+/* ──────────────────────────────────────────────────────────────
+   PokéArena — design system
+   Direção: MMORPGs 2000s da Level Up (janelas de inventário,
+   badges de level, barras de EXP) × HUD futurista de Overwatch
+   (painéis inclinados, cantos chanfrados, ciano vs. laranja).
+   ────────────────────────────────────────────────────────────── */
+
 @theme {
-  --color-bg: #0b1020;
-  --color-surface: #141b30;
-  --color-surface-2: #1c2542;
-  --color-edge: #2a3558;
-  --color-ink: #e8ecf8;
-  --color-ink-dim: #93a0c4;
-  --color-poke: #ee4035; /* vermelho pokébola */
-  --color-poke-dark: #b91c1c;
-  --color-gold: #f5b942;
-  --color-ok: #34d399;
-  --color-warn: #fbbf24;
-  --color-bad: #f87171;
+  --font-title: var(--font-anton), "Arial Narrow", sans-serif;
+  --font-body: var(--font-rajdhani), system-ui, sans-serif;
+
+  /* superfícies */
+  --color-bg: #0b0f16;
+  --color-panel: #131a27;
+  --color-panel-2: #1a2333;
+  --color-edge: #2b3a54;
+
+  /* texto */
+  --color-ink: #edf2fb;
+  --color-ink-dim: #8da0bf;
+
+  /* acentos */
+  --color-energy: #23c9ff; /* ciano — aliado, info, foco */
+  --color-energy-dark: #0e7ca8;
+  --color-flare: #ff9c1a; /* laranja — CTA, ação */
+  --color-flare-dark: #d17d0a;
+  --color-gold: #f2c14e; /* dourado — level, raridade */
+  --color-enemy: #ff5c5c; /* vermelho — lado inimigo */
+
+  /* semânticas */
+  --color-ok: #37e08d;
+  --color-warn: #ffc93c;
+  --color-bad: #ff5c5c;
+
+  /* motion */
+  --ease-snap: cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  --animate-rise: rise 0.35s var(--ease-snap) both;
+  --animate-slam: slam 0.55s var(--ease-snap) both;
+  --animate-ring-burst: ring-burst 0.9s ease-out both;
+  --animate-playable-pulse: playable-pulse 1.8s ease-in-out infinite;
+  --animate-radar: radar 1.5s ease-out infinite;
+  --animate-count-flash: count-flash 0.45s ease-out both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slam {
+  from { opacity: 0; transform: scale(1.7) skewX(-10deg); }
+  to { opacity: 1; transform: scale(1) skewX(-10deg); }
+}
+
+@keyframes ring-burst {
+  from { opacity: 0.9; transform: scale(0.3); }
+  to { opacity: 0; transform: scale(1.8); }
+}
+
+@keyframes playable-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 156, 26, 0.45); }
+  50% { box-shadow: 0 0 18px 3px rgba(255, 156, 26, 0.28); }
+}
+
+@keyframes radar {
+  from { opacity: 0.7; transform: scale(0.4); }
+  to { opacity: 0; transform: scale(1.9); }
+}
+
+@keyframes count-flash {
+  from { color: var(--color-warn); transform: scale(1.25); }
+  to { color: inherit; transform: scale(1); }
+}
+
+@keyframes scan-sweep {
+  from { transform: translateX(-130%) skewX(-20deg); }
+  to { transform: translateX(260%) skewX(-20deg); }
 }
 
 html,
@@ -21,24 +85,93 @@ body {
   overflow-x: hidden;
   background: var(--color-bg);
   color: var(--color-ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 
-/* fundo do jogo: gradiente + "estrelas" em CSS puro, sem imagem externa */
+/* fundo: linhas técnicas diagonais + glow ciano no horizonte — CSS puro */
 body {
   background-image:
-    radial-gradient(1.5px 1.5px at 15% 25%, #ffffff22 0, transparent 100%),
-    radial-gradient(1px 1px at 45% 70%, #ffffff1c 0, transparent 100%),
-    radial-gradient(1.5px 1.5px at 70% 15%, #ffffff22 0, transparent 100%),
-    radial-gradient(1px 1px at 85% 55%, #ffffff18 0, transparent 100%),
-    radial-gradient(1px 1px at 30% 90%, #ffffff18 0, transparent 100%),
-    radial-gradient(ellipse 80% 60% at 50% -10%, #24306050 0, transparent 70%),
-    linear-gradient(180deg, #0d1226 0%, #0b1020 45%, #0a0e1c 100%);
+    repeating-linear-gradient(60deg, transparent 0 34px, rgba(141, 160, 191, 0.035) 34px 35px),
+    repeating-linear-gradient(-60deg, transparent 0 34px, rgba(141, 160, 191, 0.03) 34px 35px),
+    radial-gradient(ellipse 90% 45% at 50% -12%, rgba(35, 201, 255, 0.12) 0, transparent 65%),
+    linear-gradient(180deg, #0d1420 0%, #0b0f16 50%, #090c12 100%);
   background-attachment: fixed;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+a { color: inherit; text-decoration: none; }
+
+/* ── assinatura: cantos chanfrados (Overwatch) ─────────────── */
+.clip-card {
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+.clip-btn {
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+/* ── assinatura: placas inclinadas ─────────────────────────── */
+.plate { transform: skewX(-10deg); }
+.plate-inner { display: inline-block; transform: skewX(10deg); }
+
+/* ── card de pokémon (item de inventário) ──────────────────── */
+.card-frame {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-panel);
+  border: 1px solid var(--color-edge);
+  border-top: 3px solid var(--type-c, var(--color-edge));
+  transition: transform 0.15s var(--ease-snap), border-color 0.15s, filter 0.15s;
+}
+.card-frame:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--type-c, var(--color-edge)) 55%, var(--color-edge));
+  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--type-c, #000) 25%, transparent));
+}
+/* varredura de luz no hover (scanline) */
+.card-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(237, 242, 251, 0.07), transparent);
+  transform: translateX(-130%) skewX(-20deg);
+  pointer-events: none;
+}
+.card-frame:hover::after { animation: scan-sweep 0.7s ease-out; }
+
+/* ── barra de HP/stat segmentada (barra de EXP de MMORPG) ──── */
+.bar-track {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-edge);
+}
+.bar-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 9px, rgba(9, 12, 18, 0.55) 9px 10px);
+  pointer-events: none;
+}
+.bar-fill { height: 100%; transition: width 0.5s var(--ease-snap); }
+
+/* ── badge de level dourado ────────────────────────────────── */
+.lv-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  background: linear-gradient(180deg, var(--color-gold), #c99a2e);
+  color: #241a05;
+  font-family: var(--font-title);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  transform: skewX(-10deg);
+}
+.lv-badge > span { display: inline-block; transform: skewX(10deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
