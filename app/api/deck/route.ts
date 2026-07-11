@@ -12,7 +12,7 @@ export async function GET() {
     where: { userId: session.user.id },
     include: {
       deckCards: {
-        include: { userCard: { include: { pokemon: true } } },
+        include: { userCard: true },
         orderBy: { addedAt: "asc" },
       },
     },
@@ -23,7 +23,7 @@ export async function GET() {
       data: { userId: session.user.id },
       include: {
         deckCards: {
-          include: { userCard: { include: { pokemon: true } } },
+          include: { userCard: true },
           orderBy: { addedAt: "asc" },
         },
       },
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     where: { deckId_userCardId: { deckId: deck.id, userCardId } },
     update: {},
     create: { deckId: deck.id, userCardId },
-    include: { userCard: { include: { pokemon: true } } },
+    include: { userCard: true },
   });
 
   return NextResponse.json(deckCard, { status: 201 });

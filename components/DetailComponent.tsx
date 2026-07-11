@@ -8,7 +8,7 @@ export default function DetailComponent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [, , name, data, sprites, moves, , isLoading, error] = useRequestData(
-    `https://pokeapi.co/api/v2/pokemon/${params.id}`
+    `/api/pokeapi/${params.id}`
   );
 
   return (

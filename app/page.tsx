@@ -5,6 +5,7 @@ import { useRequestData } from "@/hooks/useRequestData";
 import { URL_BASE } from "@/constants/URL_BASE";
 import CardComponent from "@/components/CardComponent";
 import { PokemonListItem } from "@/hooks/useRequestData";
+import { extractIdFromUrl } from "@/lib/pokeapi";
 import Link from "next/link";
 
 const TOTAL_PAGES = 57;
@@ -20,9 +21,11 @@ export default function HomePage() {
     if (pokemons.length === 0) return;
     fetch("/api/cards")
       .then((res) => (res.ok ? res.json() : []))
-      .then((userCards: { pokemon: { name: string } }[]) => {
-        const savedNames = new Set(userCards.map((uc) => uc.pokemon.name));
-        setResultado(pokemons.filter(({ name }) => !savedNames.has(name)));
+      .then((userCards: { pokemonId: number }[]) => {
+        const savedIds = new Set(userCards.map((uc) => uc.pokemonId));
+        setResultado(
+          pokemons.filter(({ url }) => !savedIds.has(extractIdFromUrl(url)))
+        );
       })
       .catch(() => setResultado(pokemons));
   }, [pokemons]);
