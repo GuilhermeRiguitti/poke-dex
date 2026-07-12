@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="220" viewBox="0 0 300 220">
+  <defs>
+    <linearGradient id="wsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a3a5c"/>
+      <stop offset="1" stop-color="#1b6fa8"/>
+    </linearGradient>
+    <linearGradient id="wdrop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fe3ff"/>
+      <stop offset="1" stop-color="#23c9ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="220" fill="url(#wsky)"/>
+  <!-- ondas de fundo -->
+  <path d="M0 150 q40 -22 80 0 t80 0 t80 0 t80 0 V220 H0 Z" fill="#2b8fce" opacity="0.55"/>
+  <path d="M0 172 q40 -20 80 0 t80 0 t80 0 t80 0 V220 H0 Z" fill="#1b6fa8"/>
+  <!-- gota central -->
+  <path d="M150 40 C186 92 200 116 200 140 a50 50 0 0 1 -100 0 C100 116 114 92 150 40 Z"
+        fill="url(#wdrop)" stroke="#eaffff" stroke-width="3"/>
+  <!-- brilho na gota -->
+  <ellipse cx="132" cy="128" rx="10" ry="20" fill="#ffffff" opacity="0.6"/>
+  <!-- respingos -->
+  <circle cx="70" cy="70" r="6" fill="#8fe3ff" opacity="0.9"/>
+  <circle cx="234" cy="90" r="8" fill="#8fe3ff" opacity="0.9"/>
+  <circle cx="250" cy="56" r="4" fill="#cdf4ff" opacity="0.9"/>
+</svg>
