@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useSession } from "@/lib/auth-client";
-import type { TableAttackEvent, TableMove, TablePokemon, TableScore } from "@/components/battle/BattleTable";
+import type { TableAttackEvent, TableLogLine, TableMove, TablePokemon, TableScore } from "@/components/battle/BattleTable";
 
 // Konva só existe no browser — nunca renderizar no servidor
 const BattleTable = dynamic(() => import("@/components/battle/BattleTable"), {
@@ -144,6 +144,34 @@ export default function BattlePage() {
       }));
   }, [lastLog, mySide]);
 
+  // log de ações pro painel direito: últimos 3 turnos, mais recente no topo
+  const logLines: TableLogLine[] = useMemo(() => {
+    if (!battle || !mySide) return [];
+    const lines: TableLogLine[] = [];
+    const turns = [...battle.turnLogs].sort((a, b) => b.turnNumber - a.turnNumber).slice(0, 3);
+    for (const turn of turns) {
+      lines.push({ text: `— TURNO ${String(turn.turnNumber).padStart(2, "0")} —`, tone: "gold" });
+      for (const e of turn.events) {
+        const who = e.side === mySide ? "Você" : "Inimigo";
+        if (e.type === "switch") {
+          lines.push({ text: `${who} → ${e.pokemonName.toUpperCase()}`, tone: e.side === mySide ? "energy" : "enemy" });
+        } else if (e.type === "attack") {
+          const mv = e.moveName.replace(/-/g, " ").toUpperCase();
+          if (e.missed) {
+            lines.push({ text: `${who}: ${mv} errou`, tone: "inkDim" });
+          } else {
+            const suffix = e.effectiveness > 1 ? " super" : e.effectiveness === 0 ? " imune" : e.effectiveness < 1 ? " pouco" : "";
+            const tone: TableLogLine["tone"] = e.isCrit ? "gold" : e.effectiveness > 1 ? "ok" : e.effectiveness === 0 ? "bad" : e.effectiveness < 1 ? "warn" : "ink";
+            lines.push({ text: `${who}: ${mv} ${e.damage}${e.isCrit ? " crit" : ""}${suffix}${e.targetFainted ? " KO!" : ""}`, tone });
+          }
+        } else {
+          lines.push({ text: `${who}: sem ação`, tone: "inkDim" });
+        }
+      }
+    }
+    return lines;
+  }, [battle, mySide]);
+
   const submitAction = useCallback(
     async (turnNumber: number, body: { actionType: "MOVE" | "SWITCH"; moveSlot?: number; switchToSlot?: number }) => {
       setSubmitting(true);
@@ -225,6 +253,7 @@ export default function BattlePage() {
           waiting={waiting}
           turnNumber={battle.currentTurn}
           score={score}
+          logLines={logLines}
           lastTurnEvents={tableEvents}
           lastTurnNumber={lastLog?.turnNumber ?? 0}
           onAttack={(moveSlot) => submitAction(battle.currentTurn, { actionType: "MOVE", moveSlot })}

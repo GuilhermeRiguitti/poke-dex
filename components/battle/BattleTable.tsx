@@ -23,6 +23,13 @@ const COLORS = {
   bad: "#ff5c5c",
 };
 
+export type LogTone = keyof typeof COLORS;
+
+export interface TableLogLine {
+  text: string;
+  tone: LogTone;
+}
+
 export interface TableMove {
   name: string;
   type: string;
@@ -65,6 +72,7 @@ interface BattleTableProps {
   waiting: boolean;
   turnNumber: number;
   score: TableScore;
+  logLines: TableLogLine[];
   lastTurnEvents: TableAttackEvent[] | null;
   lastTurnNumber: number;
   onAttack: (moveSlot: number) => void;
@@ -72,7 +80,7 @@ interface BattleTableProps {
 }
 
 type DropId = "enemy" | "mine";
-type Rect = { x: number; y: number; width: number; height: number };
+type RectBox = { x: number; y: number; width: number; height: number };
 
 const clamp = (min: number, v: number, max: number) => Math.max(min, Math.min(max, v));
 
@@ -89,52 +97,57 @@ function useTitleFont(): string {
   return font;
 }
 
-// ── layout calculado a partir do tamanho REAL do container ───────────────
+// ── layout a partir do tamanho REAL do container ─────────────────────────
 function computeLayout(W: number, H: number) {
   const PAD = 16;
   const leftW = clamp(150, W * 0.15, 210);
-  const rightW = clamp(180, W * 0.17, 250);
-  const deckH = clamp(150, H * 0.26, 205);
+  const rightW = clamp(200, W * 0.18, 270);
+  const deckH = clamp(150, H * 0.24, 200);
   const topH = H - deckH;
 
   const cX0 = leftW + PAD;
   const cX1 = W - rightW - PAD;
   const cCx = (cX0 + cX1) / 2;
+  const centerW = cX1 - cX0;
 
   const arenaTop = PAD + 4;
   const arenaBottom = topH - PAD;
-  const sprite = clamp(120, (arenaBottom - arenaTop) * 0.32, 210);
+  const sprite = clamp(110, (arenaBottom - arenaTop) * 0.3, 190);
 
-  const enemyY = arenaTop + 34;
-  const activeY = arenaBottom - sprite - 52;
+  // nameplate SEMPRE acima do sprite (evita colar no deck)
+  const enemySpriteY = arenaTop + 52;
+  const activeSpriteY = arenaBottom - sprite - 6;
+  const groupX = cCx - sprite / 2;
+  const dividerY = (enemySpriteY + sprite + activeSpriteY) / 2;
 
-  // cartas de golpe (deck) — full width, 4 centradas
   const moveGap = 14;
   const moveW = clamp(120, (W - 2 * PAD) / 4 - moveGap, 176);
-  const moveH = deckH - 22;
-  const deckY = topH + 12;
+  const moveH = deckH - 34;
+  const deckY = topH + 24;
 
-  // tokens do banco
   const tokW = leftW - 2 * PAD;
   const tokH = 60;
   const tokGap = 8;
 
+  const plateW = Math.min(320, centerW * 0.55);
+
   return {
-    W, H, PAD, leftW, rightW, deckH, topH, cCx, arenaTop, arenaBottom,
-    sprite, enemyY, activeY, moveGap, moveW, moveH, deckY, tokW, tokH, tokGap,
+    W, H, PAD, leftW, rightW, deckH, topH, cCx, centerW, arenaTop, arenaBottom, sprite,
+    enemySpriteY, activeSpriteY, groupX, dividerY, moveGap, moveW, moveH, deckY, tokW, tokH, tokGap, plateW,
   };
 }
 type Layout = ReturnType<typeof computeLayout>;
 
-// ── sprite do pokémon (opcional espelhado) ───────────────────────────────
-function MonSprite({ mon, cx, y, size, mirrored }: { mon: TablePokemon; cx: number; y: number; size: number; mirrored?: boolean }) {
+// sprite renderizado na ORIGEM LOCAL do grupo (o grupo pai carrega a posição,
+// então as animações podem mover o grupo sem duplicar o offset)
+function MonSprite({ mon, size, mirrored }: { mon: TablePokemon; size: number; mirrored?: boolean }) {
   const sprite = useHtmlImage(mon.spriteUrl);
   if (!sprite) return null;
   return (
     <KImage
       image={sprite}
-      x={mirrored ? cx + size / 2 : cx - size / 2}
-      y={y}
+      x={mirrored ? size : 0}
+      y={0}
       width={size}
       height={size}
       scaleX={mirrored ? -1 : 1}
@@ -147,7 +160,6 @@ function MonSprite({ mon, cx, y, size, mirrored }: { mon: TablePokemon; cx: numb
   );
 }
 
-// ── nameplate flutuante ──────────────────────────────────────────────────
 function Nameplate({ mon, cx, y, width, tone, titleFont }: { mon: TablePokemon; cx: number; y: number; width: number; tone: "mine" | "enemy"; titleFont: string }) {
   const accent = tone === "mine" ? COLORS.energy : COLORS.enemy;
   const hpPct = Math.max(0, Math.min(1, mon.currentHp / mon.maxHp));
@@ -165,33 +177,20 @@ function Nameplate({ mon, cx, y, width, tone, titleFont }: { mon: TablePokemon; 
   );
 }
 
-// ── anel de alvo ─────────────────────────────────────────────────────────
 function TargetRing({ cx, cy, r, color, active, label }: { cx: number; cy: number; r: number; color: string; active: boolean; label: string }) {
   return (
     <Group listening={false}>
-      <Circle
-        x={cx}
-        y={cy}
-        radius={r + (active ? 14 : 8)}
-        stroke={color}
-        strokeWidth={active ? 4 : 2}
-        dash={active ? undefined : [7, 7]}
-        opacity={active ? 0.95 : 0.5}
-        shadowColor={color}
-        shadowBlur={active ? 24 : 0}
-        shadowOpacity={active ? 0.85 : 0}
-      />
+      <Circle x={cx} y={cy} radius={r + (active ? 14 : 8)} stroke={color} strokeWidth={active ? 4 : 2} dash={active ? undefined : [7, 7]} opacity={active ? 0.95 : 0.5} shadowColor={color} shadowBlur={active ? 24 : 0} shadowOpacity={active ? 0.85 : 0} />
       <Text x={cx - 90} y={cy + r + 14} width={180} align="center" text={label} fontSize={12} fontStyle="bold" fill={color} opacity={active ? 1 : 0.7} />
     </Group>
   );
 }
 
-// ── carta/token arrastável ───────────────────────────────────────────────
 function Draggable({
   homeX, homeY, width, height, disabled, dropId, targetRect, onOver, onDropOnTarget, children,
 }: {
   homeX: number; homeY: number; width: number; height: number; disabled: boolean;
-  dropId: DropId; targetRect: Rect; onOver: (id: DropId | null) => void; onDropOnTarget: () => void; children: React.ReactNode;
+  dropId: DropId; targetRect: RectBox; onOver: (id: DropId | null) => void; onDropOnTarget: () => void; children: React.ReactNode;
 }) {
   const ref = useRef<Konva.Group>(null);
   const overRef = useRef(false);
@@ -244,7 +243,6 @@ function Draggable({
   );
 }
 
-// ── carta de golpe com ARTE ──────────────────────────────────────────────
 function MoveCard({ move, w, h, titleFont }: { move: TableMove; w: number; h: number; titleFont: string }) {
   const art = useHtmlImage(moveArtUrl(move.type));
   const tc = typeColor(move.type);
@@ -266,7 +264,6 @@ function MoveCard({ move, w, h, titleFont }: { move: TableMove; w: number; h: nu
   );
 }
 
-// ── token do banco ───────────────────────────────────────────────────────
 function BenchToken({ mon, w, h, titleFont }: { mon: TablePokemon; w: number; h: number; titleFont: string }) {
   const sprite = useHtmlImage(mon.spriteUrl);
   const hpPct = Math.max(0, Math.min(1, mon.currentHp / mon.maxHp));
@@ -283,40 +280,59 @@ function BenchToken({ mon, w, h, titleFont }: { mon: TablePokemon; w: number; h:
   );
 }
 
-// ── painel de placar/turno (direita) ─────────────────────────────────────
-function InfoPanel({ x, width, H, turnNumber, waiting, needsSwitch, score, titleFont }: {
-  x: number; width: number; H: number; turnNumber: number; waiting: boolean; needsSwitch: boolean; score: TableScore; titleFont: string;
+// painel direito: placar + log de ações do turno
+function InfoPanel({ x, width, H, turnNumber, waiting, needsSwitch, score, logLines, titleFont }: {
+  x: number; width: number; H: number; turnNumber: number; waiting: boolean; needsSwitch: boolean; score: TableScore; logLines: TableLogLine[]; titleFont: string;
 }) {
   const statusText = waiting ? "AGUARDANDO INIMIGO" : needsSwitch ? "TROQUE SEU POKÉMON" : "SEU TURNO";
   const statusColor = waiting ? COLORS.inkDim : needsSwitch ? COLORS.warn : COLORS.energy;
-  const dot = (n: number, total: number, cy: number, color: string) => (
-    <Group y={cy}>
-      {Array.from({ length: total }, (_, i) => (
-        <Circle key={i} x={16 + i * 18} y={0} radius={6} fill={i < n ? color : "#26324c"} />
-      ))}
-    </Group>
-  );
+  const dots = (n: number, total: number, cy: number, color: string) =>
+    Array.from({ length: total }, (_, i) => (
+      <Circle key={i} x={16 + i * 18} y={cy} radius={6} fill={i < n ? color : "#26324c"} />
+    ));
+
+  const logTop = 300;
+  const maxLines = Math.max(0, Math.floor((H - 32 - logTop - 24) / 18));
+
   return (
     <Group x={x} y={16}>
       <Rect width={width} height={H - 32} fill={COLORS.panel} stroke={COLORS.edge} strokeWidth={1} cornerRadius={6} />
       <Text text="PLACAR" x={16} y={16} fontFamily={titleFont} fontSize={13} fill={COLORS.inkDim} letterSpacing={2} />
       <Text text={`TURNO ${String(turnNumber).padStart(2, "0")}`} x={16} y={38} fontFamily={titleFont} fontSize={28} fill={COLORS.ink} />
-      <Rect x={16} y={80} width={width - 32} height={26} fill={COLORS.panel2} cornerRadius={4} />
-      <Text text={statusText} x={16} y={87} width={width - 32} align="center" fontSize={12} fontStyle="bold" fill={statusColor} />
+      <Rect x={16} y={82} width={width - 32} height={26} fill={COLORS.panel2} cornerRadius={4} />
+      <Text text={statusText} x={16} y={89} width={width - 32} align="center" fontSize={12} fontStyle="bold" fill={statusColor} />
 
-      <Text text="INIMIGO" x={16} y={132} fontSize={11} fontStyle="bold" fill={COLORS.enemy} letterSpacing={1} />
-      {dot(score.oppAlive, score.oppTotal, 156, COLORS.enemy)}
-      <Text text={`${score.oppAlive}/${score.oppTotal} vivos`} x={16} y={168} fontSize={10} fill={COLORS.inkDim} />
+      <Text text="INIMIGO" x={16} y={134} fontSize={11} fontStyle="bold" fill={COLORS.enemy} letterSpacing={1} />
+      {dots(score.oppAlive, score.oppTotal, 158, COLORS.enemy)}
+      <Text text={`${score.oppAlive}/${score.oppTotal} vivos`} x={16} y={170} fontSize={10} fill={COLORS.inkDim} />
 
-      <Text text="VOCÊ" x={16} y={200} fontSize={11} fontStyle="bold" fill={COLORS.energy} letterSpacing={1} />
-      {dot(score.myAlive, score.myTotal, 224, COLORS.energy)}
-      <Text text={`${score.myAlive}/${score.myTotal} vivos`} x={16} y={236} fontSize={10} fill={COLORS.inkDim} />
+      <Text text="VOCÊ" x={16} y={204} fontSize={11} fontStyle="bold" fill={COLORS.energy} letterSpacing={1} />
+      {dots(score.myAlive, score.myTotal, 228, COLORS.energy)}
+      <Text text={`${score.myAlive}/${score.myTotal} vivos`} x={16} y={240} fontSize={10} fill={COLORS.inkDim} />
+
+      {/* log de ações */}
+      <Rect x={16} y={logTop - 12} width={width - 32} height={1} fill={COLORS.edge} />
+      <Text text="AÇÕES DO TURNO" x={16} y={logTop} fontFamily={titleFont} fontSize={12} fill={COLORS.inkDim} letterSpacing={1} />
+      {logLines.slice(0, maxLines).map((ln, i) => (
+        <Text
+          key={i}
+          text={ln.text}
+          x={16}
+          y={logTop + 24 + i * 18}
+          width={width - 32}
+          fontSize={11}
+          fontStyle="bold"
+          fill={COLORS[ln.tone]}
+          ellipsis
+          wrap="none"
+        />
+      ))}
     </Group>
   );
 }
 
 export default function BattleTable({
-  myActive, oppActive, bench, moves, locked, needsSwitch, waiting, turnNumber, score, lastTurnEvents, lastTurnNumber, onAttack, onSwitch,
+  myActive, oppActive, bench, moves, locked, needsSwitch, waiting, turnNumber, score, logLines, lastTurnEvents, lastTurnNumber, onAttack, onSwitch,
 }: BattleTableProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -328,7 +344,8 @@ export default function BattleTable({
   const oppMonRef = useRef<Konva.Group>(null);
   const fxLayerRef = useRef<Konva.Layer>(null);
   const animatedTurnRef = useRef(0);
-  const posRef = useRef({ enemyCx: 0, enemyY: 0, activeCx: 0, activeY: 0 });
+  // posições HOME dos grupos de sprite (pras animações lerem fora do render)
+  const posRef = useRef({ enemyX: 0, enemyY: 0, activeX: 0, activeY: 0, cCx: 0 });
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -340,7 +357,6 @@ export default function BattleTable({
     return () => ro.disconnect();
   }, []);
 
-  // hit graph pode ficar stale quando o Stage muda de tamanho
   useEffect(() => {
     stageRef.current?.getLayers().forEach((l) => l.drawHit());
   }, [size]);
@@ -348,14 +364,14 @@ export default function BattleTable({
   // ── animações do turno (avanço, tremor, dano flutuante) ────────────────
   useEffect(() => {
     if (!lastTurnEvents || lastTurnNumber === animatedTurnRef.current) return;
-    if (posRef.current.enemyY === 0) return;
+    if (posRef.current.activeY === 0) return;
     animatedTurnRef.current = lastTurnNumber;
     const P = posRef.current;
 
     const spawnDamage = (targetMine: boolean, ev: TableAttackEvent, delay: number) => {
       const layer = fxLayerRef.current;
       if (!layer) return;
-      const cx = targetMine ? P.activeCx : P.enemyCx;
+      const cx = P.cCx;
       const cy = targetMine ? P.activeY : P.enemyY;
       const label = ev.missed ? "ERROU" : `-${ev.damage}${ev.isCrit ? " CRIT!" : ""}`;
       const color = ev.missed ? COLORS.inkDim : ev.isCrit ? COLORS.gold : ev.effectiveness > 1 ? COLORS.ok : COLORS.ink;
@@ -368,74 +384,76 @@ export default function BattleTable({
 
     lastTurnEvents.forEach((ev, i) => {
       const delay = i * 550;
-      const attacker = ev.bySide === "mine" ? myMonRef.current : oppMonRef.current;
-      const target = ev.bySide === "mine" ? oppMonRef.current : myMonRef.current;
-      const baseY = ev.bySide === "mine" ? P.activeY : P.enemyY;
-      const dir = ev.bySide === "mine" ? -1 : 1;
+      const mine = ev.bySide === "mine";
+      const attacker = mine ? myMonRef.current : oppMonRef.current;
+      const target = mine ? oppMonRef.current : myMonRef.current;
+      const attackerBaseY = mine ? P.activeY : P.enemyY;
+      const targetBaseX = mine ? P.enemyX : P.activeX;
+      const dir = mine ? -1 : 1;
+
       window.setTimeout(() => {
-        attacker?.to({ y: baseY + dir * 42, duration: 0.14, easing: Konva.Easings.EaseIn, onFinish: () => attacker?.to({ y: baseY, duration: 0.2, easing: Konva.Easings.BackEaseOut }) });
+        attacker?.to({ y: attackerBaseY + dir * 42, duration: 0.14, easing: Konva.Easings.EaseIn, onFinish: () => attacker?.to({ y: attackerBaseY, duration: 0.2, easing: Konva.Easings.BackEaseOut }) });
       }, delay);
+
       if (!ev.missed) {
         window.setTimeout(() => {
-          target?.to({ x: -9, duration: 0.05, onFinish: () => target?.to({ x: 9, duration: 0.05, onFinish: () => target?.to({ x: 0, duration: 0.06 }) }) });
+          target?.to({ x: targetBaseX - 9, duration: 0.05, onFinish: () => target?.to({ x: targetBaseX + 9, duration: 0.05, onFinish: () => target?.to({ x: targetBaseX, duration: 0.06 }) }) });
         }, delay + 150);
       }
-      spawnDamage(ev.bySide === "enemy", ev, delay + 170);
+
+      spawnDamage(!mine, ev, delay + 170);
     });
   }, [lastTurnEvents, lastTurnNumber, titleFont]);
 
   const canAttack = !locked && !needsSwitch;
   const { w: W, h: H } = size;
-
   const L: Layout | null = W > 0 && H > 0 ? computeLayout(W, H) : null;
 
-  // posições dos sprites pras animações lerem (fora do render)
   useEffect(() => {
     if (!L) return;
-    posRef.current = { enemyCx: L.cCx, enemyY: L.enemyY, activeCx: L.cCx, activeY: L.activeY };
+    posRef.current = { enemyX: L.groupX, enemyY: L.enemySpriteY, activeX: L.groupX, activeY: L.activeSpriteY, cCx: L.cCx };
   }, [L]);
+
+  const enemyDrop = L ? { x: L.cCx - L.sprite * 0.75, y: L.enemySpriteY - 20, width: L.sprite * 1.5, height: L.sprite + 60 } : { x: 0, y: 0, width: 0, height: 0 };
+  const mineDrop = L ? { x: L.cCx - L.sprite * 0.75, y: L.activeSpriteY - 20, width: L.sprite * 1.5, height: L.sprite + 60 } : { x: 0, y: 0, width: 0, height: 0 };
 
   return (
     <div ref={containerRef} className="h-full w-full">
       {L && (
         <Stage ref={stageRef} width={W} height={H}>
-          {/* fundo / cenário */}
           <Layer listening={false}>
             <Rect width={W} height={H} fill={COLORS.table} />
-            {/* faixas das regiões */}
             <Rect x={0} y={0} width={L.leftW} height={L.topH} fill={COLORS.bg} opacity={0.4} />
             <Rect x={W - L.rightW} y={0} width={L.rightW} height={L.topH} fill={COLORS.bg} opacity={0.4} />
             <Rect x={0} y={L.topH} width={W} height={L.deckH} fill={COLORS.bg} opacity={0.55} />
-            {/* plataformas sob os pokémon */}
-            <Circle x={L.cCx} y={L.enemyY + L.sprite - 6} radius={L.sprite * 0.66} scaleY={0.26} fill="#0a0f1a" />
-            <Circle x={L.cCx} y={L.activeY + L.sprite - 6} radius={L.sprite * 0.66} scaleY={0.26} fill="#0a0f1a" />
-            {/* divisor da arena */}
-            <Rect x={L.leftW + L.PAD} y={(L.enemyY + L.activeY + L.sprite) / 2} width={W - L.leftW - L.rightW - 2 * L.PAD} height={1} fill={COLORS.edge} opacity={0.6} />
-            {/* rótulos das regiões */}
+            <Circle x={L.cCx} y={L.enemySpriteY + L.sprite - 6} radius={L.sprite * 0.66} scaleY={0.26} fill="#0a0f1a" />
+            <Circle x={L.cCx} y={L.activeSpriteY + L.sprite - 6} radius={L.sprite * 0.66} scaleY={0.26} fill="#0a0f1a" />
+            <Rect x={L.leftW + L.PAD} y={L.dividerY} width={W - L.leftW - L.rightW - 2 * L.PAD} height={1} fill={COLORS.edge} opacity={0.6} />
             <Text text="SEU BANCO" x={0} y={L.PAD} width={L.leftW} align="center" fontFamily={titleFont} fontSize={12} fill={COLORS.inkDim} />
             <Text text="SEUS GOLPES — arraste um pra cima do inimigo pra atacar" x={0} y={L.topH + 6} width={W} align="center" fontSize={12} fontStyle="bold" fill={COLORS.inkDim} opacity={canAttack ? 0.9 : 0.35} />
           </Layer>
 
-          {/* arena + interação */}
           <Layer>
-            <Group ref={oppMonRef}>
-              <MonSprite mon={oppActive} cx={L.cCx} y={L.enemyY} size={L.sprite} mirrored />
+            {/* sprites: o GRUPO carrega a posição; o sprite fica na origem local */}
+            <Group ref={oppMonRef} x={L.groupX} y={L.enemySpriteY}>
+              <MonSprite mon={oppActive} size={L.sprite} mirrored />
             </Group>
-            <Group ref={myMonRef}>
-              <MonSprite mon={myActive} cx={L.cCx} y={L.activeY} size={L.sprite} />
+            <Group ref={myMonRef} x={L.groupX} y={L.activeSpriteY}>
+              <MonSprite mon={myActive} size={L.sprite} />
             </Group>
 
             {canAttack && (
-              <TargetRing cx={L.cCx} cy={L.enemyY + L.sprite / 2} r={L.sprite / 2} color={COLORS.enemy} active={overDrop === "enemy"} label={overDrop === "enemy" ? "SOLTAR PRA ATACAR" : "ALVO"} />
+              <TargetRing cx={L.cCx} cy={L.enemySpriteY + L.sprite / 2} r={L.sprite / 2} color={COLORS.enemy} active={overDrop === "enemy"} label={overDrop === "enemy" ? "SOLTAR PRA ATACAR" : "ALVO"} />
             )}
             {!locked && needsSwitch && (
-              <TargetRing cx={L.cCx} cy={L.activeY + L.sprite / 2} r={L.sprite / 2} color={COLORS.energy} active={overDrop === "mine"} label={overDrop === "mine" ? "SOLTAR PRA ENTRAR" : "TROQUE AQUI"} />
+              <TargetRing cx={L.cCx} cy={L.activeSpriteY + L.sprite / 2} r={L.sprite / 2} color={COLORS.energy} active={overDrop === "mine"} label={overDrop === "mine" ? "SOLTAR PRA ENTRAR" : "TROQUE AQUI"} />
             )}
 
-            <Nameplate mon={oppActive} cx={L.cCx} y={L.enemyY - 26} width={Math.min(320, (W - L.leftW - L.rightW) * 0.5)} tone="enemy" titleFont={titleFont} />
-            <Nameplate mon={myActive} cx={L.cCx} y={L.activeY + L.sprite + 4} width={Math.min(320, (W - L.leftW - L.rightW) * 0.5)} tone="mine" titleFont={titleFont} />
+            {/* nameplates SEMPRE acima do sprite */}
+            <Nameplate mon={oppActive} cx={L.cCx} y={L.enemySpriteY - 52} width={L.plateW} tone="enemy" titleFont={titleFont} />
+            <Nameplate mon={myActive} cx={L.cCx} y={L.activeSpriteY - 52} width={L.plateW} tone="mine" titleFont={titleFont} />
 
-            {/* banco (esquerda) — arrasta pro seu ativo */}
+            {/* banco (esquerda) → arrasta pro seu ativo */}
             {bench.map((mon, i) => (
               <Draggable
                 key={mon.slot}
@@ -445,7 +463,7 @@ export default function BattleTable({
                 height={L.tokH}
                 disabled={locked || mon.fainted}
                 dropId="mine"
-                targetRect={{ x: L.cCx - L.sprite * 0.75, y: L.activeY - 16, width: L.sprite * 1.5, height: L.sprite + 60 }}
+                targetRect={mineDrop}
                 onOver={setOverDrop}
                 onDropOnTarget={() => onSwitch(mon.slot)}
               >
@@ -453,7 +471,7 @@ export default function BattleTable({
               </Draggable>
             ))}
 
-            {/* deck (baixo) — arrasta pro inimigo */}
+            {/* deck (baixo) → arrasta pro inimigo */}
             {!needsSwitch &&
               (() => {
                 const total = moves.length * L.moveW + (moves.length - 1) * L.moveGap;
@@ -467,7 +485,7 @@ export default function BattleTable({
                     height={L.moveH}
                     disabled={locked}
                     dropId="enemy"
-                    targetRect={{ x: L.cCx - L.sprite * 0.75, y: L.enemyY - 20, width: L.sprite * 1.5, height: L.sprite + 60 }}
+                    targetRect={enemyDrop}
                     onOver={setOverDrop}
                     onDropOnTarget={() => onAttack(i)}
                   >
@@ -476,11 +494,9 @@ export default function BattleTable({
                 ));
               })()}
 
-            {/* placar (direita) */}
-            <InfoPanel x={W - L.rightW + L.PAD} width={L.rightW - 2 * L.PAD} H={L.topH} turnNumber={turnNumber} waiting={waiting} needsSwitch={needsSwitch} score={score} titleFont={titleFont} />
+            <InfoPanel x={W - L.rightW + L.PAD} width={L.rightW - 2 * L.PAD} H={L.topH} turnNumber={turnNumber} waiting={waiting} needsSwitch={needsSwitch} score={score} logLines={logLines} titleFont={titleFont} />
           </Layer>
 
-          {/* efeitos */}
           <Layer ref={fxLayerRef} listening={false} />
         </Stage>
       )}
