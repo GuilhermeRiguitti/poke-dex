@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useSession } from "@/lib/auth-client";
-import type { TableAttackEvent, TableMove, TablePokemon } from "@/components/battle/BattleTable";
+import type { TableAttackEvent, TableLogLine, TableMove, TablePokemon, TableScore } from "@/components/battle/BattleTable";
 
 // Konva só existe no browser — nunca renderizar no servidor
 const BattleTable = dynamic(() => import("@/components/battle/BattleTable"), {
   ssr: false,
   loading: () => (
-    <div className="clip-card flex h-96 items-center justify-center border border-edge bg-panel">
+    <div className="flex h-full items-center justify-center">
       <p className="font-title uppercase tracking-wider text-ink-dim">Montando a mesa...</p>
     </div>
   ),
@@ -76,6 +76,16 @@ interface BattleDTO {
   turnLogs: TurnLogDTO[];
 }
 
+// full-bleed: preenche a viewport abaixo da navbar (h-16), largura total até 1920px
+// (fora do componente pra não remontar o canvas Konva a cada render)
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 top-16 bg-bg">
+      <div className="mx-auto h-full max-w-480">{children}</div>
+    </div>
+  );
+}
+
 export default function BattlePage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -97,11 +107,17 @@ export default function BattlePage() {
   }, [params.id]);
 
   useEffect(() => {
-    // carga inicial + polling no mesmo efeito; o setState acontece só depois
-    // do await (não é síncrono no corpo do efeito — falso positivo da regra)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadFullState();
     pollRef.current = setInterval(async () => {
+      // partida encerrada → não há mais o que atualizar; encerra o polling
+      if (stateRef.current && stateRef.current.status !== "IN_PROGRESS") {
+        if (pollRef.current) clearInterval(pollRef.current);
+        return;
+      }
+      // aba em segundo plano → pula o tick (economiza requisições)
+      if (typeof document !== "undefined" && document.hidden) return;
+
       const res = await fetch(`/api/battle/${params.id}/status`);
       if (!res.ok) return;
       const data = await res.json();
@@ -115,8 +131,6 @@ export default function BattlePage() {
 
   const myUserId = session?.user?.id;
 
-  // "A"/"B" nos eventos são atribuídos por ordenação determinística de userId
-  // (ver lib/battle/resolve.ts)
   const mySide: "A" | "B" | null = useMemo(() => {
     if (!battle || !myUserId) return null;
     const [sideAUserId] = battle.participants.map((p) => p.userId).sort();
@@ -138,8 +152,65 @@ export default function BattlePage() {
       }));
   }, [lastLog, mySide]);
 
+  // log de ações pro painel direito: últimos 3 turnos, mais recente no topo
+  const logLines: TableLogLine[] = useMemo(() => {
+    if (!battle || !mySide) return [];
+    const lines: TableLogLine[] = [];
+    const turns = [...battle.turnLogs].sort((a, b) => b.turnNumber - a.turnNumber).slice(0, 3);
+    for (const turn of turns) {
+      lines.push({ text: `— TURNO ${String(turn.turnNumber).padStart(2, "0")} —`, tone: "gold" });
+      for (const e of turn.events) {
+        const who = e.side === mySide ? "Você" : "Inimigo";
+        if (e.type === "switch") {
+          lines.push({ text: `${who} → ${e.pokemonName.toUpperCase()}`, tone: e.side === mySide ? "energy" : "enemy" });
+        } else if (e.type === "attack") {
+          const mv = e.moveName.replace(/-/g, " ").toUpperCase();
+          if (e.missed) {
+            lines.push({ text: `${who}: ${mv} errou`, tone: "inkDim" });
+          } else {
+            const suffix = e.effectiveness > 1 ? " super" : e.effectiveness === 0 ? " imune" : e.effectiveness < 1 ? " pouco" : "";
+            const tone: TableLogLine["tone"] = e.isCrit ? "gold" : e.effectiveness > 1 ? "ok" : e.effectiveness === 0 ? "bad" : e.effectiveness < 1 ? "warn" : "ink";
+            lines.push({ text: `${who}: ${mv} ${e.damage}${e.isCrit ? " crit" : ""}${suffix}${e.targetFainted ? " KO!" : ""}`, tone });
+          }
+        } else {
+          lines.push({ text: `${who}: sem ação`, tone: "inkDim" });
+        }
+      }
+    }
+    return lines;
+  }, [battle, mySide]);
+
+  const submitAction = useCallback(
+    async (turnNumber: number, body: { actionType: "MOVE" | "SWITCH"; moveSlot?: number; switchToSlot?: number }) => {
+      setSubmitting(true);
+      setError("");
+      try {
+        const res = await fetch(`/api/battle/${params.id}/move`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ turnNumber, ...body }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error ?? "Erro ao jogar"); return; }
+        const stillSameTurn = data.currentTurn === turnNumber;
+        setBattle(data);
+        setWaiting(stillSameTurn && data.status === "IN_PROGRESS");
+        stateRef.current = { turnNumber: data.currentTurn, status: data.status };
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [params.id]
+  );
+
   if (!battle || !session?.user) {
-    return <p className="pt-16 text-center font-semibold text-ink-dim">Carregando partida...</p>;
+    return (
+      <Shell>
+        <div className="flex h-full items-center justify-center">
+          <p className="font-semibold text-ink-dim">Carregando partida...</p>
+        </div>
+      </Shell>
+    );
   }
 
   const me = battle.participants.find((p) => p.userId === myUserId)!;
@@ -166,24 +237,11 @@ export default function BattlePage() {
     accuracy: m.accuracy,
   }));
 
-  const submitAction = async (body: { actionType: "MOVE" | "SWITCH"; moveSlot?: number; switchToSlot?: number }) => {
-    setSubmitting(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/battle/${params.id}/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turnNumber: battle.currentTurn, ...body }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Erro ao jogar"); return; }
-      const stillSameTurn = data.currentTurn === battle.currentTurn;
-      setBattle(data);
-      setWaiting(stillSameTurn && data.status === "IN_PROGRESS");
-      stateRef.current = { turnNumber: data.currentTurn, status: data.status };
-    } finally {
-      setSubmitting(false);
-    }
+  const score: TableScore = {
+    myAlive: me.pokemons.filter((p) => !p.fainted).length,
+    myTotal: me.pokemons.length,
+    oppAlive: opponent.pokemons.filter((p) => !p.fainted).length,
+    oppTotal: opponent.pokemons.length,
   };
 
   const isOver = battle.status !== "IN_PROGRESS";
@@ -191,140 +249,58 @@ export default function BattlePage() {
   const locked = submitting || waiting || isOver;
 
   return (
-    <div className="pt-6">
-      {/* placar de turno */}
-      <div className="mb-4 flex items-center justify-center gap-4">
-        <div className="plate border border-edge bg-panel px-5 py-1.5">
-          <span className="plate-inner font-title tracking-[0.2em] text-ink-dim">
-            TURNO{" "}
-            <span key={battle.currentTurn} className="animate-count-flash inline-block text-xl text-ink tabular-nums">
-              {String(battle.currentTurn).padStart(2, "0")}
-            </span>
-          </span>
-        </div>
-        {waiting && (
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-radar absolute inline-flex h-full w-full rounded-full bg-energy" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-energy" />
-            </span>
-            <span className="text-sm font-bold uppercase tracking-wide text-ink-dim">
-              Aguardando o inimigo...
-            </span>
+    <Shell>
+      <div className="relative h-full">
+        <BattleTable
+          myActive={toTableMon(myActive)}
+          oppActive={toTableMon(oppActive)}
+          bench={bench.map(toTableMon)}
+          moves={tableMoves}
+          locked={locked}
+          needsSwitch={needsSwitch}
+          waiting={waiting}
+          turnNumber={battle.currentTurn}
+          score={score}
+          logLines={logLines}
+          lastTurnEvents={tableEvents}
+          lastTurnNumber={lastLog?.turnNumber ?? 0}
+          onAttack={(moveSlot) => submitAction(battle.currentTurn, { actionType: "MOVE", moveSlot })}
+          onSwitch={(slot) => submitAction(battle.currentTurn, { actionType: "SWITCH", switchToSlot: slot })}
+        />
+
+        {/* toast de erro */}
+        {error && (
+          <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-lg bg-bad/90 px-4 py-2 text-sm font-bold text-white">
+            {error}
+          </div>
+        )}
+
+        {/* overlay de fim de partida */}
+        {isOver && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-bg/80 backdrop-blur-sm">
+            <span className={`animate-ring-burst absolute h-48 w-48 rounded-full border-4 ${iWon ? "border-gold" : "border-bad"}`} />
+            <div
+              className={`plate animate-slam px-12 py-4 ${iWon ? "bg-gold" : "bg-bad"}`}
+              style={{ filter: iWon ? "drop-shadow(0 0 24px rgba(242,193,78,.5))" : "drop-shadow(0 0 24px rgba(255,92,92,.4))" }}
+            >
+              <span className={`plate-inner font-title text-6xl uppercase tracking-widest ${iWon ? "text-[#241a05]" : "text-white"}`}>
+                {battle.status === "ABANDONED" ? (iWon ? "W.O." : "Abandono") : iWon ? "Vitória" : "Derrota"}
+              </span>
+            </div>
+            {battle.status === "ABANDONED" && (
+              <p className="text-sm font-semibold text-ink-dim">
+                {iWon ? "O oponente abandonou a partida." : "Você abandonou a partida."}
+              </p>
+            )}
+            <button
+              onClick={() => router.push("/battle")}
+              className="clip-btn cursor-pointer border-0 bg-flare px-6 py-2.5 font-title uppercase tracking-wider text-white transition-colors hover:bg-flare-dark"
+            >
+              Nova partida
+            </button>
           </div>
         )}
       </div>
-
-      {/* tela de fim de partida — o momento mais caprichado */}
-      {isOver && (
-        <div className="relative mb-6 flex flex-col items-center gap-4 overflow-hidden py-10">
-          <span
-            className={`animate-ring-burst absolute top-1/3 h-40 w-40 rounded-full border-4 ${
-              iWon ? "border-gold" : "border-bad"
-            }`}
-          />
-          <div
-            className={`plate animate-slam px-10 py-3 ${iWon ? "bg-gold" : "bg-bad"}`}
-            style={{
-              filter: iWon
-                ? "drop-shadow(0 0 24px rgba(242,193,78,.5))"
-                : "drop-shadow(0 0 24px rgba(255,92,92,.4))",
-            }}
-          >
-            <span
-              className={`plate-inner font-title text-5xl uppercase tracking-widest ${
-                iWon ? "text-[#241a05]" : "text-white"
-              }`}
-            >
-              {battle.status === "ABANDONED" ? (iWon ? "W.O." : "Abandono") : iWon ? "Vitória" : "Derrota"}
-            </span>
-          </div>
-          {battle.status === "ABANDONED" && (
-            <p className="text-sm font-semibold text-ink-dim">
-              {iWon ? "O oponente abandonou a partida." : "Você abandonou a partida."}
-            </p>
-          )}
-          <button
-            onClick={() => router.push("/battle")}
-            className="clip-btn cursor-pointer border-0 bg-flare px-6 py-2.5 font-title uppercase tracking-wider text-white transition-colors hover:bg-flare-dark"
-          >
-            Nova partida
-          </button>
-        </div>
-      )}
-
-      {error && <p className="mb-2 text-sm font-semibold text-bad">{error}</p>}
-
-      {/* a mesa */}
-      <BattleTable
-        myActive={toTableMon(myActive)}
-        oppActive={toTableMon(oppActive)}
-        bench={bench.map(toTableMon)}
-        moves={tableMoves}
-        locked={locked}
-        needsSwitch={needsSwitch}
-        lastTurnEvents={tableEvents}
-        lastTurnNumber={lastLog?.turnNumber ?? 0}
-        onAttack={(moveSlot) => submitAction({ actionType: "MOVE", moveSlot })}
-        onSwitch={(slot) => submitAction({ actionType: "SWITCH", switchToSlot: slot })}
-      />
-
-      {/* fallback acessível pra troca obrigatória (mesmo gesto da mesa, sem drag) */}
-      {!isOver && needsSwitch && !locked && (
-        <div className="mt-4">
-          <p className="mb-2 text-sm font-bold uppercase tracking-wide text-ink-dim">
-            Ou toque pra trocar:
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {bench
-              .filter((p) => !p.fainted)
-              .map((p) => (
-                <button
-                  key={p.id}
-                  disabled={submitting}
-                  onClick={() => submitAction({ actionType: "SWITCH", switchToSlot: p.slot })}
-                  className="clip-btn cursor-pointer border border-edge bg-panel px-3 py-2 text-sm font-bold uppercase tracking-wide transition-colors hover:border-energy/60 disabled:opacity-50"
-                >
-                  {p.name} ({p.currentHp}/{p.maxHp})
-                </button>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* feed do último turno */}
-      {lastLog && (
-        <div className="clip-card mt-4 border border-edge bg-panel-2/70 p-4 text-sm">
-          <p className="mb-1.5 font-title text-xs uppercase tracking-widest text-ink-dim">
-            Turno {String(lastLog.turnNumber).padStart(2, "0")}
-          </p>
-          {lastLog.events.map((e, i) => (
-            <p key={i} className="font-semibold text-ink-dim">
-              {e.type === "switch" &&
-                `${e.side === mySide ? "Você trocou" : "Inimigo trocou"} para ${e.pokemonName}`}
-              {e.type === "attack" &&
-                (e.missed ? (
-                  <>
-                    <b className="uppercase text-ink">{e.moveName.replace(/-/g, " ")}</b> errou!
-                  </>
-                ) : (
-                  <>
-                    <b className="uppercase text-ink">{e.moveName.replace(/-/g, " ")}</b>:{" "}
-                    <span className="tabular-nums">{e.damage}</span> de dano
-                    {e.isCrit && <span className="text-gold"> · CRÍTICO!</span>}
-                    {e.effectiveness > 1 && <span className="text-ok"> · super efetivo</span>}
-                    {e.effectiveness < 1 && e.effectiveness > 0 && (
-                      <span className="text-warn"> · pouco efetivo</span>
-                    )}
-                    {e.effectiveness === 0 && <span className="text-bad"> · sem efeito</span>}
-                    {e.targetFainted && <span className="text-bad"> · desmaiou!</span>}
-                  </>
-                ))}
-              {e.type === "noAction" && "Sem ação"}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
+    </Shell>
   );
 }

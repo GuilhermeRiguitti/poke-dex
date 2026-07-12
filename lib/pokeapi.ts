@@ -45,13 +45,14 @@ export interface NormalizedType {
 }
 
 export async function fetchPokemon(idOrName: number | string): Promise<NormalizedPokemon | null> {
+  console.log('[urlPokemonDetail]', `${POKEAPI_BASE}/pokemon/${idOrName}`);
   const res = await fetch(`${POKEAPI_BASE}/pokemon/${idOrName}`, {
     next: { revalidate: REVALIDATE_SECONDS },
   });
   if (!res.ok) return null;
 
   const data = await res.json();
-
+  console.log(data)
   return {
     id: data.id,
     name: data.name,
