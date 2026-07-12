@@ -9,6 +9,24 @@ import {
   BattleState,
 } from "./types";
 
+// Motor de batalha PURO: recebe um BattleState + a jogada de cada lado e
+// devolve o novo estado. Não toca em banco, rede, nem Math.random direto
+// (rng é injetado) — por isso dá pra testar de forma determinística
+// (ver engine.test.ts) e é chamado a partir de resolve.ts, que é quem
+// integra isso com o Prisma.
+//
+// Tudo aqui é regra NOSSA (não existe "PokéAPI de regras de batalha"; a API
+// só fornece dados de pokémon/moves/tipos, não como o combate deve rodar).
+// Simplificações importantes em relação ao jogo oficial:
+//  - só 1x1 (sem duplas), sem terreno/clima, sem itens/habilidades
+//  - ordem do turno: trocas primeiro (sempre), depois ataques por
+//    prioridade do move e, empatando, por velocidade; empate total = 50/50 no rng
+//  - se o ativo desmaiar, o dono é OBRIGADO a trocar no próximo turno
+//    (ver needsSwitch) — não existe "sem pokémon pra mandar, perde na hora"
+//    aqui dentro; quem decide fim de jogo por falta de troca é a camada de
+//    cima (resolve.ts / rotas da API)
+//  - sem PP realmente gasto, sem status alterados (veneno, sono, paralisia...)
+
 export interface ResolveTurnParams {
   state: BattleState;
   actionA: BattleAction;
@@ -91,6 +109,8 @@ function executeAttack(
     return;
   }
 
+  // effectiveness = multiplicador de tipo (dado real da PokéAPI, via typeChart).
+  // calculateDamage aplica a fórmula de dano (nossa, ver damage.ts) em cima disso.
   const effectiveness = effectivenessMultiplier(typeChart, move.type, defender.types);
   const result = calculateDamage({ attacker, defender, move, effectiveness, rng });
 

@@ -4,6 +4,12 @@ import { buildTypeChart, rowToBattlePokemonState } from "./snapshot";
 import { BattleAction, BattleSideState } from "./types";
 import type { BattleActionType } from "@prisma/client";
 
+// Ponte entre o motor puro (engine.ts) e o mundo real (Prisma/HTTP). Tudo
+// aqui é regra de produto nossa, sem relação com PokéAPI:
+//  - cada jogador tem TURN_TIMEOUT_MS (90s) pra jogar; passou do tempo, o
+//    turno resolve mesmo assim tratando quem não jogou como "sem ação"
+//  - 3 turnos perdidos seguidos (MAX_CONSECUTIVE_MISSES) = derrota por
+//    abandono (status ABANDONED), mesmo com pokémon vivos
 export const TURN_TIMEOUT_MS = 90_000;
 const MAX_CONSECUTIVE_MISSES = 3;
 

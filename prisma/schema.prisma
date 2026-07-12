@@ -3,8 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime: conexão pooled do Supabase (PgBouncer, porta 6543, ?pgbouncer=true).
+  url       = env("DATABASE_URL")
+  // Migrations: conexão DIRETA (porta 5432) — o Prisma Migrate não roda pelo
+  // pooler em modo transaction. Ver .env.
+  directUrl = env("DIRECT_URL")
 }
 
 // ──────────────────────────────────────────────
