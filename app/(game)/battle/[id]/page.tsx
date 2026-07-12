@@ -81,7 +81,7 @@ interface BattleDTO {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-x-0 bottom-0 top-16 bg-bg">
-      <div className="mx-auto h-full max-w-[1920px]">{children}</div>
+      <div className="mx-auto h-full max-w-480">{children}</div>
     </div>
   );
 }
@@ -110,6 +110,14 @@ export default function BattlePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadFullState();
     pollRef.current = setInterval(async () => {
+      // partida encerrada → não há mais o que atualizar; encerra o polling
+      if (stateRef.current && stateRef.current.status !== "IN_PROGRESS") {
+        if (pollRef.current) clearInterval(pollRef.current);
+        return;
+      }
+      // aba em segundo plano → pula o tick (economiza requisições)
+      if (typeof document !== "undefined" && document.hidden) return;
+
       const res = await fetch(`/api/battle/${params.id}/status`);
       if (!res.ok) return;
       const data = await res.json();
