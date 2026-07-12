@@ -1,5 +1,24 @@
 import { BattleMoveDef, BattlePokemonState } from "./types";
 
+// Cálculo de dano de um golpe. É a fórmula clássica de Pokémon (a mesma dos
+// jogos principais), SIMPLIFICADA. O que existe aqui é real:
+//  - fórmula base de dano (nível, power, atk/def, /50 + 2)
+//  - STAB (Same Type Attack Bonus, 1.5x quando o move é do mesmo tipo do atacante)
+//  - efetividade de tipo (0x / 0.5x / 1x / 2x), calculada em typeChart.ts a
+//    partir de dados reais da PokéAPI
+//  - variância aleatória de 85%-100% no dano final (igual ao jogo)
+//  - chance de crítico 1/16 com 1.5x de dano (valor de crítico "base", sem
+//    itens/habilidades que aumentam a chance)
+//  - teste de accuracy (chance de errar o golpe)
+//
+// O que NÃO existe (fica de fora de propósito, pra manter o sistema simples):
+//  - habilidades (abilities) alterando dano/precisão/crítico
+//  - itens segurados (held items)
+//  - clima (chuva, sol, etc.)
+//  - status alterados (queimadura reduzindo ataque, paralisia, veneno, sono...)
+//  - burst de crítico 2x (usamos 1.5x, valor de gerações mais recentes)
+//  - moves de efeito (status moves são reconhecidos mas não fazem nada além de dano zero)
+
 export interface DamageRollParams {
   attacker: BattlePokemonState;
   defender: BattlePokemonState;

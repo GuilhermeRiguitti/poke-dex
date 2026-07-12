@@ -1,5 +1,9 @@
 import { BattleMoveDef, BattlePokemonState, BattleSideState, BattleState } from "./types";
 
+// Helpers só pra testes (engine.test.ts, damage.test.ts etc.): montam
+// estados de batalha com valores fake/redondos, sem tocar em PokéAPI nem
+// banco. Nada aqui reflete dados reais de pokémon.
+
 let nextMoveId = 1;
 
 export function makeMove(overrides: Partial<BattleMoveDef> = {}): BattleMoveDef {
