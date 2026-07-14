@@ -164,7 +164,7 @@ model BattleParticipant {
   battleId     String
   userId       String
   activeSlot   Int    @default(1)
-  missedTurns  Int    @default(0) // turnos seguidos sem ação (timeout) — vira ABANDONED depois de N
+  missedTurns  Int    @default(0) // faltas (turno sem ação): +1 por timeout vencido, -1 por jogada. Chegou em MAX_MISSES => ABANDONED
 
   battle   Battle          @relation(fields: [battleId], references: [id], onDelete: Cascade)
   pokemons BattlePokemon[]

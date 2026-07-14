@@ -35,8 +35,8 @@ import {
  *
  * Sem isso, um pokémon sem PP não teria ação nenhuma: o jogador não conseguiria
  * atacar, e se também não pudesse trocar (resto do time desmaiado) ficaria
- * travado sem jogada válida — e três turnos sem jogar é derrota por abandono
- * (MAX_CONSECUTIVE_MISSES). Ou seja: sem struggle, acabar o PP viraria uma
+ * travado sem jogada válida — e acumular faltas por não jogar é derrota por
+ * abandono (MAX_MISSES). Ou seja: sem struggle, acabar o PP viraria uma
  * forma de PERDER a partida sem poder fazer nada.
  *
  * Não vem da PokéAPI: os valores são nossos (o struggle real tem recuo, que

@@ -9,10 +9,40 @@ import type { BattleActionType, Prisma } from "@prisma/client";
 // Tudo aqui é regra de produto nossa, sem relação com PokéAPI:
 //  - cada jogador tem TURN_TIMEOUT_MS (90s) pra jogar; passou do tempo, o
 //    turno resolve mesmo assim tratando quem não jogou como "sem ação"
-//  - 3 turnos perdidos seguidos (MAX_CONSECUTIVE_MISSES) = derrota por
-//    abandono (status ABANDONED), mesmo com pokémon vivos
+//  - MAX_MISSES faltas = derrota por abandono (ABANDONED), mesmo com pokémon vivos
 export const TURN_TIMEOUT_MS = 90_000;
-const MAX_CONSECUTIVE_MISSES = 3;
+export const MAX_MISSES = 3;
+
+/**
+ * Quantas janelas de TURN_TIMEOUT_MS já venceram desde que o turno começou.
+ * 0 = ainda dá tempo de jogar.
+ *
+ * É `floor`, e não um booleano, DE PROPÓSITO. O turno só resolve quando alguém
+ * faz um request (não há worker — CLAUDE.md, regra 5), então "estourou o tempo"
+ * e "alguém apareceu pra notar" são coisas diferentes. Se os DOIS fecharam a aba
+ * e alguém volta 1h depois, venceram ~40 janelas, não 1: contar só 1 fazia a
+ * punição por abandono NÃO ser retroativa — quem voltasse precisaria ficar 3×90s
+ * olhando a tela pra ganhar de um oponente que sumiu há uma hora, porque o claim
+ * reseta `turnStartedAt` pra agora a cada resolução. Com o floor, o tempo que
+ * passou de verdade conta, e a partida zumbi morre no primeiro request.
+ */
+export function expiredTurnWindows(turnStartedAt: Date, now = Date.now()): number {
+  return Math.max(0, Math.floor((now - turnStartedAt.getTime()) / TURN_TIMEOUT_MS));
+}
+
+/**
+ * O contador de faltas depois deste turno.
+ *
+ * Jogou → **-1**, não zero. Zerar a cada jogada fazia o contador ser de faltas
+ * SEGUIDAS, e isso é burlável de graça: bastava mandar uma jogada a cada 3
+ * turnos pra nunca cair em ABANDONED e arrastar a partida a 90s por turno pra
+ * sempre. Decaindo de 1 em 1, quem enrola acumula mais falta do que perdoa e
+ * acaba abandonando de verdade; quem só demorou num turno difícil se recupera.
+ */
+function nextMisses(current: number, submitted: boolean, expiredWindows: number): number {
+  if (submitted) return Math.max(0, current - 1);
+  return Math.min(MAX_MISSES, current + Math.max(1, expiredWindows));
+}
 
 function toBattleAction(
   pending: { actionType: BattleActionType; moveSlot: number | null; switchToSlot: number | null } | undefined
@@ -93,9 +123,9 @@ export async function resolveIfDue(battle: BattleForResolve) {
   const pendingA = battle.pendingMoves.find((m) => m.userId === pA.userId && m.turnNumber === battle.currentTurn);
   const pendingB = battle.pendingMoves.find((m) => m.userId === pB.userId && m.turnNumber === battle.currentTurn);
 
-  const timedOut = Date.now() - battle.turnStartedAt.getTime() > TURN_TIMEOUT_MS;
+  const expiredWindows = expiredTurnWindows(battle.turnStartedAt);
   const bothSubmitted = Boolean(pendingA && pendingB);
-  if (!bothSubmitted && !timedOut) return battle;
+  if (!bothSubmitted && expiredWindows === 0) return battle;
 
   const turnNumber = battle.currentTurn;
 
@@ -127,18 +157,27 @@ export async function resolveIfDue(battle: BattleForResolve) {
   // missedTurns só é escrito aqui dentro, e o claim abaixo garante que um
   // único request resolve o turno — então o valor final é calculável em
   // memória, sem precisar reler os participantes depois de gravar.
-  const missedA = pendingA ? 0 : pA.missedTurns + 1;
-  const missedB = pendingB ? 0 : pB.missedTurns + 1;
+  const missedA = nextMisses(pA.missedTurns, Boolean(pendingA), expiredWindows);
+  const missedB = nextMisses(pB.missedTurns, Boolean(pendingB), expiredWindows);
+
+  const abandonedA = missedA >= MAX_MISSES;
+  const abandonedB = missedB >= MAX_MISSES;
 
   let finalStatus: "FINISHED" | "ABANDONED" | null = null;
   let winnerId: string | null = null;
   if (result.winner) {
     finalStatus = "FINISHED";
     winnerId = result.winner === "A" ? pA.userId : pB.userId;
-  } else if (missedA >= MAX_CONSECUTIVE_MISSES) {
+  } else if (abandonedA && abandonedB) {
+    // Os DOIS sumiram (o caso da partida zumbi: ninguém pollando, nada
+    // resolvendo). Encerra sem vencedor — dar a vitória pro lado B só porque é
+    // o segundo do sort seria premiar quem também abandonou.
+    finalStatus = "ABANDONED";
+    winnerId = null;
+  } else if (abandonedA) {
     finalStatus = "ABANDONED";
     winnerId = pB.userId;
-  } else if (missedB >= MAX_CONSECUTIVE_MISSES) {
+  } else if (abandonedB) {
     finalStatus = "ABANDONED";
     winnerId = pA.userId;
   }
