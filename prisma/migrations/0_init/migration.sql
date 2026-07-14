@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "BattleStatus" AS ENUM ('IN_PROGRESS', 'FINISHED', 'ABANDONED');
 
@@ -236,3 +239,4 @@ ALTER TABLE "BattlePendingMove" ADD CONSTRAINT "BattlePendingMove_battleId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "BattleTurnLog" ADD CONSTRAINT "BattleTurnLog_battleId_fkey" FOREIGN KEY ("battleId") REFERENCES "Battle"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+

@@ -30,7 +30,6 @@ com certeza deve ter mt bypass kkkkk
 baseado em algum stats que define fortitude, quando maior esse stats menor a chance dele ser sortido
 
 
-
 # PRISMA CLIENT GLOBAL
 
 
