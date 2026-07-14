@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
+import type { BattleMoveDef } from "../domain/types";
 import { toBattleDTO } from "../queries/toBattleDTO";
 import { tryResolveTurn } from "./resolveTurn";
 
@@ -27,8 +28,17 @@ function validateAction(body: SubmitMoveInput, participant: ParticipantWithPokem
   // MOVE
   if (active?.fainted) return "Seu pokémon ativo desmaiou — troque antes de atacar";
   if (body.moveSlot == null || body.moveSlot < 0 || body.moveSlot > 3) return "moveSlot inválido";
-  const moves = (active?.moves as { name: string }[] | undefined) ?? [];
-  if (!moves[body.moveSlot]) return "Esse move não existe pra esse pokémon";
+  const moves = (active?.moves as BattleMoveDef[] | undefined) ?? [];
+  const move = moves[body.moveSlot];
+  if (!move) return "Esse move não existe pra esse pokémon";
+
+  // PP zerado só é jogada válida quando NENHUM golpe tem PP — aí o engine usa
+  // struggle (ver domain/engine.ts). Enquanto sobrar outro golpe com PP, mandar
+  // o slot esgotado é recusado aqui: o PP é limite de verdade, e ele não pode
+  // ser burlado por quem chama a rota direto, sem passar pelos botões da UI.
+  if (move.currentPp <= 0 && moves.some((m) => m.currentPp > 0)) {
+    return "Esse golpe está sem PP";
+  }
   return null;
 }
 

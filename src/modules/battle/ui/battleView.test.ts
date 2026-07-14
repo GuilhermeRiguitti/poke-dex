@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveMySide, toLogLines, toScore } from "./battleView";
-import type { BattlePokemonDTO, TurnLogDTO } from "./types";
+import { resolveMySide, toLogLines, toScore, toTableMoves } from "./battleView";
+import type { BattleMoveDTO, BattlePokemonDTO, TurnLogDTO } from "./types";
 
 // Essas regras moravam dentro do componente da página, então só dava pra
 // conferir olhando a tela. Agora são funções puras.
@@ -90,5 +90,49 @@ describe("toLogLines", () => {
     const noAction = toLogLines(turnLogs, "A")[2];
     expect(noAction.text).toBe("Inimigo: sem ação");
     expect(noAction.tone).toBe("inkDim");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// toTableMoves: o botão do golpe precisa refletir o PP, que agora é um limite
+// real (o engine gasta, e submitMove recusa slot zerado). A regra do
+// `exhausted` tem que ser a MESMA do servidor, senão a tela oferece uma jogada
+// que a API vai rejeitar.
+// ─────────────────────────────────────────────────────────────────────────
+function move(name: string, currentPp: number, maxPp = 10): BattleMoveDTO {
+  return {
+    id: 1,
+    name,
+    type: "normal",
+    power: 80,
+    accuracy: 100,
+    damageClass: "physical",
+    priority: 0,
+    maxPp,
+    currentPp,
+  };
+}
+
+function monWithMoves(moves: BattleMoveDTO[]): BattlePokemonDTO {
+  return { ...pokemon(1, false), moves };
+}
+
+describe("toTableMoves — PP", () => {
+  it("leva currentPp/maxPp pra mesa", () => {
+    const [table] = toTableMoves(monWithMoves([move("tackle", 7, 10)]));
+    expect(table).toMatchObject({ name: "tackle", currentPp: 7, maxPp: 10 });
+  });
+
+  it("golpe zerado com outro golpe disponível => exhausted (a API recusaria)", () => {
+    const [zerado, cheio] = toTableMoves(monWithMoves([move("zerado", 0), move("cheio", 5)]));
+    expect(zerado.exhausted).toBe(true);
+    expect(cheio.exhausted).toBe(false);
+  });
+
+  it("TODOS os golpes zerados => nenhum exhausted (o engine cai no struggle)", () => {
+    // Desabilitar tudo aqui deixaria o jogador sem ação nenhuma e ele perderia
+    // por abandono em 3 turnos — o oposto do que o struggle existe pra evitar.
+    const moves = toTableMoves(monWithMoves([move("a", 0), move("b", 0)]));
+    expect(moves.every((m) => !m.exhausted)).toBe(true);
   });
 });

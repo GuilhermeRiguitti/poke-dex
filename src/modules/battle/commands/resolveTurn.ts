@@ -1,9 +1,9 @@
 import { prisma } from "@/src/lib/prisma";
 import { resolveTurn } from "../domain/engine";
 import { rowToBattlePokemonState } from "../domain/rowToBattlePokemonState";
-import { BattleAction, BattleSideState } from "../domain/types";
+import { BattleAction, BattlePokemonState, BattleSideState } from "../domain/types";
 import { buildTypeChart } from "./buildTeamSnapshot";
-import type { BattleActionType } from "@prisma/client";
+import type { BattleActionType, Prisma } from "@prisma/client";
 
 // Ponte entre o motor puro (domain/engine.ts) e o mundo real (Prisma/HTTP).
 // Tudo aqui é regra de produto nossa, sem relação com PokéAPI:
@@ -26,25 +26,64 @@ function toBattleAction(
   return { type: "SWITCH", toSlot: pending.switchToSlot };
 }
 
+/**
+ * O que muda num pokémon quando o turno resolve.
+ *
+ * `moves` entra aqui porque é ONDE O PP MORA (coluna Json, montada por
+ * buildTeamSnapshot). O engine gasta o PP no estado em memória; se este write
+ * não gravasse `moves` de volta, o PP recarregaria sozinho a cada turno — que
+ * era exatamente o bug: o golpe mais forte podia ser usado infinitamente.
+ *
+ * Não há chamada de rede nenhuma neste caminho: o snapshot dos moves foi
+ * congelado no início da partida e desde então a batalha roda só sobre o nosso
+ * banco. Gastar PP não fala com a PokéAPI.
+ */
+function writeMonState(mon: BattlePokemonState): Prisma.BattlePokemonUpdateManyMutationInput {
+  return {
+    currentHp: mon.currentHp,
+    fainted: mon.fainted,
+    moves: mon.moves as unknown as Prisma.InputJsonValue,
+  };
+}
+
 const fullBattleInclude = {
   participants: { include: { pokemons: { orderBy: { slot: "asc" as const } } } },
   turnLogs: { orderBy: { turnNumber: "desc" as const }, take: 10 },
 };
 
 /**
- * Resolve o turno atual se os dois lados já jogaram, ou se o timeout do
- * turno estourou (nesse caso quem não jogou é tratado como "sem ação").
- * Chamada tanto por submitMove (depois de registrar a jogada) quanto pelas
- * queries de leitura (polling) — a resolução não depende de nenhum
- * worker/cron, só de alguém consultar a partida depois que os dois lados
- * agiram.
+ * A partida como resolveIfDue precisa dela. SÓ LÊ.
+ *
+ * Existe separada de resolveIfDue por causa do custo em serverless: as queries
+ * de polling (/status a cada 2s, dos DOIS jogadores) precisam autorizar antes
+ * de deixar qualquer escrita acontecer, e a autorização precisa de... a mesma
+ * linha que a resolução já ia ler. Juntas num só `tryResolveTurn(battleId)`,
+ * autorizar antes custava um SELECT extra por poll, por jogador. Separadas, o
+ * caminho de polling lê UMA vez, decide se pode, e só então resolve.
  */
-export async function tryResolveTurn(battleId: string) {
-  const battle = await prisma.battle.findUnique({
+export async function loadBattleForResolve(battleId: string) {
+  return prisma.battle.findUnique({
     where: { id: battleId },
     include: { ...fullBattleInclude, pendingMoves: true },
   });
-  if (!battle || battle.status !== "IN_PROGRESS") return battle;
+}
+
+export type BattleForResolve = NonNullable<Awaited<ReturnType<typeof loadBattleForResolve>>>;
+
+/**
+ * Resolve o turno atual se os dois lados já jogaram, ou se o timeout do
+ * turno estourou (nesse caso quem não jogou é tratado como "sem ação").
+ * Recebe a partida JÁ LIDA (ver loadBattleForResolve) — não relê.
+ *
+ * A leitura pode estar velha quando chega aqui (outra lambda resolveu o turno
+ * no meio do caminho), e isso é seguro POR CONSTRUÇÃO: o claim otimista lá
+ * embaixo é condicionado a `currentTurn: turnNumber`. Quem chegou com uma
+ * leitura velha perde o claim e não escreve nada. É a mesma proteção que já
+ * existia — ela nunca dependeu da leitura ser fresca, só do claim.
+ */
+export async function resolveIfDue(battle: BattleForResolve) {
+  const battleId = battle.id;
+  if (battle.status !== "IN_PROGRESS") return battle;
 
   // Ordem determinística por userId — "A"/"B" não pode depender da ordem
   // de retorno do Prisma pra essa relação (não garantida sem orderBy), já
@@ -126,13 +165,13 @@ export async function tryResolveTurn(battleId: string) {
         ...result.state.sideA.team.map((mon) =>
           tx.battlePokemon.updateMany({
             where: { participantId: pA.id, slot: mon.slot },
-            data: { currentHp: mon.currentHp, fainted: mon.fainted },
+            data: writeMonState(mon),
           })
         ),
         ...result.state.sideB.team.map((mon) =>
           tx.battlePokemon.updateMany({
             where: { participantId: pB.id, slot: mon.slot },
-            data: { currentHp: mon.currentHp, fainted: mon.fainted },
+            data: writeMonState(mon),
           })
         ),
       ]);
@@ -166,4 +205,23 @@ export async function tryResolveTurn(battleId: string) {
   );
 
   return prisma.battle.findUnique({ where: { id: battleId }, include: fullBattleInclude });
+}
+
+/**
+ * Lê a partida e resolve o turno se for a hora. É a composição das duas acima,
+ * pra quem NÃO tem a partida em mãos.
+ *
+ * Quem usa: submitMove, que acabou de gravar o pending move e por isso precisa
+ * reler de qualquer forma (a leitura anterior dele é velha por definição).
+ *
+ * Quem NÃO deve usar: as queries de polling. Elas precisam autorizar antes de
+ * permitir escrita, e chamar isto aqui as obrigaria a um SELECT só pra isso —
+ * elas usam loadBattleForResolve + resolveIfDue e aproveitam a mesma leitura
+ * pras duas coisas.
+ */
+export async function tryResolveTurn(battleId: string) {
+  const battle = await loadBattleForResolve(battleId);
+  if (!battle) return null;
+
+  return resolveIfDue(battle);
 }

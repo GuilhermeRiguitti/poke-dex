@@ -3,6 +3,7 @@ import { effectivenessMultiplier, TypeEffectivenessMap } from "./typeChart";
 import {
   BattleAction,
   BattleEvent,
+  BattleMoveDef,
   BattlePokemonState,
   BattleSideLabel,
   BattleSideState,
@@ -25,7 +26,38 @@ import {
 //    (ver needsSwitch) — não existe "sem pokémon pra mandar, perde na hora"
 //    aqui dentro; quem decide fim de jogo por falta de troca é a camada de
 //    cima (resolve.ts / rotas da API)
-//  - sem PP realmente gasto, sem status alterados (veneno, sono, paralisia...)
+//  - sem status alterados (veneno, sono, paralisia...)
+//  - PP é gasto de verdade (ver executeAttack), mas não há éter/restauração:
+//    zerou, zerou até o fim da partida.
+
+/**
+ * Golpe de último recurso, quando NENHUM golpe do ativo tem PP.
+ *
+ * Sem isso, um pokémon sem PP não teria ação nenhuma: o jogador não conseguiria
+ * atacar, e se também não pudesse trocar (resto do time desmaiado) ficaria
+ * travado sem jogada válida — e três turnos sem jogar é derrota por abandono
+ * (MAX_CONSECUTIVE_MISSES). Ou seja: sem struggle, acabar o PP viraria uma
+ * forma de PERDER a partida sem poder fazer nada.
+ *
+ * Não vem da PokéAPI: os valores são nossos (o struggle real tem recuo, que
+ * este sistema não modela). Espelha o fallback de buildTeamSnapshot.
+ */
+export const STRUGGLE: BattleMoveDef = {
+  id: 0,
+  name: "struggle",
+  type: "normal",
+  power: 50,
+  accuracy: null, // sempre acerta
+  damageClass: "physical",
+  priority: 0,
+  maxPp: 0,
+  currentPp: 0,
+};
+
+/** true se o pokémon ainda tem ao menos um golpe com PP. */
+function hasUsableMove(mon: BattlePokemonState): boolean {
+  return mon.moves.some((m) => m.currentPp > 0);
+}
 
 export interface ResolveTurnParams {
   state: BattleState;
@@ -103,11 +135,32 @@ function executeAttack(
   const defender = getActive(defenderSide);
   if (attacker.fainted || defender.fainted) return; // desmaiou nesse turno antes de agir
 
-  const move = attacker.moves[action.moveSlot];
-  if (!move) {
+  const chosen = attacker.moves[action.moveSlot];
+  if (!chosen) {
     events.push({ type: "noAction", side: attackerLabel });
     return;
   }
+
+  // PP: quem decide o que fazer com um golpe sem PP é aqui, não a rota.
+  //  - ainda há OUTRO golpe com PP => a jogada é inválida (submitMove já barra;
+  //    isto é a rede de baixo) e o turno passa em branco.
+  //  - NENHUM golpe tem PP => struggle, senão o jogador ficaria sem ação e
+  //    perderia por abandono. Ver STRUGGLE.
+  let move = chosen;
+  if (move.currentPp <= 0) {
+    if (hasUsableMove(attacker)) {
+      events.push({ type: "noAction", side: attackerLabel });
+      return;
+    }
+    move = STRUGGLE;
+  }
+
+  // O PP é gasto no MOMENTO DO USO, antes de rolar acerto: errar o golpe gasta
+  // PP igual (é assim no jogo). `attacker` é do estado JÁ CLONADO por
+  // resolveTurn, então isto muta o novo estado, não o que veio do banco.
+  // STRUGGLE tem currentPp 0 e é um objeto compartilhado — a guarda impede que
+  // ele seja decrementado (viraria -1 e vazaria entre partidas).
+  if (move.currentPp > 0) move.currentPp -= 1;
 
   // effectiveness = multiplicador de tipo (dado real da PokéAPI, via typeChart).
   // calculateDamage aplica a fórmula de dano (nossa, ver damage.ts) em cima disso.

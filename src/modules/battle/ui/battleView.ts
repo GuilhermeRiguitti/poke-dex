@@ -37,11 +37,21 @@ export function toTablePokemon(pokemon: BattlePokemonDTO): TablePokemon {
 }
 
 export function toTableMoves(pokemon: BattlePokemonDTO): TableMove[] {
+  // `exhausted` espelha exatamente a regra do servidor (submitMove/engine): um
+  // golpe sem PP só é recusado enquanto SOBRAR outro golpe com PP. Se todos
+  // zeraram, o botão continua ativo de propósito — o engine cai no struggle, e
+  // desabilitar tudo deixaria o jogador sem ação nenhuma (= derrota por
+  // abandono depois de 3 turnos).
+  const hasUsableMove = pokemon.moves.some((m) => m.currentPp > 0);
+
   return pokemon.moves.map((move) => ({
     name: move.name,
     type: move.type,
     power: move.power,
     accuracy: move.accuracy,
+    currentPp: move.currentPp,
+    maxPp: move.maxPp,
+    exhausted: move.currentPp <= 0 && hasUsableMove,
   }));
 }
 

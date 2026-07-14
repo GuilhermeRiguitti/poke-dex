@@ -36,6 +36,10 @@ export interface TableMove {
   type: string;
   power: number | null;
   accuracy: number | null;
+  currentPp: number;
+  maxPp: number;
+  /** Sem PP e ainda há outro golpe utilizável => o servidor recusa. Ver toTableMoves. */
+  exhausted: boolean;
 }
 
 export interface TablePokemon {
@@ -261,6 +265,18 @@ function MoveCard({ move, w, h, titleFont }: { move: TableMove; w: number; h: nu
       <Text text={move.name.replace(/-/g, " ").toUpperCase()} x={10} y={artH + 16} width={w - 20} fontFamily={titleFont} fontSize={15} fill={COLORS.ink} ellipsis wrap="none" />
       <Text text={move.type.toUpperCase()} x={10} y={artH + 38} fontSize={10} fontStyle="bold" fill={tc} />
       <Text text={`PODER ${move.power ?? "—"}  ·  ${move.accuracy ?? 100}%`} x={10} y={artH + 52} width={w - 20} fontSize={10} fontStyle="bold" fill={COLORS.inkDim} />
+      {/* PP agora é limite de verdade (o engine gasta, o servidor recusa slot zerado),
+          então ele precisa estar na tela — sem isso o golpe simplesmente parava de
+          funcionar e o jogador não teria como saber por quê. */}
+      <Text
+        text={`PP ${move.currentPp}/${move.maxPp}`}
+        x={10}
+        y={artH + 64}
+        width={w - 20}
+        fontSize={10}
+        fontStyle="bold"
+        fill={move.currentPp === 0 ? COLORS.bad : COLORS.inkDim}
+      />
     </>
   );
 }
@@ -484,7 +500,7 @@ export default function BattleTable({
                     homeY={L.deckY}
                     width={L.moveW}
                     height={L.moveH}
-                    disabled={locked}
+                    disabled={locked || move.exhausted}
                     dropId="enemy"
                     targetRect={enemyDrop}
                     onOver={setOverDrop}

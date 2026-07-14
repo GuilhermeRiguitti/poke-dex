@@ -17,9 +17,9 @@ export interface BattleStats {
 }
 
 // Um golpe pronto pra batalha. type/power/accuracy/damageClass/priority/maxPp
-// vêm direto da PokéAPI (endpoint /move). currentPp é nosso (controle de uso
-// durante a partida) — hoje não é decrementado em lugar nenhum, então PP não
-// é um limite real ainda.
+// vêm direto da PokéAPI (endpoint /move). currentPp é nosso: o engine gasta 1
+// por uso (inclusive quando erra) e resolveTurn grava de volta na coluna Json
+// `moves`. Sem PP em nenhum golpe, o ativo usa STRUGGLE (ver engine.ts).
 export interface BattleMoveDef {
   id: number;
   name: string;

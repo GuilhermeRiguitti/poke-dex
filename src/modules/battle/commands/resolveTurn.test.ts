@@ -193,3 +193,20 @@ describe("tryResolveTurn — atomicidade do turno", () => {
     );
   });
 });
+
+describe("tryResolveTurn — persistência do PP", () => {
+  it("grava a coluna `moves` de volta, senão o PP recarrega sozinho todo turno", async () => {
+    tx.battle.updateMany.mockResolvedValue({ count: 1 });
+
+    await tryResolveTurn("b1");
+
+    // O engine gasta o PP no estado em memória. Se este write não incluísse
+    // `moves`, o gasto morria aqui e o jogador repetiria o golpe mais forte
+    // pra sempre — que era o bug.
+    const [call] = tx.battlePokemon.updateMany.mock.calls;
+    expect(call[0].data).toHaveProperty("moves");
+
+    const moves = call[0].data.moves as { name: string; currentPp: number }[];
+    expect(moves[0]).toMatchObject({ name: "thunderbolt", currentPp: 14 });
+  });
+});

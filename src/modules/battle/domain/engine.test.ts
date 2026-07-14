@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTurn } from "./engine";
+import { resolveTurn, STRUGGLE } from "./engine";
 import { makeMon, makeMove, makeSide, makeState, sequenceRng, throwingRng } from "./testFixtures";
 import { TypeEffectivenessMap } from "./typeChart";
 
@@ -158,5 +158,100 @@ describe("resolveTurn — fainting e vencedor", () => {
     });
 
     expect(events.some((e) => e.type === "attack")).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// PP. Antes, currentPp era montado no snapshot e nunca decrementado: o motor
+// nem lia o campo. Na prática o jogador podia repetir o golpe mais forte pra
+// sempre, e a barra de PP da UI era enfeite.
+// ─────────────────────────────────────────────────────────────────────────
+describe("resolveTurn — PP", () => {
+  const statusMove = () => makeMove({ damageClass: "status", power: null, maxPp: 15, currentPp: 15 });
+
+  it("usar um golpe gasta 1 PP", () => {
+    const state = makeState({
+      sideA: makeSide({ team: [makeMon({ moves: [statusMove()] })] }),
+      sideB: makeSide({ team: [makeMon({ moves: [statusMove()] })] }),
+    });
+
+    const { state: next } = resolveTurn({
+      state,
+      actionA: { type: "MOVE", moveSlot: 0 },
+      actionB: { type: "NONE" },
+      typeChart: neutralChart,
+      rng: () => 0.5,
+    });
+
+    expect(next.sideA.team[0].moves[0].currentPp).toBe(14);
+    // quem não agiu não gasta nada
+    expect(next.sideB.team[0].moves[0].currentPp).toBe(15);
+  });
+
+  it("errar o golpe gasta PP do mesmo jeito", () => {
+    const shaky = makeMove({ power: 80, accuracy: 50, maxPp: 10, currentPp: 10 });
+    const state = makeState({
+      sideA: makeSide({ team: [makeMon({ moves: [shaky] })] }),
+      sideB: makeSide({ team: [makeMon({ moves: [statusMove()] })] }),
+    });
+
+    const { state: next, events } = resolveTurn({
+      state,
+      actionA: { type: "MOVE", moveSlot: 0 },
+      actionB: { type: "NONE" },
+      typeChart: neutralChart,
+      rng: () => 0.99, // 0.99 * 100 = 99, não passa numa accuracy de 50 => erra
+    });
+
+    expect(events.some((e) => e.type === "attack" && e.missed)).toBe(true);
+    expect(next.sideA.team[0].moves[0].currentPp).toBe(9);
+  });
+
+  it("golpe sem PP, tendo outro golpe com PP => não ataca (turno em branco)", () => {
+    const empty = makeMove({ name: "esgotado", power: 200, maxPp: 5, currentPp: 0 });
+    const loaded = makeMove({ name: "cheio", power: 40, maxPp: 5, currentPp: 5 });
+    const state = makeState({
+      sideA: makeSide({ team: [makeMon({ moves: [empty, loaded] })] }),
+      sideB: makeSide({ team: [makeMon({ moves: [statusMove()], maxHp: 500, currentHp: 500 })] }),
+    });
+
+    const { state: next, events } = resolveTurn({
+      state,
+      actionA: { type: "MOVE", moveSlot: 0 }, // o esgotado
+      actionB: { type: "NONE" },
+      typeChart: neutralChart,
+      rng: () => 0.5,
+    });
+
+    // O bug seria dar o dano do golpe de power 200 assim mesmo.
+    expect(events.some((e) => e.type === "attack")).toBe(false);
+    expect(events.some((e) => e.type === "noAction" && e.side === "A")).toBe(true);
+    expect(next.sideB.team[0].currentHp).toBe(500);
+    expect(next.sideA.team[0].moves[0].currentPp).toBe(0); // não vai pra -1
+  });
+
+  it("NENHUM golpe com PP => usa struggle em vez de ficar sem ação", () => {
+    // Sem struggle, este jogador não teria jogada válida nenhuma e perderia por
+    // abandono depois de 3 turnos — acabar o PP viraria uma forma de perder.
+    const empty = makeMove({ name: "esgotado", power: 80, maxPp: 5, currentPp: 0 });
+    const state = makeState({
+      sideA: makeSide({ team: [makeMon({ moves: [empty] })] }),
+      sideB: makeSide({ team: [makeMon({ moves: [statusMove()], maxHp: 500, currentHp: 500 })] }),
+    });
+
+    const { state: next, events } = resolveTurn({
+      state,
+      actionA: { type: "MOVE", moveSlot: 0 },
+      actionB: { type: "NONE" },
+      typeChart: neutralChart,
+      rng: () => 0.5,
+    });
+
+    const attack = events.find((e) => e.type === "attack");
+    expect(attack).toMatchObject({ moveName: "struggle", side: "A" });
+    expect(next.sideB.team[0].currentHp).toBeLessThan(500);
+    // STRUGGLE é um objeto compartilhado no módulo: se o motor decrementasse o
+    // PP dele, ele iria pra -1 e o vazamento atravessaria partidas.
+    expect(STRUGGLE.currentPp).toBe(0);
   });
 });
