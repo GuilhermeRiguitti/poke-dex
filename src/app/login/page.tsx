@@ -17,7 +17,7 @@ export default async function LoginPage() {
           <PokeballIcon size={72} />
           <h1 className="plate border border-edge bg-panel px-6 py-2">
             <span className="plate-inner font-title text-4xl tracking-wide">
-              POKÉ<span className="text-flare">ARENA</span>
+              POKE<span className="text-flare">DEX</span>
             </span>
           </h1>
           <p className="max-w-xs text-center text-sm font-semibold text-ink-dim">

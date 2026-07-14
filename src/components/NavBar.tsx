@@ -21,7 +21,7 @@ export default function NavBar({ userName }: { userName: string }) {
           <PokeballIcon size={30} />
           <span className="plate bg-panel-2 border border-edge px-3 py-1 transition-colors group-hover:border-energy/60">
             <span className="plate-inner font-title text-lg tracking-wide">
-              POKÉ<span className="text-flare">ARENA</span>
+              POKE<span className="text-flare">DEX</span>
             </span>
           </span>
         </Link>

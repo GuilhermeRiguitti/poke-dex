@@ -35,7 +35,7 @@ export default function DesignSystemPage() {
         <PokeballIcon size={64} />
         <h1 className="plate border border-edge bg-panel px-8 py-3">
           <span className="plate-inner font-title text-5xl tracking-wide">
-            POKÉ<span className="text-flare">ARENA</span>
+            POKE<span className="text-flare">DEX</span>
           </span>
         </h1>
         <p className="max-w-lg text-sm font-semibold text-ink-dim">
