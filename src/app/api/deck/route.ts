@@ -8,8 +8,13 @@ export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // orderBy porque Deck.userId não é @unique: se uma corrida já criou decks
+  // duplicados pra esse usuário, todo mundo que lê precisa convergir no MESMO
+  // (o mais antigo) — senão a coleção monta um deck e a fila batalha com outro.
+  // Mesma regra em modules/battle/queries/getQueueDeck.ts.
   let deck = await prisma.deck.findFirst({
     where: { userId: session.user.id },
+    orderBy: { createdAt: "asc" },
     include: {
       deckCards: {
         include: { userCard: true },
@@ -48,7 +53,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Busca ou cria o deck
-  let deck = await prisma.deck.findFirst({ where: { userId: session.user.id } });
+  let deck = await prisma.deck.findFirst({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "asc" },
+  });
   if (!deck) {
     deck = await prisma.deck.create({ data: { userId: session.user.id } });
   }
