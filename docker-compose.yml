@@ -1,20 +1,21 @@
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: pokedex-mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: pokedex-postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: pokedex
+      POSTGRES_USER: pokedex
+      POSTGRES_PASSWORD: pokedex
+      POSTGRES_DB: pokedex
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - pokedex_mysql_data:/var/lib/mysql
+      - pokedex_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      test: ["CMD-SHELL", "pg_isready -U pokedex -d pokedex"]
       interval: 5s
       timeout: 3s
       retries: 10
 
 volumes:
-  pokedex_mysql_data:
+  pokedex_postgres_data:
