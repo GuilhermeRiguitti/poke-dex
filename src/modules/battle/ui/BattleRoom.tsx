@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
-
 import BattleErrorToast from "./BattleErrorToast";
 import BattleResultOverlay from "./BattleResultOverlay";
 import { selectBattleView } from "./battleView";
@@ -10,7 +9,7 @@ import type { BattleDTO } from "./types";
 import { useBattleRoom } from "./useBattleRoom";
 
 // Konva só existe no browser — nunca renderizar no servidor.
-const BattleTable = dynamic(() => import("@/src/components/battle/BattleTable"), {
+const BattleTable = dynamic(() => import("@/src/modules/battle/ui/BattleTable"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full items-center justify-center">

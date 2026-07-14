@@ -4,7 +4,7 @@ import type {
   TableMove,
   TablePokemon,
   TableScore,
-} from "@/src/components/battle/BattleTable";
+} from "@/src/modules/battle/ui/BattleTable";
 import type { BattleDTO, BattlePokemonDTO, BattleSideLabelDTO, TurnLogDTO } from "./types";
 
 // Traduz o DTO da partida para o que a <BattleTable> desenha.

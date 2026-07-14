@@ -58,15 +58,7 @@ export async function tryResolveTurn(battleId: string) {
   const bothSubmitted = Boolean(pendingA && pendingB);
   if (!bothSubmitted && !timedOut) return battle;
 
-  // Trava otimista: só quem conseguir avançar currentTurn de fato resolve;
-  // requests concorrentes que perderem a corrida só leem o resultado.
-  const claim = await prisma.battle.updateMany({
-    where: { id: battleId, currentTurn: battle.currentTurn },
-    data: { currentTurn: { increment: 1 }, turnStartedAt: new Date() },
-  });
-  if (claim.count === 0) {
-    return prisma.battle.findUnique({ where: { id: battleId }, include: fullBattleInclude });
-  }
+  const turnNumber = battle.currentTurn;
 
   const sideAState: BattleSideState = {
     userId: pA.userId,
@@ -79,67 +71,99 @@ export async function tryResolveTurn(battleId: string) {
     team: pB.pokemons.map(rowToBattlePokemonState),
   };
 
+  // O trecho LENTO fica aqui, antes de qualquer escrita: buildTypeChart pode
+  // bater na PokéAPI num cache miss, e o motor é puro. Se a função morrer
+  // (timeout da Vercel, cold start ruim) em qualquer ponto daqui pra cima, a
+  // partida continua intacta — nada foi escrito.
   const typeChart = await buildTypeChart([...sideAState.team, ...sideBState.team]);
 
   const result = resolveTurn({
-    state: { turnNumber: battle.currentTurn, sideA: sideAState, sideB: sideBState },
+    state: { turnNumber, sideA: sideAState, sideB: sideBState },
     actionA: toBattleAction(pendingA),
     actionB: toBattleAction(pendingB),
     typeChart,
     rng: Math.random,
   });
 
-  await prisma.$transaction([
-    ...result.state.sideA.team.map((mon) =>
-      prisma.battlePokemon.updateMany({
-        where: { participantId: pA.id, slot: mon.slot },
-        data: { currentHp: mon.currentHp, fainted: mon.fainted },
-      })
-    ),
-    ...result.state.sideB.team.map((mon) =>
-      prisma.battlePokemon.updateMany({
-        where: { participantId: pB.id, slot: mon.slot },
-        data: { currentHp: mon.currentHp, fainted: mon.fainted },
-      })
-    ),
-    prisma.battleParticipant.update({
-      where: { id: pA.id },
-      data: { activeSlot: result.state.sideA.activeSlot, missedTurns: pendingA ? 0 : { increment: 1 } },
-    }),
-    prisma.battleParticipant.update({
-      where: { id: pB.id },
-      data: { activeSlot: result.state.sideB.activeSlot, missedTurns: pendingB ? 0 : { increment: 1 } },
-    }),
-    prisma.battleTurnLog.create({
-      data: { battleId, turnNumber: battle.currentTurn, events: result.events },
-    }),
-    prisma.battlePendingMove.deleteMany({ where: { battleId, turnNumber: battle.currentTurn } }),
-  ]);
-
-  const [freshA, freshB] = await Promise.all([
-    prisma.battleParticipant.findUnique({ where: { id: pA.id } }),
-    prisma.battleParticipant.findUnique({ where: { id: pB.id } }),
-  ]);
+  // missedTurns só é escrito aqui dentro, e o claim abaixo garante que um
+  // único request resolve o turno — então o valor final é calculável em
+  // memória, sem precisar reler os participantes depois de gravar.
+  const missedA = pendingA ? 0 : pA.missedTurns + 1;
+  const missedB = pendingB ? 0 : pB.missedTurns + 1;
 
   let finalStatus: "FINISHED" | "ABANDONED" | null = null;
-  let winnerId: string | null = result.winner === "A" ? pA.userId : result.winner === "B" ? pB.userId : null;
-
+  let winnerId: string | null = null;
   if (result.winner) {
     finalStatus = "FINISHED";
-  } else if ((freshA?.missedTurns ?? 0) >= MAX_CONSECUTIVE_MISSES) {
+    winnerId = result.winner === "A" ? pA.userId : pB.userId;
+  } else if (missedA >= MAX_CONSECUTIVE_MISSES) {
     finalStatus = "ABANDONED";
     winnerId = pB.userId;
-  } else if ((freshB?.missedTurns ?? 0) >= MAX_CONSECUTIVE_MISSES) {
+  } else if (missedB >= MAX_CONSECUTIVE_MISSES) {
     finalStatus = "ABANDONED";
     winnerId = pA.userId;
   }
 
-  if (finalStatus) {
-    await prisma.battle.update({
-      where: { id: battleId },
-      data: { status: finalStatus, winnerId, finishedAt: new Date() },
-    });
-  }
+  // Turno resolve INTEIRO ou não resolve nada.
+  //
+  // O claim (avançar currentTurn) era uma escrita solta, fora da transação,
+  // com o buildTypeChart no meio do caminho. Em serverless isso perde partida:
+  // se a função morresse entre o claim e as escritas, o turno avançava sem
+  // log, sem aplicar dano e sem limpar as jogadas pendentes — turno sumido,
+  // silenciosamente, e sem worker/cron pra reparar depois (o plano Hobby da
+  // Vercel não tem cron de minuto). Agora o claim é a primeira operação DENTRO
+  // da transação: quem perder a corrida não escreve nada e só lê o resultado.
+  await prisma.$transaction(
+    async (tx) => {
+      // Trava otimista: só um request consegue avançar este turno.
+      const claim = await tx.battle.updateMany({
+        where: { id: battleId, currentTurn: turnNumber },
+        data: { currentTurn: { increment: 1 }, turnStartedAt: new Date() },
+      });
+      if (claim.count === 0) return; // outro request já resolveu este turno
+
+      await Promise.all([
+        ...result.state.sideA.team.map((mon) =>
+          tx.battlePokemon.updateMany({
+            where: { participantId: pA.id, slot: mon.slot },
+            data: { currentHp: mon.currentHp, fainted: mon.fainted },
+          })
+        ),
+        ...result.state.sideB.team.map((mon) =>
+          tx.battlePokemon.updateMany({
+            where: { participantId: pB.id, slot: mon.slot },
+            data: { currentHp: mon.currentHp, fainted: mon.fainted },
+          })
+        ),
+      ]);
+
+      await tx.battleParticipant.update({
+        where: { id: pA.id },
+        data: { activeSlot: result.state.sideA.activeSlot, missedTurns: missedA },
+      });
+      await tx.battleParticipant.update({
+        where: { id: pB.id },
+        data: { activeSlot: result.state.sideB.activeSlot, missedTurns: missedB },
+      });
+
+      await tx.battleTurnLog.create({
+        data: { battleId, turnNumber, events: result.events },
+      });
+      await tx.battlePendingMove.deleteMany({ where: { battleId, turnNumber } });
+
+      // O fim da partida entra na MESMA transação: não existe estado onde o
+      // dano do golpe final foi aplicado mas a partida ficou IN_PROGRESS.
+      if (finalStatus) {
+        await tx.battle.update({
+          where: { id: battleId },
+          data: { status: finalStatus, winnerId, finishedAt: new Date() },
+        });
+      }
+    },
+    // Folga pro cold start / latência do pooler: o default do Prisma (5s) é
+    // apertado pra lambda fria, e estourar aqui aborta o turno inteiro.
+    { timeout: 15_000, maxWait: 5_000 }
+  );
 
   return prisma.battle.findUnique({ where: { id: battleId }, include: fullBattleInclude });
 }
