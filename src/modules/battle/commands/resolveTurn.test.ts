@@ -25,7 +25,9 @@ vi.mock("./buildTeamSnapshot", () => ({
   buildTypeChart: vi.fn(async () => ({})),
 }));
 
-const { tryResolveTurn, TURN_TIMEOUT_MS } = await import("./resolveTurn");
+const { tryResolveTurn, TURN_TIMEOUT_MS, MAX_MISSES, expiredTurnWindows } = await import(
+  "./resolveTurn"
+);
 
 function pokemonRow(slot: number, currentHp = 100) {
   return {
@@ -189,6 +191,98 @@ describe("tryResolveTurn — atomicidade do turno", () => {
     expect(tx.battle.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: "ABANDONED", winnerId: "alpha" }),
+      })
+    );
+  });
+});
+
+// Sem worker, o turno só anda quando alguém faz request (CLAUDE.md, regra 5).
+// Então "o tempo estourou" e "alguém apareceu pra notar" são coisas diferentes,
+// e é daí que saíam dois furos: a partida zumbi (os dois fecharam a aba, nada
+// encerra) e o abandono que não era retroativo (o claim reseta turnStartedAt,
+// então cada volta ao jogo só valia 1 falta, custando 3×90s de espera).
+describe("tryResolveTurn — abandono é retroativo", () => {
+  it("conta uma janela de timeout por período vencido, não uma só", () => {
+    const now = Date.now();
+    expect(expiredTurnWindows(new Date(now), now)).toBe(0);
+    expect(expiredTurnWindows(new Date(now - TURN_TIMEOUT_MS - 1), now)).toBe(1);
+    expect(expiredTurnWindows(new Date(now - TURN_TIMEOUT_MS * 3), now)).toBe(3);
+    // relógio torto / turno criado "no futuro" não vira falta negativa
+    expect(expiredTurnWindows(new Date(now + 10_000), now)).toBe(0);
+  });
+
+  it("oponente sumido há muito tempo => encerra no PRIMEIRO request, não em 3", async () => {
+    const battle = battleReadyToResolve();
+    battle.pendingMoves = [battle.pendingMoves[0]]; // só "alpha" jogou
+    battle.turnStartedAt = new Date(Date.now() - TURN_TIMEOUT_MS * MAX_MISSES);
+    prismaMock.battle.findUnique.mockResolvedValue(battle);
+    tx.battle.updateMany.mockResolvedValue({ count: 1 });
+
+    await tryResolveTurn("b1");
+
+    // Antes: +1 falta por resolução => quem voltasse esperava 3×90s olhando a
+    // tela pra ganhar de alguém que sumiu há uma hora.
+    expect(tx.battle.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "ABANDONED", winnerId: "alpha" }),
+      })
+    );
+  });
+
+  it("partida zumbi (os DOIS sumiram) => ABANDONED sem vencedor", async () => {
+    const battle = battleReadyToResolve();
+    battle.pendingMoves = []; // ninguém jogou
+    battle.turnStartedAt = new Date(Date.now() - TURN_TIMEOUT_MS * 40); // ~1h
+    prismaMock.battle.findUnique.mockResolvedValue(battle);
+    tx.battle.updateMany.mockResolvedValue({ count: 1 });
+
+    await tryResolveTurn("b1");
+
+    // Dar a vitória pro lado B só porque é o segundo do sort premiaria quem
+    // também abandonou.
+    expect(tx.battle.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "ABANDONED", winnerId: null }),
+      })
+    );
+  });
+});
+
+describe("tryResolveTurn — enrolar não zera a falta", () => {
+  it("quem joga DECAI 1 falta, não volta pra zero", async () => {
+    // O furo: como a falta era zerada a cada jogada, bastava mandar uma jogada a
+    // cada 3 turnos pra nunca cair em ABANDONED e arrastar a partida a 90s por
+    // turno pra sempre. Aqui "zeta" já tem 2 faltas e joga: cai pra 1, não 0.
+    const battle = battleReadyToResolve();
+    battle.participants[1].missedTurns = 2;
+    prismaMock.battle.findUnique.mockResolvedValue(battle);
+    tx.battle.updateMany.mockResolvedValue({ count: 1 });
+
+    await tryResolveTurn("b1");
+
+    expect(tx.battleParticipant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "pb" },
+        data: expect.objectContaining({ missedTurns: 1 }),
+      })
+    );
+  });
+
+  it("miss, miss, joga, miss => acumula até ABANDONED (o grief não sustenta)", async () => {
+    // Estado depois de: falta, falta (=2), jogada (=1). Agora falta de novo.
+    const battle = battleReadyToResolve();
+    battle.pendingMoves = [battle.pendingMoves[0]]; // "zeta" não jogou
+    battle.participants[1].missedTurns = 1;
+    battle.turnStartedAt = new Date(Date.now() - TURN_TIMEOUT_MS - 1000);
+    prismaMock.battle.findUnique.mockResolvedValue(battle);
+    tx.battle.updateMany.mockResolvedValue({ count: 1 });
+
+    await tryResolveTurn("b1");
+
+    expect(tx.battleParticipant.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "pb" },
+        data: expect.objectContaining({ missedTurns: 2 }),
       })
     );
   });

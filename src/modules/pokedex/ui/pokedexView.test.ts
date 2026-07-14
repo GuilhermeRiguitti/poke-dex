@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DECK_LIMIT } from "@/src/modules/deck/domain/rules";
-import { collectionView, detailView, dexNumber } from "./pokedexView";
+import { STAT_MAX, collectionView, detailView, dexNumber } from "./pokedexView";
 import type { CollectionDTO, PokemonCardDTO, PokemonDetailDTO } from "./types";
 
 function pokemon(id: number, name: string, types = ["normal"]): PokemonCardDTO {
@@ -139,5 +139,33 @@ describe("detailView", () => {
 
   it("tira o hífen dos nomes de move", () => {
     expect(detailView(detail).moveNames).toEqual(["thunder punch", "mega kick"]);
+  });
+
+  // A view é o contrato com os componentes da tela (PokemonPortrait,
+  // PokemonStats, PokemonMoves): eles não recalculam nada, só desenham.
+  it("entrega o retrato pronto: número da dex, tipos e o tipo de destaque", () => {
+    const view = detailView(detail);
+    expect(view.dexNumber).toBe("#0025");
+    expect(view.name).toBe("pikachu");
+    expect(view.types).toEqual(["electric"]);
+    expect(view.accentType).toBe("electric");
+  });
+
+  it("cai em 'normal' quando o pokémon não tem tipo — a moldura precisa de uma cor", () => {
+    expect(detailView({ ...detail, types: [] }).accentType).toBe("normal");
+  });
+
+  it("toda barra de stat vem com o mesmo teto (STAT_MAX)", () => {
+    const view = detailView(detail);
+    expect(view.statBars.every((s) => s.max === STAT_MAX)).toBe(true);
+    expect(view.statBars.map((s) => s.value)).toEqual([35, 50, 10]);
+  });
+
+  // O DTO já cortou o movepool; a view não pode "consertar" isso mostrando um
+  // número menor do que o real.
+  it("mostra os moves cortados, mas o total é o do movepool inteiro", () => {
+    const view = detailView(detail);
+    expect(view.moveNames).toHaveLength(2);
+    expect(view.totalMoves).toBe(105);
   });
 });

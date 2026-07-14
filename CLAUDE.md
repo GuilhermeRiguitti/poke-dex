@@ -99,18 +99,104 @@ Mapear DTO → o que a tela desenha é **função pura**, mora em `ui/<x>View.ts
 
 ### 5. Serverless (Vercel Hobby) não é detalhe, é restrição de projeto
 
-- Toda page/rota é uma **função efêmera**. Depois que a resposta sai, a execução
-  pode ser morta. Não existe processo longo nem trabalho em background.
-- **Cron no Hobby roda 1x por dia.** Não dá pra ter worker. É por isso que a
-  batalha resolve o turno **na leitura** (o polling do cliente empurra a
-  partida). Não é gambiarra, é a única opção — e por isso **não existe nada pra
-  reparar um estado corrompido depois**.
-- **Toda escrita multi-passo vai numa `$transaction` interativa.** Se a função
-  morrer no meio de uma sequência de escritas soltas, o dado quebra pra sempre.
-  Ver `commands/resolveTurn.ts`: o claim (trava otimista) é a **primeira
-  operação dentro da transação**, e o I/O lento (rede) fica **fora e antes** dela.
-- Suba o `timeout` da transação — o default do Prisma (5s) é apertado pra lambda
-  fria.
+Rodamos em **Vercel Hobby (free) + Supabase (Postgres)**. Não é "deploy na
+nuvem", é um **modelo de execução diferente**, e várias coisas que parecem
+óbvias em Node são **impossíveis aqui**. Leia esta seção inteira antes de mudar
+qualquer regra de execução — a maior parte do que está escrito abaixo foi
+aprendida quebrando o jogo.
+
+#### O que NÃO existe (e o que fazer no lugar)
+
+Toda page/rota é uma **função efêmera**: ela acorda com o request, responde, e
+**pode ser morta no instante seguinte**. Não há processo vivo entre requests.
+
+| Você vai querer fazer | Por que não dá | O que fazer |
+|---|---|---|
+| `setInterval` / worker / job em background no servidor | não há processo depois da resposta | o trabalho acontece **dentro de um request** |
+| `setTimeout` pra "terminar depois de responder" | a execução morre com a resposta | faça antes de responder, ou não faça |
+| WebSocket / SSE / conexão longa | função tem teto de duração; não segura conexão | **polling** do cliente (é o que a batalha faz) |
+| `Map`/variável global como cache, fila ou rate-limit | cada invocação pode ser uma instância nova; memória **não sobrevive** | **tabela no banco** (ver `PokeApiCache`, e a fila do matchmaking) |
+| escrever em arquivo / `fs` | filesystem é efêmero e read-only | banco, ou `lib/storage` |
+| cron pra reparar/limpar estado | **cron no Hobby roda 1x por dia** | não dependa de reparo; ver abaixo |
+| `new PrismaClient()` num módulo qualquer | esgota o pool do Postgres | importe **sempre** o `prisma` de `lib/prisma` |
+
+#### Consequência #1: a LEITURA é que empurra a partida (o polling de 2s)
+
+**Não existe worker.** Se ninguém faz request, **nada acontece no servidor** —
+nem turno resolve, nem timeout de jogador expira, nem partida encerra.
+
+Por isso a batalha resolve o turno **na leitura**: o cliente faz polling em
+`GET /api/battle/[id]/status` a cada **2s** (`useBattleRoom.ts`), e é esse
+request que executa `resolveTurn()`. O polling **não é "atualizar a tela"** — ele
+é o **motor do jogo**. Sem ele a partida congela.
+
+> **Isso NÃO é gambiarra e NÃO é dívida técnica. É a única opção do ambiente.**
+> Se você acha que dá pra "melhorar" trocando por WebSocket, por um job, por um
+> cron de 1 minuto ou por um `setInterval` no servidor: **nada disso existe no
+> Hobby.** Não tente. Se um dia sair do Hobby, isso vira uma decisão de
+> arquitetura consciente — não uma limpeza de código.
+
+O que isso obriga, e você **não pode** quebrar:
+
+- **Todo request de leitura da batalha roda concorrente com o do outro jogador.**
+  São 2 jogadores × 1 request a cada 2s, os dois podendo cair em lambdas
+  diferentes ao mesmo tempo. Ver regra 6.
+- **A resolução do turno é idempotente e disputada**: quem chega primeiro
+  resolve, quem perde o claim **não escreve nada** (`resolveTurn.ts`).
+- **O tick pula quando a aba está em segundo plano** (`document.hidden`) — cada
+  tick é uma invocação, e o plano free tem cota. Não remova essa guarda.
+- **O polling para quando a partida acaba** (`status !== "IN_PROGRESS"` →
+  `clearInterval`). Polling eterno queima cota à toa.
+- Não baixe o intervalo "pra ficar mais responsivo": 2s × 2 jogadores já é
+  1 invocação por segundo por partida.
+- **Não existe nada pra reparar um estado corrompido depois.** Se um turno
+  gravar lixo, o lixo fica. Não há cron de faxina pra salvar você.
+
+**Corolário: o tempo só passa quando alguém olha.** Se nenhum request chega,
+nenhum relógio anda. Duas coisas seguem daí, e as duas já morderam:
+
+- **Timeout tem que ser retroativo.** Não conte "+1 falta por resolução": conte
+  **quantas janelas de `TURN_TIMEOUT_MS` venceram** desde `turnStartedAt`
+  (`expiredTurnWindows`). O claim reseta `turnStartedAt` pra agora, então contar
+  de 1 em 1 fazia quem voltasse depois de uma hora esperar 3×90s pra ganhar de
+  um oponente que já tinha sumido.
+- **Faxina é no próximo request, nunca num cron.** Se os dois jogadores fecham a
+  aba, a partida fica `IN_PROGRESS` pra sempre (ninguém pollando, nada
+  resolvendo) — e o `enqueueBattle` devolvia essa partida zumbi em vez de
+  enfileirar, prendendo os **dois** fora do matchmaking. A cura não é um job: é
+  o **próprio request do jogador encerrar a zumbi** antes de decidir
+  (`enqueueBattle` chama `tryResolveTurn`). **Quem chega é o faxineiro.**
+
+#### Consequência #2: escrita multi-passo é tudo-ou-nada
+
+A função pode morrer **no meio** (timeout, cold start ruim, deploy). Uma
+sequência de escritas soltas deixa o dado quebrado **pra sempre** — e, de novo,
+não há worker pra consertar.
+
+- **Toda escrita multi-passo vai numa `$transaction` interativa.**
+- Em `commands/resolveTurn.ts`: o claim (trava otimista) é a **primeira operação
+  dentro da transação**, e o **I/O lento (rede/PokéAPI) fica fora e antes dela** —
+  transação aberta esperando rede é transação que estoura e segura conexão do
+  pool.
+- **Suba o `timeout` da transação.** O default do Prisma (5s) é apertado pra
+  lambda fria; `resolveTurn` usa `{ timeout: 15_000, maxWait: 5_000 }`.
+
+#### Consequência #3: o banco é Supabase atrás de PgBouncer
+
+- `DATABASE_URL` = conexão **pooled** (PgBouncer, :6543). É a do runtime.
+- `DIRECT_URL` = conexão **direta** (:5432), só pra `prisma migrate` — o Migrate
+  não roda pelo pooler em modo transaction.
+- Conexão é **recurso escasso**: cada lambda que acorda pode abrir a sua. Nunca
+  instancie `PrismaClient` fora de `lib/prisma`, e não segure transação aberta
+  esperando I/O.
+
+#### Consequência #4: cache tem duas camadas, e uma delas é tabela
+
+O cache de `fetch` do Next morre a cada deploy. Por isso existe `PokeApiCache`
+(tabela): o que o jogador **já capturou** precisa sobreviver ao deploy, e a fair
+use policy da PokéAPI pede cache local de verdade. E porque cache **grava**,
+`lib/pokeapiCache.ts` é dividido: `readCached*` (só lê, seguro em render) vs
+`fetchAndCache*` (grava, **só em command**) — que é a regra 2 aplicada.
 
 ### 6. Concorrência: assuma duas lambdas ao mesmo tempo
 
@@ -150,3 +236,7 @@ de propósito e confirme que o teste acusa.
   Mitigado com `orderBy: createdAt asc` em quem lê; a cura é migration + `upsert`.
 - Não existe `error.tsx` — qualquer throw em Server Component cai na tela de erro
   padrão do Next.
+
+**O que NÃO é dívida** (e por isso não está na lista acima): o **polling de 2s da
+batalha** e o **turno resolvido na leitura**. Isso é a regra 5 — a consequência
+direta de não existir worker no Vercel Hobby. Não "conserte".

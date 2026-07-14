@@ -3,6 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { DECK_LIMIT, readDeckRoster } from "@/src/modules/deck";
 import type { BattlePokemonState } from "../domain/types";
 import { buildTeamSnapshot } from "./buildTeamSnapshot";
+import { tryResolveTurn } from "./resolveTurn";
 
 const MAX_MATCH_ATTEMPTS = 3;
 
@@ -30,11 +31,29 @@ export async function enqueueBattle(userId: string, deckId: string) {
   const roster = await readDeckRoster(userId, deckId, DECK_LIMIT);
   if (roster.length === 0) return { error: "empty_deck" as const };
 
+  // Já estou numa partida em andamento? Então é pra lá que eu volto — não entro
+  // na fila de novo.
+  //
+  // MAS: essa partida pode estar ZUMBI. Se os dois jogadores fecharam a aba,
+  // ninguém faz polling, e sem polling nada resolve o turno (não há worker —
+  // CLAUDE.md, regra 5). A partida fica IN_PROGRESS pra sempre, e como este
+  // check devolve ela, os DOIS ficam presos: nunca mais conseguem entrar numa
+  // fila. Não existe cron pra limpar isso (Hobby roda 1x por dia).
+  //
+  // Então este request é a única coisa viva que pode encerrá-la — e encerra:
+  // tryResolveTurn conta as janelas de timeout vencidas de forma retroativa, e
+  // uma partida abandonada há tempo suficiente morre aqui, em ABANDONED. Se ela
+  // morrer, o jogador segue direto pro matchmaking, sem esperar 3×90s.
   const existingBattle = await prisma.battleParticipant.findFirst({
     where: { userId, battle: { status: "IN_PROGRESS" } },
     select: { battleId: true },
   });
-  if (existingBattle) return { matched: true as const, battleId: existingBattle.battleId };
+  if (existingBattle) {
+    const resolved = await tryResolveTurn(existingBattle.battleId);
+    if (resolved?.status === "IN_PROGRESS") {
+      return { matched: true as const, battleId: existingBattle.battleId };
+    }
+  }
 
   let opponent: { userId: string; deckId: string } | null = null;
 
