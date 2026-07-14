@@ -20,3 +20,13 @@ raiz/
 - verificar BYPASS, tanto pra api > banco de dados , tanto pra battle > banco de dados
 com certeza deve ter mt bypass kkkkk
 - verificar idor tbm
+- ver sobre refreshtoken e token expires na tabella Account e se devemos usar
+
+
+
+# MELHORIA
+- sistema de abrir pacote pra obter pokemons, pokemons vao ser mais dificil conseguir
+baseado em algum stats que define fortitude, quando maior esse stats menor a chance dele ser sortido
+
+
+# PRISMA CLIENT 
