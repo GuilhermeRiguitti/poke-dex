@@ -1,72 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/lib/auth";
-import { prisma } from "@/src/lib/prisma";
+import { addToDeck } from "@/src/modules/deck";
 
-// GET /api/deck — retorna o deck ativo do usuário (cria se não existir)
-export async function GET() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  // orderBy porque Deck.userId não é @unique: se uma corrida já criou decks
-  // duplicados pra esse usuário, todo mundo que lê precisa convergir no MESMO
-  // (o mais antigo) — senão a coleção monta um deck e a fila batalha com outro.
-  // Mesma regra em modules/battle/queries/getQueueDeck.ts.
-  let deck = await prisma.deck.findFirst({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "asc" },
-    include: {
-      deckCards: {
-        include: { userCard: true },
-        orderBy: { addedAt: "asc" },
-      },
-    },
-  });
-
-  if (!deck) {
-    deck = await prisma.deck.create({
-      data: { userId: session.user.id },
-      include: {
-        deckCards: {
-          include: { userCard: true },
-          orderBy: { addedAt: "asc" },
-        },
-      },
-    });
-  }
-
-  return NextResponse.json(deck);
-}
-
-// POST /api/deck — adiciona um UserCard ao deck
+// POST /api/deck — põe um pokémon da coleção no deck.
+//
+// O GET que existia aqui foi removido, e ele era o pior dos três: um GET que
+// CRIAVA um deck como efeito colateral (findFirst-ou-create). O único consumidor
+// era o useEffect da coleção; agora a página lê o deck no servidor
+// (deck/queries/readDeck, que só lê e devolve null se não houver deck), e o deck
+// nasce aqui, no command, quando o jogador põe o primeiro pokémon nele.
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { userCardId } = await req.json() as { userCardId: string };
+  const { userCardId } = (await req.json()) as { userCardId?: string };
   if (!userCardId) return NextResponse.json({ error: "userCardId is required" }, { status: 400 });
 
-  // Verifica que o userCard pertence ao usuário
-  const userCard = await prisma.userCard.findUnique({ where: { id: userCardId } });
-  if (!userCard || userCard.userId !== session.user.id) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const result = await addToDeck(session.user.id, userCardId);
+
+  if (!result.ok) {
+    // deck_full é 409 (conflito com o estado atual), não 400: o pedido está bem
+    // formado, o deck é que está cheio.
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.error === "deck_full" ? 409 : 404 }
+    );
   }
 
-  // Busca ou cria o deck
-  let deck = await prisma.deck.findFirst({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "asc" },
-  });
-  if (!deck) {
-    deck = await prisma.deck.create({ data: { userId: session.user.id } });
-  }
-
-  const deckCard = await prisma.deckCard.upsert({
-    where: { deckId_userCardId: { deckId: deck.id, userCardId } },
-    update: {},
-    create: { deckId: deck.id, userCardId },
-    include: { userCard: true },
-  });
-
-  return NextResponse.json(deckCard, { status: 201 });
+  return NextResponse.json(result.card, { status: 201 });
 }

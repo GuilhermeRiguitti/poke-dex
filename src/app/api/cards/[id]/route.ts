@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-
 import { headers } from "next/headers";
 import { auth } from "@/src/lib/auth";
-import { prisma } from "@/src/lib/prisma";
+import { removeCard } from "@/src/modules/pokedex";
 
-// DELETE /api/cards/[id] — remove a carta da coleção do usuário
+// DELETE /api/cards/[id] — solta um pokémon (tira da coleção).
+// A checagem de dono vai dentro do command, no where do delete.
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -13,12 +13,9 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const result = await removeCard(session.user.id, id);
 
-  const userCard = await prisma.userCard.findUnique({ where: { id } });
-  if (!userCard || userCard.userId !== session.user.id) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  if (!result.ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.userCard.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }

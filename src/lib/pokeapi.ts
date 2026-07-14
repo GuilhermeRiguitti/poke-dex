@@ -5,8 +5,27 @@ export function extractIdFromUrl(url: string): number {
   return parseInt(url.split("/").filter(Boolean).pop()!, 10);
 }
 
-// Dados de uma geração já lançada não mudam — cache "longo" é seguro.
-const REVALIDATE_SECONDS = 60 * 60 * 24;
+// A fair use policy da PokéAPI (https://pokeapi.co/docs/v2) pede, em primeiro
+// lugar: "Locally cache resources whenever you request them." Não há rate limit
+// aplicado desde que migraram pra hospedagem estática, mas eles pedem
+// explicitamente pra limitar a frequência de requests pra segurar o custo de
+// hospedagem deles. Cachear não é otimização aqui — é a contrapartida de usar
+// uma API pública e gratuita.
+//
+// São duas camadas, de propósito:
+//  - esta (cache de fetch do Next): read-through, por deploy. Cobre a listagem
+//    da PokéDex, onde não dá pra pré-aquecer nada — o usuário navega 1025
+//    pokémon que ele justamente NÃO tem.
+//  - pokeapiCache.ts (tabela PokeApiCache): persiste entre deploys, e é ela que
+//    atende o que o usuário JÁ capturou. Ver o comentário lá.
+//
+// force-cache explícito, e sem revalidate: dado de uma geração já lançada é
+// imutável, então revalidar é re-buscar 1025 recursos pra receber byte a byte a
+// mesma coisa. O explícito também importa porque, nesta versão do Next, fetch
+// NÃO é cacheado por padrão, e um fetch descoberto DEPOIS de uma Request-time
+// API (o `await headers()` do auth, que toda page nossa faz) fica de fora do
+// cache a menos que opte por ele — era esse o caso aqui.
+const CACHE_FOREVER = { cache: "force-cache" } as const;
 
 export interface NormalizedPokemon {
   id: number;
@@ -44,15 +63,26 @@ export interface NormalizedType {
   noDamageTo: string[];
 }
 
+/** Uma entrada do índice da PokéAPI: só nome + url (o id sai da url). */
+export interface PokemonIndexEntry {
+  name: string;
+  url: string;
+}
+
+/** GET /pokemon?offset&limit — o índice paginado, sem os detalhes de cada um. */
+export async function fetchPokemonIndex(offset: number, limit: number): Promise<PokemonIndexEntry[]> {
+  const res = await fetch(`${POKEAPI_BASE}/pokemon?offset=${offset}&limit=${limit}`, CACHE_FOREVER);
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  return data.results ?? [];
+}
+
 export async function fetchPokemon(idOrName: number | string): Promise<NormalizedPokemon | null> {
-  console.log('[urlPokemonDetail]', `${POKEAPI_BASE}/pokemon/${idOrName}`);
-  const res = await fetch(`${POKEAPI_BASE}/pokemon/${idOrName}`, {
-    next: { revalidate: REVALIDATE_SECONDS },
-  });
+  const res = await fetch(`${POKEAPI_BASE}/pokemon/${idOrName}`, CACHE_FOREVER);
   if (!res.ok) return null;
 
   const data = await res.json();
-  console.log(data)
   return {
     id: data.id,
     name: data.name,
@@ -80,9 +110,7 @@ export async function fetchPokemon(idOrName: number | string): Promise<Normalize
 }
 
 export async function fetchMove(idOrName: number | string): Promise<NormalizedMove | null> {
-  const res = await fetch(`${POKEAPI_BASE}/move/${idOrName}`, {
-    next: { revalidate: REVALIDATE_SECONDS },
-  });
+  const res = await fetch(`${POKEAPI_BASE}/move/${idOrName}`, CACHE_FOREVER);
   if (!res.ok) return null;
 
   const data = await res.json();
@@ -101,9 +129,7 @@ export async function fetchMove(idOrName: number | string): Promise<NormalizedMo
 }
 
 export async function fetchType(idOrName: number | string): Promise<NormalizedType | null> {
-  const res = await fetch(`${POKEAPI_BASE}/type/${idOrName}`, {
-    next: { revalidate: REVALIDATE_SECONDS },
-  });
+  const res = await fetch(`${POKEAPI_BASE}/type/${idOrName}`, CACHE_FOREVER);
   if (!res.ok) return null;
 
   const data = await res.json();

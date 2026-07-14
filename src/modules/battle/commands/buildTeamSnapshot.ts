@@ -1,5 +1,6 @@
-import { prisma } from "@/src/lib/prisma";
-import { extractIdFromUrl, fetchMove, fetchPokemon, fetchType, NormalizedMove, NormalizedPokemon, NormalizedType } from "@/src/lib/pokeapi";
+import { extractIdFromUrl, NormalizedPokemon } from "@/src/lib/pokeapi";
+import { fetchAndCacheMove, fetchAndCachePokemon, fetchAndCacheType } from "@/src/lib/pokeapiCache";
+import { DECK_LIMIT, readDeckRoster } from "@/src/modules/deck";
 import { BATTLE_LEVEL, calcHp, calcStat } from "../domain/stats";
 import { BattleMoveDef, BattlePokemonState } from "../domain/types";
 import { TypeEffectivenessMap } from "../domain/typeChart";
@@ -9,28 +10,13 @@ import { TypeEffectivenessMap } from "../domain/typeChart";
 // monta o BattlePokemonState que o engine.ts usa. É aqui que fica mais claro
 // o que é da API e o que é invenção nossa — ver comentários em cada função.
 
-// ─── cache persistente (tabela PokeApiCache) — dados de uma geração já
-// lançada não mudam, então cachear "pra sempre" entre invocações serverless
-// é seguro e evita rebater na PokéAPI a cada partida/turno. ────────────────
-
-async function cached<T>(key: string, fetcher: () => Promise<T | null>): Promise<T | null> {
-  const row = await prisma.pokeApiCache.findUnique({ where: { key } });
-  if (row) return row.payload as T;
-
-  const data = await fetcher();
-  if (data) {
-    await prisma.pokeApiCache.upsert({
-      where: { key },
-      update: { payload: data as object, fetchedAt: new Date() },
-      create: { key, payload: data as object },
-    });
-  }
-  return data;
-}
-
-const cachedPokemon = (id: number) => cached<NormalizedPokemon>(`pokemon:${id}`, () => fetchPokemon(id));
-const cachedMove = (id: number) => cached<NormalizedMove>(`move:${id}`, () => fetchMove(id));
-const cachedType = (name: string) => cached<NormalizedType>(`type:${name}`, () => fetchType(name));
+// O cache persistente (tabela PokeApiCache) morava aqui, privado. Saiu pra
+// lib/pokeapiCache.ts: ele é infra da PokéAPI, não regra de batalha, e a
+// PokéDex precisava dele também — enquanto ficou escondido aqui dentro, a
+// PokéDex acabou com uma estratégia de cache DIFERENTE pra mesma API.
+//
+// Estas são as versões que ESCREVEM no cache (fetchAndCache*): só podem ser
+// usadas de command, e é aqui que estamos. Ver o aviso em pokeapiCache.ts.
 
 function statFor(pokemon: NormalizedPokemon, statName: string): number {
   return pokemon.stats.find((s) => s.stat.name === statName)?.base_stat ?? 50;
@@ -54,7 +40,7 @@ async function pickBattleMoves(pokemon: NormalizedPokemon): Promise<BattleMoveDe
   const picked: BattleMoveDef[] = [];
   for (const moveId of candidateIds) {
     if (picked.length >= 4) break;
-    const move = await cachedMove(moveId);
+    const move = await fetchAndCacheMove(moveId);
     if (!move || move.damageClass === "status" || !move.power) continue;
     picked.push({
       id: move.id,
@@ -104,25 +90,18 @@ export interface BattleTeamMember {
 // stats calculados por calcHp/calcStat (fórmula do jogo, mas sem IV/EV).
 /** Monta o time de batalha (até 6) a partir do Deck ativo do usuário. */
 export async function buildTeamSnapshot(userId: string, deckId: string): Promise<BattleTeamMember[]> {
-  const deck = await prisma.deck.findFirst({
-    where: { id: deckId, userId },
-    include: {
-      deckCards: {
-        include: { userCard: true },
-        orderBy: { addedAt: "asc" },
-        take: 6,
-      },
-    },
-  });
+  // Quem sabe o que é "o deck de um usuário" é o módulo deck — inclusive a
+  // ordem (addedAt asc, que é o que define o slot) e o tamanho do time.
+  const roster = await readDeckRoster(userId, deckId, DECK_LIMIT);
 
-  if (!deck || deck.deckCards.length === 0) {
+  if (roster.length === 0) {
     throw new Error("Deck vazio ou não encontrado");
   }
 
   return Promise.all(
-    deck.deckCards.map(async (dc, index) => {
-      const pokemon = await cachedPokemon(dc.userCard.pokemonId);
-      if (!pokemon) throw new Error(`Pokémon ${dc.userCard.pokemonId} não encontrado na PokéAPI`);
+    roster.map(async ({ pokemonId }, index) => {
+      const pokemon = await fetchAndCachePokemon(pokemonId);
+      if (!pokemon) throw new Error(`Pokémon ${pokemonId} não encontrado na PokéAPI`);
 
       const moves = await pickBattleMoves(pokemon);
       const maxHp = calcHp(statFor(pokemon, "hp"));
@@ -170,7 +149,7 @@ export async function buildTypeChart(pokemons: BattlePokemonState[]): Promise<Ty
   const chart: TypeEffectivenessMap = {};
   await Promise.all(
     Array.from(typeNames).map(async (typeName) => {
-      const type = await cachedType(typeName);
+      const type = await fetchAndCacheType(typeName);
       if (!type) return;
       const row: Record<string, number> = {};
       for (const t of type.doubleDamageTo) row[t] = 2;

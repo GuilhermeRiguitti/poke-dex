@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
+import { DECK_LIMIT, readDeckRoster } from "@/src/modules/deck";
 import type { BattlePokemonState } from "../domain/types";
 import { buildTeamSnapshot } from "./buildTeamSnapshot";
 
@@ -26,8 +27,8 @@ function toPokemonCreateInput(
 
 // Entra na fila de matchmaking; pareia na hora se possível (POST /api/battle/queue)
 export async function enqueueBattle(userId: string, deckId: string) {
-  const deck = await prisma.deck.findFirst({ where: { id: deckId, userId }, include: { deckCards: true } });
-  if (!deck || deck.deckCards.length === 0) return { error: "empty_deck" as const };
+  const roster = await readDeckRoster(userId, deckId, DECK_LIMIT);
+  if (roster.length === 0) return { error: "empty_deck" as const };
 
   const existingBattle = await prisma.battleParticipant.findFirst({
     where: { userId, battle: { status: "IN_PROGRESS" } },

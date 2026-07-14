@@ -21,6 +21,7 @@ raiz/
 com certeza deve ter mt bypass kkkkk
 - verificar idor tbm
 - ver sobre refreshtoken e token expires na tabella Account e se devemos usar
+- Prisma pro bundle do browser
 
 
 
@@ -29,7 +30,8 @@ com certeza deve ter mt bypass kkkkk
 baseado em algum stats que define fortitude, quando maior esse stats menor a chance dele ser sortido
 
 
-# PRISMA CLIENT 
+
+# PRISMA CLIENT GLOBAL
 
 
 
