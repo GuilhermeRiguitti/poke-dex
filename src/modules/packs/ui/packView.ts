@@ -4,6 +4,7 @@
 // ui/ só pode importar de ui/ e de tipos de domain/ — RarityTier é type de
 // domain, então entra. Nada de Prisma/command aqui.
 import type { RarityTier } from "../domain/rarity";
+import { daysUntilReward, STREAK_REWARD_CYCLE } from "../domain/streak";
 import type { PackStateDTO } from "./types";
 
 const RARITY_LABEL: Record<RarityTier, string> = {
@@ -50,6 +51,23 @@ export function formatCountdown(ms: number): string {
   if (h > 0) return `${h}h ${pad(m)}m`;
   if (m > 0) return `${m}m ${pad(s)}s`;
   return `${pad(s)}s`;
+}
+
+export interface StreakView {
+  /** dias seguidos; 0 = ainda não começou (não mostrar) */
+  streak: number;
+  /** dias até o próximo pacote-bônus (ciclo de 7) */
+  untilReward: number;
+  cycle: number;
+}
+
+/** O streak pronto pra tela do dashboard. Puro. */
+export function streakView(loginStreak: number): StreakView {
+  return {
+    streak: loginStreak,
+    untilReward: daysUntilReward(loginStreak),
+    cycle: STREAK_REWARD_CYCLE,
+  };
 }
 
 export interface PackStatusView {

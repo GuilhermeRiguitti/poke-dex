@@ -95,7 +95,7 @@ export async function openPack(
 
       const updated = await tx.packState.findUniqueOrThrow({
         where: { userId },
-        select: { lastFreePackAt: true, extraPacks: true },
+        select: { lastFreePackAt: true, extraPacks: true, loginStreak: true },
       });
 
       return { source, ownedSet, updated };

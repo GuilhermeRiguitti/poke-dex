@@ -30,7 +30,7 @@ describe("packStatusView", () => {
   const now = new Date("2026-07-14T12:00:00Z").getTime();
 
   it("sem data de próximo => pode abrir agora", () => {
-    const v = packStatusView({ canOpen: true, nextFreePackAt: null, extraPacks: 0 }, now);
+    const v = packStatusView({ canOpen: true, nextFreePackAt: null, extraPacks: 0, loginStreak: 0 }, now);
     expect(v.canOpen).toBe(true);
     expect(v.msUntilNext).toBeNull();
     expect(v.buttonLabel).toBe("Abrir pacote");
@@ -38,7 +38,7 @@ describe("packStatusView", () => {
 
   it("próximo no futuro e sem extras => em espera, com cronômetro", () => {
     const next = new Date(now + 3600_000).toISOString();
-    const v = packStatusView({ canOpen: false, nextFreePackAt: next, extraPacks: 0 }, now);
+    const v = packStatusView({ canOpen: false, nextFreePackAt: next, extraPacks: 0, loginStreak: 0 }, now);
     expect(v.canOpen).toBe(false);
     expect(v.msUntilNext).toBe(3600_000);
     expect(v.buttonLabel).toBe("Em espera");
@@ -46,7 +46,7 @@ describe("packStatusView", () => {
 
   it("em cooldown MAS com extra => pode abrir (o extra fura o cooldown)", () => {
     const next = new Date(now + 3600_000).toISOString();
-    const v = packStatusView({ canOpen: true, nextFreePackAt: next, extraPacks: 2 }, now);
+    const v = packStatusView({ canOpen: true, nextFreePackAt: next, extraPacks: 2, loginStreak: 0 }, now);
     expect(v.canOpen).toBe(true);
     // ainda mostra o cronômetro do grátis, mas o botão abre (gasta o extra)
     expect(v.msUntilNext).toBe(3600_000);

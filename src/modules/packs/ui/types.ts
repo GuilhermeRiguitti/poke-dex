@@ -27,6 +27,8 @@ export interface PackStateDTO {
   nextFreePackAt: string | null;
   /** pacotes-bônus prontos pra abrir (recompensa de login) */
   extraPacks: number;
+  /** dias de login seguidos (streak) */
+  loginStreak: number;
 }
 
 export interface OpenPackResultDTO {

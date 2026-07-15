@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/src/lib/auth";
 import { PackIcon } from "@/src/components/icons";
 import { readPackState } from "@/src/modules/packs";
+import { streakView } from "@/src/modules/packs/ui/packView";
 
 // A home é o (futuro) DASHBOARD. Por ora é um placeholder enxuto: saudação + o
 // status do pacote diário, que é o loop central do jogo, com atalho pra abrir.
@@ -17,6 +18,7 @@ export default async function HomePage() {
   if (!session) redirect("/login");
 
   const packState = await readPackState(session.user.id);
+  const streak = streakView(packState.loginStreak);
 
   return (
     <div className="pt-8">
@@ -28,6 +30,20 @@ export default async function HomePage() {
           Seu dashboard está em construção. Enquanto isso, seu pacote te espera.
         </p>
       </div>
+
+      {streak.streak > 0 && (
+        <div className="clip-card mb-6 flex max-w-md items-center gap-3 border border-edge bg-panel-2 px-4 py-3">
+          <span className="font-title text-2xl text-gold">🔥 {streak.streak}</span>
+          <div className="text-sm">
+            <p className="font-title uppercase tracking-wide">dias seguidos</p>
+            <p className="text-xs font-semibold text-ink-dim">
+              {streak.untilReward === streak.cycle
+                ? "Bônus liberado hoje!"
+                : `Faltam ${streak.untilReward} para o próximo pacote-bônus.`}
+            </p>
+          </div>
+        </div>
+      )}
 
       <Link
         href="/packs"

@@ -2,6 +2,7 @@ import NavBar from "@/src/components/NavBar";
 import { auth } from "@/src/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import DailyCheckIn from "@/src/modules/packs/ui/DailyCheckIn";
 
 
 
@@ -16,6 +17,8 @@ export default async function GameLayout({ children }: { children: React.ReactNo
     <>
       <NavBar userName={session.user.name} />
       <main className="mx-auto max-w-6xl px-4 pb-16">{children}</main>
+      {/* Dispara o check-in diário (streak de login) uma vez por carga. */}
+      <DailyCheckIn />
     </>
   );
 }
