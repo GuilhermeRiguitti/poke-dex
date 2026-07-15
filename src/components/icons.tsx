@@ -43,6 +43,91 @@ export function SwordsIcon({ size = 20, className = "" }: { size?: number; class
   );
 }
 
+export function MenuIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M3 6h18" />
+      <path d="M3 12h18" />
+      <path d="M3 18h18" />
+    </svg>
+  );
+}
+
+export function CloseIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M5 5l14 14" />
+      <path d="M19 5L5 19" />
+    </svg>
+  );
+}
+
+export function PackIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  // Um pacote/caixa de cartas com laço — a ação central do jogo.
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M4 8h16v12H4z" />
+      <path d="M2 8h20v3H2z" />
+      <path d="M12 8v12" />
+      <path d="M12 8S9.5 4 7.5 4 5 7 7 8" />
+      <path d="M12 8s2.5-4 4.5-4 2 3 0 4" />
+    </svg>
+  );
+}
+
+export function GridIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
 export function CardsIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
   return (
     <svg

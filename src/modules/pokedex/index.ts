@@ -21,8 +21,11 @@ export { PAGE_SIZE, MAX_POKEMON, TOTAL_PAGES, clampPage, pageRange } from "./dom
 export { listPokedexPage } from "./queries/listPokedexPage";
 export { getCollection } from "./queries/getCollection";
 export { getPokemonDetail } from "./queries/getPokemonDetail";
+// Mapper puro NormalizedPokemon → card. Exposto pro módulo packs montar a DTO
+// das cartas sorteadas sem duplicar a whitelist de campos.
+export { toPokemonCardDTO } from "./queries/toPokemonDTO";
 
-export { addCard } from "./commands/addCard";
-export type { AddCardResult } from "./commands/addCard";
+// A captura direta morreu — obter pokémon é só pelo módulo packs. Só resta a
+// remoção (soltar uma carta da coleção).
 export { removeCard } from "./commands/removeCard";
 export type { RemoveCardResult } from "./commands/removeCard";
