@@ -132,13 +132,38 @@ então as 6 cartas são pokémon **distintos** dentro do pacote. O `rng` é inje
 - **Conta nova nasce jogável**: `lastFreePackAt = null` ⇒ o primeiro pacote está
   disponível de cara, sem precisar de um "pacote inicial" separado.
 - **Pacotes-bônus** (`PackState.extraPacks`): furam o cooldown. O `openPack`
-  prefere o diário e só gasta um extra se o diário não estiver disponível. *(A
-  peça que CONCEDE extras — recompensa de login/streak — é a Fase 3, ainda não
-  implementada; hoje `extraPacks` é sempre 0.)*
+  prefere o diário e só gasta um extra se o diário não estiver disponível. São
+  concedidos pelo **streak de login** (ver §3.1).
 - **Carta repetida**: se o jogador já tem o pokémon sorteado, a carta **sai
   mesmo assim**, marcada `isNew: false`. O `upsert` na constraint
   `@unique([userId, pokemonId])` do `UserCard` é no-op — não cria duplicata. É o
   gancho pra troca/pó no futuro.
+
+### 3.1 Streak de login (recompensa por presença)
+
+Uma marcação de presença diária concede os pacotes-bônus. Peças:
+`domain/streak.ts` (puro, testado), `commands/checkInLogin.ts` (escreve),
+`POST /api/packs/checkin` (casca), `ui/DailyCheckIn.tsx` (dispara no layout).
+
+- **"Dia" é o dia UTC** (`utcDayIndex = floor(ms / 86.4M)`). O servidor não sabe
+  o fuso do jogador de forma confiável; UTC é determinístico. Trade-off
+  consciente: quem está perto da meia-noite vê o dia virar cedo/tarde pelo
+  relógio local.
+- **Regra do streak** (`nextStreak`): último check-in ontem → **+1**; hoje de
+  novo → mantém (o claim no-opa); pulou ≥1 dia → **reseta pra 1**; nunca fez → 1.
+- **Recompensa** (`earnsReward`): a cada **7 dias seguidos** (múltiplo de
+  `STREAK_REWARD_CYCLE`), **+1 `extraPacks`**. O incremento vai no **mesmo
+  `updateMany`** do check-in — atômico com a contagem, sem escrita separada que
+  pudesse duplicar o bônus.
+- **Quem dispara**: não há worker, então é um request que credita. O
+  `<DailyCheckIn>` (client, montado no layout de `(game)`) chama a rota **uma
+  vez por carga**, com guard em `sessionStorage` por dia UTC. Quando um novo dia
+  conta, dá `router.refresh()` (atualiza o streak no dashboard); ao fechar um
+  ciclo, mostra um toast do bônus.
+- **Idempotência por dia**: `checkInLogin` cobra no máximo uma vez por dia via o
+  claim condicionado a "ainda não fez check-in hoje" (`lastCheckIn < todayStart`
+  ou null). Duas abas / dois refreshes no mesmo dia → o segundo sai com
+  `count 0` e **não credita streak nem bônus** (travado por teste).
 
 ### Modelo de dados
 
@@ -147,8 +172,8 @@ model PackState {
   userId         String    @id          // 1 linha por jogador — @id => único
   lastFreePackAt DateTime?              // null = nunca abriu
   extraPacks     Int       @default(0)
-  loginStreak    Int       @default(0)  // Fase 3
-  lastCheckIn    DateTime?              // Fase 3
+  loginStreak    Int       @default(0)  // dias seguidos de login (§3.1)
+  lastCheckIn    DateTime?              // último check-in (dia UTC) (§3.1)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 ```
@@ -270,6 +295,11 @@ alguém mexer, quebra:
 - **I/O lento antes e fora da transação.** O `fetchAndCachePokemon` (rede) roda
   antes do claim; a transação abre só pra escrever. É o que evita segurar
   conexão do pooler esperando rede.
+- **Check-in idempotente por dia.** `checkInLogin` credita o streak/bônus num
+  único `updateMany` condicionado a `lastCheckIn < todayStart` (ou null). Duas
+  abas no mesmo dia → o segundo reavalia o `WHERE` (lastCheckIn já é hoje) e sai
+  com `count 0`, sem dobrar streak nem bônus. O `+1` do bônus vai no MESMO
+  `updateMany`, atômico com a contagem (travado por teste em `checkInLogin.test.ts`).
 - **Uma linha por jogador por construção.** `PackState.userId @id` — sem
   `findFirst`+`create` (que seria corrida), sem risco de duplicata.
 - **Escrita fora do render.** `readPackState` (usada no render das pages `/` e
@@ -285,7 +315,8 @@ alguém mexer, quebra:
 - **Rate-limit global** continua ausente no projeto (TODO.md). Resolveria o
   Achado 1 de tabela.
 - **`trustedOrigins`/CSRF** no better-auth continua por configurar (TODO.md).
-  Resolve o Achado 2.
-- **Fase 3 (concessão de `extraPacks`)** ainda não existe. Quando entrar, o
-  check-in de login também será uma escrita concorrente (dois requests no mesmo
-  dia) e vai precisar do mesmo cuidado de claim idempotente.
+  Resolve o Achado 2 — e vale também pro `POST /api/packs/checkin`, que tem a
+  mesma exposição (POST com cookie, sem body). Impacto igualmente baixo: forçar
+  a vítima a fazer o próprio check-in do dia.
+- **Fuso do streak é UTC.** Não é um bug, é a escolha documentada em §3.1.
+  Migrar pro fuso do jogador exigiria capturar/persistir o timezone dele.

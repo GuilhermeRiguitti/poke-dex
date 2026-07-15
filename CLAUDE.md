@@ -198,6 +198,32 @@ use policy da PokéAPI pede cache local de verdade. E porque cache **grava**,
 `lib/pokeapiCache.ts` é dividido: `readCached*` (só lê, seguro em render) vs
 `fetchAndCache*` (grava, **só em command**) — que é a regra 2 aplicada.
 
+#### Consequência #5: a API PostgREST do Supabase é pública — RLS obrigatória
+
+O Supabase publica uma **API REST automática (PostgREST)** acessível com a `anon`
+key + URL do projeto. **Tabela sem RLS é CRUD aberto pra qualquer um** por essa
+API — dava pra ler e apagar `User`/`Account` de fora. A migration
+`20260714010000_enable_rls_all_tables` ligou RLS nas 16 tabelas **sem policies**.
+
+Por que deny-all não afeta o runtime (e por que é seguro):
+
+- O app fala com o banco **só via Prisma**, conectado como `postgres` — que é
+  **dono das tabelas** (FORCE off → o dono ignora RLS) **e** tem `BYPASSRLS`.
+  Bypass por dois caminhos. `anon`/`authenticated` não têm nenhum → bloqueados.
+  Confere: `SELECT rolname, rolbypassrls FROM pg_roles;` + dono em `pg_class`.
+- **Nada no código usa `@supabase/supabase-js` nem a anon key** — a API pública que
+  a RLS fecha não é usada pelo jogo.
+
+O que te obriga daqui pra frente (a regra completa está no `AGENTS.md`):
+
+- **Tabela nova nasce ABERTA.** O Prisma não gerencia RLS; a migration que dá
+  `CREATE TABLE` tem que dar `ALTER TABLE "X" ENABLE ROW LEVEL SECURITY;` junto,
+  senão o buraco reabre só pra ela.
+- **Nunca `FORCE ROW LEVEL SECURITY`.** FORCE sujeita o próprio `postgres` à RLS →
+  sem policy, deny-all no runtime = **app fora do ar**. É a "melhoria" que derruba.
+- Depois de mexer no schema, rode o advisor de segurança do Supabase — o alerta
+  `rls_disabled_in_public` (ERROR) acusa a tabela esquecida.
+
 ### 6. Concorrência: assuma duas lambdas ao mesmo tempo
 
 Os dois jogadores fazem polling a cada 2s. Todo `command` roda concorrente com

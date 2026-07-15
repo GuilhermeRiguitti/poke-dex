@@ -40,7 +40,7 @@ beforeEach(() => {
   });
   prismaMock.userCard.findMany.mockResolvedValue([]);
   prismaMock.userCard.upsert.mockResolvedValue({});
-  prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0 });
+  prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0, loginStreak: 0 });
   prismaMock.$transaction.mockImplementation(async (fn: (t: unknown) => Promise<unknown>) =>
     fn(prismaMock)
   );
@@ -79,7 +79,7 @@ describe("openPack — caminho feliz", () => {
   it("ganha o claim diário => 6 cartas, todas isNew quando a coleção estava vazia", async () => {
     prismaMock.packState.upsert.mockResolvedValue({ lastFreePackAt: null, extraPacks: 0 });
     prismaMock.packState.updateMany.mockResolvedValue({ count: 1 }); // ganhou o diário
-    prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0 });
+    prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0, loginStreak: 0 });
 
     const result = await openPack("u1");
 
@@ -102,6 +102,7 @@ describe("openPack — caminho feliz", () => {
     prismaMock.packState.findUniqueOrThrow.mockResolvedValue({
       lastFreePackAt: new Date(Date.now() - DAY / 24),
       extraPacks: 0,
+      loginStreak: 0,
     });
 
     const result = await openPack("u1");
@@ -116,7 +117,7 @@ describe("openPack — caminho feliz", () => {
   it("carta repetida => isNew false para a que o jogador já tinha", async () => {
     prismaMock.packState.upsert.mockResolvedValue({ lastFreePackAt: null, extraPacks: 0 });
     prismaMock.packState.updateMany.mockResolvedValue({ count: 1 });
-    prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0 });
+    prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0, loginStreak: 0 });
 
     const result = await openPack("u1", seededRng([0])); // rng previsível
     if (!result.ok) return;
@@ -127,7 +128,7 @@ describe("openPack — caminho feliz", () => {
     beforeEachReset();
     prismaMock.packState.upsert.mockResolvedValue({ lastFreePackAt: null, extraPacks: 0 });
     prismaMock.packState.updateMany.mockResolvedValue({ count: 1 });
-    prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0 });
+    prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0, loginStreak: 0 });
     prismaMock.userCard.findMany.mockResolvedValue([{ pokemonId: drawn[0] }]);
 
     const again = await openPack("u1", seededRng([0]));

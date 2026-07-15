@@ -6,11 +6,13 @@ import type { PackStateDTO } from "../ui/types";
 export function toPackStateDTO(row: {
   lastFreePackAt: Date | null;
   extraPacks: number;
+  loginStreak: number;
 }): PackStateDTO {
   return {
     canOpen: canOpenFree(row.lastFreePackAt) || row.extraPacks > 0,
     nextFreePackAt: nextFreePackAt(row.lastFreePackAt)?.toISOString() ?? null,
     extraPacks: row.extraPacks,
+    loginStreak: row.loginStreak,
   };
 }
 
@@ -23,8 +25,8 @@ export function toPackStateDTO(row: {
 export async function readPackState(userId: string): Promise<PackStateDTO> {
   const row = await prisma.packState.findUnique({
     where: { userId },
-    select: { lastFreePackAt: true, extraPacks: true },
+    select: { lastFreePackAt: true, extraPacks: true, loginStreak: true },
   });
 
-  return toPackStateDTO(row ?? { lastFreePackAt: null, extraPacks: 0 });
+  return toPackStateDTO(row ?? { lastFreePackAt: null, extraPacks: 0, loginStreak: 0 });
 }

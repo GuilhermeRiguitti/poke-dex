@@ -13,6 +13,8 @@ export { FREE_PACK_INTERVAL_MS } from "./domain/cooldown";
 // Query SÓ LEITURA — pode ser chamada do render de uma page.
 export { readPackState } from "./queries/readPackState";
 
-// Command — ESCREVE. Só rota de API ou Server Action.
+// Commands — ESCREVEM. Só rota de API ou Server Action.
 export { openPack } from "./commands/openPack";
 export type { OpenPackResult } from "./commands/openPack";
+export { checkInLogin } from "./commands/checkInLogin";
+export type { CheckInResult } from "./commands/checkInLogin";
