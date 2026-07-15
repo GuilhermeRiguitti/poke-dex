@@ -26,11 +26,11 @@ import {
 // page pode ser disparado por prefetch/prerender, e um throw ali entrega tela
 // de erro no lugar da página — não há estado de "carregando" pra segurar.
 //
-// Na prática o miss quase não acontece na coleção: capturar um pokémon é um
-// command (pokedex/commands/addCard), ele JÁ busca o pokémon na PokéAPI pra
-// validar, e agora grava o resultado aqui. Ou seja, tudo que o usuário tem na
-// coleção foi escrito no cache no momento da captura. A leitura da coleção é
-// hit por construção.
+// Na prática o miss quase não acontece na coleção: obter um pokémon é abrir um
+// pacote (packs/commands/openPack), que JÁ busca cada carta sorteada na PokéAPI
+// e grava o resultado aqui. Ou seja, tudo que o usuário tem na coleção foi
+// escrito no cache no momento da abertura. A leitura da coleção é hit por
+// construção.
 
 type CacheKey = `pokemon:${number}` | `move:${number}` | `type:${string}`;
 

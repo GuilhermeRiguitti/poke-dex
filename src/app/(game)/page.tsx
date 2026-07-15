@@ -1,43 +1,69 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/src/lib/auth";
-import { clampPage, listPokedexPage } from "@/src/modules/pokedex";
-import Pagination from "@/src/modules/pokedex/ui/Pagination";
-import PokedexGrid from "@/src/modules/pokedex/ui/PokedexGrid";
+import { PackIcon } from "@/src/components/icons";
+import { readPackState } from "@/src/modules/packs";
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>;
-}) {
-  const { page: pageParam } = await searchParams;
-  const page = clampPage(pageParam);
-
-  // O layout do grupo (game) também redireciona, mas layout e page renderizam
-  // em paralelo no App Router — a page precisa validar a sessão por conta própria.
+// A home é o (futuro) DASHBOARD. Por ora é um placeholder enxuto: saudação + o
+// status do pacote diário, que é o loop central do jogo, com atalho pra abrir.
+// O grid dos 1025 que morava aqui virou a rota /catalog (view-only). Widgets de
+// dashboard (coleção, histórico de batalha, streak) entram aqui depois.
+//
+// Page é servidor: lê o estado do pacote no banco e passa pintado. Sem "use
+// client", sem fetch de cliente, sem estado de loading.
+export default async function HomePage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
 
-  const { pokemons, capturedIds, totalPages } = await listPokedexPage(session.user.id, page);
+  const packState = await readPackState(session.user.id);
 
   return (
     <div className="pt-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-title text-3xl uppercase tracking-wide">
-            Poké<span className="text-energy">Dex</span>
-          </h1>
-          <p className="text-sm font-semibold text-ink-dim">
-            Capture pokémons para montar sua coleção e seu deck de batalha.
-          </p>
-        </div>
-        <p className="font-title text-sm tracking-wider text-ink-dim">
-          PÁGINA <span className="text-ink">{String(page).padStart(2, "0")}</span> / {totalPages}
+      <div className="mb-8">
+        <h1 className="font-title text-3xl uppercase tracking-wide">
+          Olá, <span className="text-energy">{session.user.name}</span>
+        </h1>
+        <p className="text-sm font-semibold text-ink-dim">
+          Seu dashboard está em construção. Enquanto isso, seu pacote te espera.
         </p>
       </div>
 
-      <PokedexGrid pokemons={pokemons} capturedIds={capturedIds} />
-      <Pagination page={page} totalPages={totalPages} />
+      <Link
+        href="/packs"
+        className="card-frame clip-card group flex max-w-md items-center gap-4 p-5"
+        style={{ "--type-c": "var(--color-flare)" } as React.CSSProperties}
+      >
+        <PackIcon
+          size={48}
+          className={`text-flare ${packState.canOpen ? "animate-playable-pulse" : ""}`}
+        />
+        <div className="flex-1">
+          <p className="font-title text-lg uppercase tracking-wide">
+            {packState.canOpen ? "Pacote disponível" : "Pacote em espera"}
+          </p>
+          <p className="text-sm font-semibold text-ink-dim">
+            {packState.canOpen
+              ? "Abra e ganhe 6 cartas."
+              : "Volte mais tarde para o próximo pacote grátis."}
+            {packState.extraPacks > 0 && (
+              <span className="text-gold"> · {packState.extraPacks} bônus</span>
+            )}
+          </p>
+        </div>
+        <span className="font-title text-2xl text-flare transition-transform group-hover:translate-x-1">
+          →
+        </span>
+      </Link>
+
+      <div className="clip-card mt-6 max-w-md border border-dashed border-edge p-6 text-center">
+        <p className="font-title text-sm uppercase tracking-wide text-ink-dim">
+          Dashboard em breve
+        </p>
+        <p className="mt-1 text-xs font-semibold text-ink-dim">
+          Coleção, histórico de batalhas e recompensas de login aparecerão aqui.
+        </p>
+      </div>
     </div>
   );
 }

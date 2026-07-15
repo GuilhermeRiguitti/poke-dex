@@ -28,6 +28,7 @@ model User {
   accounts  Account[]
   userCards UserCard[]
   decks     Deck[]
+  packState PackState?
 }
 
 model Session {
@@ -224,4 +225,22 @@ model MatchmakingQueueEntry {
   userId     String   @unique
   deckId     String
   enqueuedAt DateTime @default(now())
+}
+
+// ──────────────────────────────────────────────
+// Pacotes de cartas — a ÚNICA forma de obter pokémon (o "Capturar" direto
+// morreu). Estado por jogador do cooldown diário + pacotes-bônus. Uma linha
+// por usuário (userId é @id), pra o claim otimista do openPack caber num
+// updateMany condicionado — sem worker, dois cliques no "Abrir" não podem dar
+// dois pacotes (CLAUDE.md, regra 6).
+// ──────────────────────────────────────────────
+
+model PackState {
+  userId         String    @id
+  lastFreePackAt DateTime? // null = nunca abriu → 1º pacote disponível de cara (conta nova)
+  extraPacks     Int       @default(0) // pacotes-bônus prontos pra abrir (recompensa de login)
+  loginStreak    Int       @default(0)
+  lastCheckIn    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
