@@ -20,10 +20,10 @@ const loadBattleForResolve = vi.fn();
 const resolveIfDue = vi.fn();
 
 vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
-vi.mock("../commands/resolveTurn", () => ({ loadBattleForResolve, resolveIfDue }));
+vi.mock("@/src/modules/battle/commands/resolveTurn", () => ({ loadBattleForResolve, resolveIfDue }));
 
-const { getBattleState } = await import("./getBattleState");
-const { getBattleStatus } = await import("./getBattleStatus");
+const { getBattleState } = await import("@/src/modules/battle/queries/getBattleState");
+const { getBattleStatus } = await import("@/src/modules/battle/queries/getBattleStatus");
 
 const BATTLE = {
   id: "b1",

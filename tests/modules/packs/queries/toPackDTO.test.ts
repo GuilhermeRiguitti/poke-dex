@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { NormalizedPokemon } from "@/src/lib/pokeapi";
-import { toPackCardDTO } from "./toPackDTO";
+import { toPackCardDTO } from "@/src/modules/packs/queries/toPackDTO";
 
 // Um NormalizedPokemon "gordo": carrega o movepool inteiro e campos que a carta
 // não usa. O DTO NÃO pode deixar nada disso vazar pro cliente (regra do DTO no

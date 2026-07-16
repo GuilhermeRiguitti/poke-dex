@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateDamage } from "./damage";
+import { calculateDamage } from "@/src/modules/battle/domain/damage";
 import { makeMon, makeMove, sequenceRng } from "./testFixtures";
 
 // attacker: level 50, attack 100, tipo "fire"; defender: defense 100, tipo variável

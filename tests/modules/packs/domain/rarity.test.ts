@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bstOf, drawPack, PACK_SIZE, rarityTier, weightForBst } from "./rarity";
+import { bstOf, drawPack, PACK_SIZE, rarityTier, weightForBst } from "@/src/modules/packs/domain/rarity";
 
 describe("weightForBst", () => {
   it("é monotônico decrescente: BST maior => peso menor", () => {

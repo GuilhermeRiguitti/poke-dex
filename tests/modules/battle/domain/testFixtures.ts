@@ -1,4 +1,4 @@
-import { BattleMoveDef, BattlePokemonState, BattleSideState, BattleState } from "./types";
+import { BattleMoveDef, BattlePokemonState, BattleSideState, BattleState } from "@/src/modules/battle/domain/types";
 
 // Helpers só pra testes (engine.test.ts, damage.test.ts etc.): montam
 // estados de batalha com valores fake/redondos, sem tocar em PokéAPI nem

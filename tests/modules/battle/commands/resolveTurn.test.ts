@@ -21,12 +21,11 @@ const prismaMock = {
 vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
 
 // buildTypeChart bate na PokéAPI num cache miss — fora do teste.
-vi.mock("./buildTeamSnapshot", () => ({
+vi.mock("@/src/modules/battle/commands/buildTeamSnapshot", () => ({
   buildTypeChart: vi.fn(async () => ({})),
 }));
 
-const { tryResolveTurn, TURN_TIMEOUT_MS, MAX_MISSES, expiredTurnWindows } = await import(
-  "./resolveTurn"
+const { tryResolveTurn, TURN_TIMEOUT_MS, MAX_MISSES, expiredTurnWindows } = await import("@/src/modules/battle/commands/resolveTurn"
 );
 
 function pokemonRow(slot: number, currentHp = 100) {

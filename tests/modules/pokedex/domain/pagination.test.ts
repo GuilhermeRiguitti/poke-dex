@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_POKEMON, PAGE_SIZE, TOTAL_PAGES, clampPage, pageRange } from "./pagination";
+import { MAX_POKEMON, PAGE_SIZE, TOTAL_PAGES, clampPage, pageRange } from "@/src/modules/pokedex/domain/pagination";
 
 describe("clampPage", () => {
   // O ?page= é entrada do usuário: dá pra digitar qualquer coisa na URL. Isto

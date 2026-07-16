@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canOpenFree, FREE_PACK_INTERVAL_MS, nextFreePackAt } from "./cooldown";
+import { canOpenFree, FREE_PACK_INTERVAL_MS, nextFreePackAt } from "@/src/modules/packs/domain/cooldown";
 
 const T0 = new Date("2026-07-14T12:00:00.000Z");
 const now0 = T0.getTime();

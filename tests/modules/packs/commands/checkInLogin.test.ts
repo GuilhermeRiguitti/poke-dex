@@ -15,7 +15,7 @@ const prismaMock = {
 
 vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
 
-const { checkInLogin } = await import("./checkInLogin");
+const { checkInLogin } = await import("@/src/modules/packs/commands/checkInLogin");
 
 const d = (iso: string) => new Date(iso);
 const NOW = d("2026-07-14T12:00:00Z");

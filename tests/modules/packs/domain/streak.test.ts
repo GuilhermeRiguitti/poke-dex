@@ -5,7 +5,7 @@ import {
   earnsReward,
   nextStreak,
   STREAK_REWARD_CYCLE,
-} from "./streak";
+} from "@/src/modules/packs/domain/streak";
 
 // Datas em UTC puro pra fixar as fronteiras de dia.
 const d = (iso: string) => new Date(iso);

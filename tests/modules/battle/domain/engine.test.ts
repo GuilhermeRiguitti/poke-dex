@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { resolveTurn, STRUGGLE } from "./engine";
+import { resolveTurn, STRUGGLE } from "@/src/modules/battle/domain/engine";
 import { makeMon, makeMove, makeSide, makeState, sequenceRng, throwingRng } from "./testFixtures";
-import { TypeEffectivenessMap } from "./typeChart";
+import { TypeEffectivenessMap } from "@/src/modules/battle/domain/typeChart";
 
 const neutralChart: TypeEffectivenessMap = {};
 

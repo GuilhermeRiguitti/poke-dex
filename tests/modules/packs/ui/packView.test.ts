@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCountdown, packStatusView, rarityColor, rarityLabel } from "./packView";
+import { formatCountdown, packStatusView, rarityColor, rarityLabel } from "@/src/modules/packs/ui/packView";
 
 describe("rarityLabel / rarityColor", () => {
   it("rotula em PT", () => {

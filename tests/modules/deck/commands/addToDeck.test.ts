@@ -19,8 +19,8 @@ const prismaMock = {
 
 vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
 
-const { addToDeck } = await import("./addToDeck");
-const { DECK_LIMIT } = await import("../domain/rules");
+const { addToDeck } = await import("@/src/modules/deck/commands/addToDeck");
+const { DECK_LIMIT } = await import("@/src/modules/deck/domain/rules");
 
 beforeEach(() => {
   vi.clearAllMocks();

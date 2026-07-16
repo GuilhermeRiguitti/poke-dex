@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DECK_LIMIT } from "@/src/modules/deck/domain/rules";
-import { STAT_MAX, collectionView, detailView, dexNumber } from "./pokedexView";
-import type { CollectionDTO, PokemonCardDTO, PokemonDetailDTO } from "./types";
+import { STAT_MAX, collectionView, detailView, dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
+import type { CollectionDTO, PokemonCardDTO, PokemonDetailDTO } from "@/src/modules/pokedex/ui/types";
 
 function pokemon(id: number, name: string, types = ["normal"]): PokemonCardDTO {
   return {

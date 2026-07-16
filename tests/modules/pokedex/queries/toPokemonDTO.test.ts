@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { NormalizedPokemon } from "@/src/lib/pokeapi";
-import { DETAIL_MOVES_SHOWN, toPokemonCardDTO, toPokemonDetailDTO } from "./toPokemonDTO";
+import { DETAIL_MOVES_SHOWN, toPokemonCardDTO, toPokemonDetailDTO } from "@/src/modules/pokedex/queries/toPokemonDTO";
 
 // O NormalizedPokemon é o que a PokéAPI devolve depois de normalizado — e ele
 // é GRANDE. O movepool sozinho passa de 100 entradas pra boa parte dos pokémon,

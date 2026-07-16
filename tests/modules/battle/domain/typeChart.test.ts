@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { effectivenessMultiplier, TypeEffectivenessMap } from "./typeChart";
+import { effectivenessMultiplier, TypeEffectivenessMap } from "@/src/modules/battle/domain/typeChart";
 
 const chart: TypeEffectivenessMap = {
   fire: { grass: 2, water: 0.5, fire: 0.5 },

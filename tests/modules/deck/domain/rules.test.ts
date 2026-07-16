@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DECK_LIMIT, canToggleIntoDeck, isDeckFull } from "./rules";
+import { DECK_LIMIT, canToggleIntoDeck, isDeckFull } from "@/src/modules/deck/domain/rules";
 
 describe("isDeckFull", () => {
   it("é falso abaixo do limite e verdadeiro a partir dele", () => {

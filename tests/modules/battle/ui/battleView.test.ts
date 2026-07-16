@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveMySide, toLogLines, toScore, toTableMoves } from "./battleView";
-import type { BattleMoveDTO, BattlePokemonDTO, TurnLogDTO } from "./types";
+import { resolveMySide, toLogLines, toScore, toTableMoves } from "@/src/modules/battle/ui/battleView";
+import type { BattleMoveDTO, BattlePokemonDTO, TurnLogDTO } from "@/src/modules/battle/ui/types";
 
 // Essas regras moravam dentro do componente da página, então só dava pra
 // conferir olhando a tela. Agora são funções puras.

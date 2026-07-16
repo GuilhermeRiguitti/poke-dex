@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toBattleDTO } from "./toBattleDTO";
+import { toBattleDTO } from "@/src/modules/battle/queries/toBattleDTO";
 
 // A linha que tryResolveTurn devolve quando o turno AINDA NÃO resolveu (o caso
 // comum do polling: eu joguei, o oponente não) vem com `pendingMoves` dentro —

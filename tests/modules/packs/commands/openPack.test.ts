@@ -26,7 +26,7 @@ vi.mock("@/src/modules/pokedex", () => ({
   toPokemonCardDTO: () => ({ id: 0, name: "x", artworkUrl: null, iconUrl: null, types: [] }),
 }));
 
-const { openPack } = await import("./openPack");
+const { openPack } = await import("@/src/modules/packs/commands/openPack");
 
 const DAY = 24 * 60 * 60 * 1000;
 
