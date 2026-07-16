@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { auth } from "@/src/lib/auth";
 import { removeFromDeck } from "@/src/modules/deck";
 
-// DELETE /api/deck/[id] — tira um pokémon do deck (o id é do DeckCard).
+// DELETE /api/deck/[id] — tira um loadout do deck (o id é do DeckSlot).
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

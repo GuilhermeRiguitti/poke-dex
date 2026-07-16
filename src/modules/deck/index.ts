@@ -9,17 +9,20 @@
 // Só código de SERVIDOR aqui. Componentes ficam em ui/ e são importados pelas
 // pages por caminho direto (ver o mesmo comentário em battle/index.ts).
 
-export type { DeckDTO, DeckCardDTO, DeckSummaryDTO } from "./ui/types";
+export type { DeckDTO, DeckSlotDTO, DeckSlotCardDTO, DeckSummaryDTO, LearnsetMoveDTO } from "./ui/types";
 
-export { DECK_LIMIT, isDeckFull, canToggleIntoDeck } from "./domain/rules";
+export { DECK_LIMIT, CARDS_PER_SLOT, isDeckFull, canToggleIntoDeck } from "./domain/rules";
 
-// readDeck / countDeckCards / readDeckRoster só LEEM — podem ser chamadas do
+export { readLearnset } from "./queries/readLearnset";
+
+// readDeck / countDeckSlots / readDeckSlots só LEEM — podem ser chamadas do
 // render de uma page. getOrCreateDeck e getDeckSummary ESCREVEM (criam o deck
 // vazio no primeiro acesso) — ver o aviso em getDeckSummary.ts.
-export { readDeck, countDeckCards, readDeckRoster, getOrCreateDeck } from "./queries/readDeck";
+export { readDeck, countDeckSlots, readDeckSlots, getOrCreateDeck } from "./queries/readDeck";
+export type { DeckLoadoutSlot, DeckLoadoutCard } from "./queries/readDeck";
 export { getDeckSummary } from "./queries/getDeckSummary";
 
 export { addToDeck } from "./commands/addToDeck";
-export type { AddToDeckResult } from "./commands/addToDeck";
+export type { AddToDeckInput, AddToDeckResult } from "./commands/addToDeck";
 export { removeFromDeck } from "./commands/removeFromDeck";
 export type { RemoveFromDeckResult } from "./commands/removeFromDeck";

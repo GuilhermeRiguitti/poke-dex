@@ -376,14 +376,25 @@ lado do engine simultâneo antigo — o jogo atual segue vivo.
 verify") já está no `.env`; URL + publishable key vêm do MCP. Falta codar
 (policy `realtime.messages`, trigger, rota do token, cliente) — é a fatia A3.
 
-⏳ **Próxima fatia — A1-wiring (backend, verificável sem Realtime):** migration
-destrutiva (reset liberado) — `Battle` ganha `activeUserId`/round; `BattleAction`
-no lugar de `BattlePendingMove`; `DeckSlot`/`DeckSlotCard`; `BattlePokemon` montado
-de `UserPokemon`+nível (`deriveStats`) + 6 cartas. Reescrever buildTeamSnapshot
-(lê o espelho, não a PokéAPI ao vivo), enqueueBattle, submitMove→submitAction,
-resolveTurn com `applyDuelAction` (mesma trava otimista + transação). queries+DTO.
-Popular `UserPokemon` no packs. **Depois:** UI battle-room, A2 energia, A3
-reação+Realtime, Fase D.
+✅ **A1-wiring FEITO** (backend, verificado sem Realtime — `tsc` backend + `vitest`
+134 + `eslint` verdes): migration destrutiva `20260716140000_phaseA1_duel_wiring`
+(reset liberado, F3) — `Battle` ganha `round`/`activeUserId`; `BattleAction` no
+lugar de `BattlePendingMove`; `DeckSlot`/`DeckSlotCard`; `UserCard`/`DeckCard`
+CORTADOS (coleção = `UserPokemon`, deck = loadouts). `buildDuelSnapshot` lê o
+espelho local (não a PokéAPI ao vivo) e deriva stats por nível (`deriveStats`);
+`resolveTurn` usa `applyDuelAction` com trava otimista por `(activeUserId, round,
+status)` + transação; `submitMove`→`submitAction` ("é a sua vez" + carta);
+`enqueueBattle` seta iniciativa. `packs`→`UserPokemon` (pool do espelho);
+`pokedex/getCollection`/`removeCard` e o módulo `deck` migrados. queries+DTO novos
+(sem vazar a `BattleAction` pendente). **UI quebrada de propósito** (coleção, deck,
+battle-room) — é o follow-up abaixo.
+
+⏳ **Próxima fatia — UI do modelo novo (a fatia que a UI adiada exige):**
+(a) tela de montar deck/loadout (escolher 1 `UserPokemon` + 6 cartas do learnset,
+via `POST /api/deck` com `{userPokemonId, moveIds}`); (b) battle-room do turno
+alternado (de quem é a vez via `activeUserId`, barra de 6 cartas, timer);
+recolar coleção (`CollectionGrid`/`CollectionCardActions`) no `CollectionDTO` novo
+(`userPokemonId`/`level`). **Depois:** A2 energia, A3 reação+Realtime, Fase D.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta

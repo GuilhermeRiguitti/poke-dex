@@ -26,7 +26,6 @@ model User {
 
   sessions     Session[]
   accounts     Account[]
-  userCards    UserCard[]
   userPokemons UserPokemon[]
   decks        Deck[]
   packState    PackState?
@@ -73,30 +72,16 @@ model Verification {
 }
 
 // ──────────────────────────────────────────────
-// Game / user collection tables (JOGO ATUAL — simultâneo, 4 cartas)
+// Deck = loadouts do jogo NOVO (duelo tático 1×1) — Fase A.
 //
-// ATENÇÃO: a partir da Fase 0 (PLANO_JOGO.md), o projeto ESPELHA Pokémon/Move
-// nas tabelas `Pokemon`/`Move`/`PokemonMove` (ver a seção "Espelho da PokéAPI"
-// abaixo). A afirmação histórica de "nunca espelhar" foi revertida de propósito.
-// Estas tabelas (`UserCard`/`Deck`/`DeckCard`) são do jogo ANTIGO e seguem vivas
-// até a Fase A migrar a batalha; a coleção nova é `UserPokemon` + `DeckSlot`.
+// O jogo antigo (`UserCard`/`DeckCard`, simultâneo, 4 cartas fixas) foi CORTADO
+// nesta fase (reset autorizado, F3). A coleção agora é `UserPokemon` (com
+// nível/XP, ver abaixo) e o deck é uma lista de `DeckSlot`: cada slot é um
+// loadout — 1 `UserPokemon` + 6 cartas (skills) escolhidas do learnset dele.
 //
-// Aqui, `pokemonId` é o id público da PokéAPI salvo em texto plano (não há
-// conteúdo protegido por direitos autorais num inteiro sequencial, e
-// criptografá-lo quebraria índice/unique sem ganho real).
+// 1×1 (F1): a batalha usa o slot ativo; o schema fica pronto pra time (até 6
+// slots) numa fase futura. Ver PLANO_JOGO.md §5.
 // ──────────────────────────────────────────────
-
-model UserCard {
-  id        String   @id @default(cuid())
-  userId    String
-  pokemonId Int
-  addedAt   DateTime @default(now())
-
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deckCards DeckCard[]
-
-  @@unique([userId, pokemonId])
-}
 
 model Deck {
   id        String   @id @default(cuid())
@@ -105,20 +90,40 @@ model Deck {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deckCards DeckCard[]
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slots DeckSlot[]
 }
 
-model DeckCard {
-  id         String   @id @default(cuid())
-  deckId     String
-  userCardId String
-  addedAt    DateTime @default(now())
+// Um loadout do time: 1 UserPokemon + suas 6 cartas. `order` é a posição no
+// time (0..5); no 1×1 só o slot ativo entra em campo.
+model DeckSlot {
+  id            String @id @default(cuid())
+  deckId        String
+  userPokemonId String
+  order         Int
 
-  deck     Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  userCard UserCard @relation(fields: [userCardId], references: [id], onDelete: Cascade)
+  deck        Deck           @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  userPokemon UserPokemon    @relation(fields: [userPokemonId], references: [id], onDelete: Cascade)
+  cards       DeckSlotCard[]
 
-  @@unique([deckId, userCardId])
+  @@unique([deckId, order])
+  @@unique([deckId, userPokemonId]) // um pokémon não ocupa dois slots do mesmo deck
+}
+
+// As 6 skills escolhidas do learnset do pokémon do slot. `order` é a posição na
+// barra de golpes (0..5). A PK lógica é (deckSlotId, order) e (deckSlotId,
+// moveId) — não dá pra repetir carta nem pular posição.
+model DeckSlotCard {
+  id         String @id @default(cuid())
+  deckSlotId String
+  moveId     String
+  order      Int
+
+  deckSlot DeckSlot @relation(fields: [deckSlotId], references: [id], onDelete: Cascade)
+  move     Move     @relation(fields: [moveId], references: [id], onDelete: Cascade)
+
+  @@unique([deckSlotId, order])
+  @@unique([deckSlotId, moveId])
 }
 
 // ──────────────────────────────────────────────
@@ -163,6 +168,7 @@ model Move {
   fetchedAt   DateTime @default(now())
 
   learnedBy PokemonMove[]
+  deckCards DeckSlotCard[]
 }
 
 // Learnset (n:n): todo Pokémon tem acesso ao learnset inteiro que a API
@@ -195,8 +201,9 @@ model UserPokemon {
   xp         Int      @default(0)
   capturedAt DateTime @default(now())
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pokemon Pokemon @relation(fields: [pokemonId], references: [id])
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pokemon   Pokemon    @relation(fields: [pokemonId], references: [id])
+  deckSlots DeckSlot[]
 
   @@unique([userId, pokemonId])
 }
@@ -213,11 +220,19 @@ model PokeApiCache {
 }
 
 // ──────────────────────────────────────────────
-// Batalha PvP assíncrona (times via Deck, resolução por polling — sem
-// WebSocket, pra caber em deploy serverless padrão). Estado de cada
-// pokémon em partida é um snapshot congelado em JSON, montado uma única
-// vez a partir da PokéAPI quando a partida começa — depois disso a
-// partida roda inteiramente sobre o nosso banco.
+// Duelo tático 1×1 por turnos ALTERNADOS (PLANO_JOGO.md §3) — Fase A.
+//
+// Resolução por polling (resolve-na-leitura — sem worker no Vercel Hobby, ver
+// CLAUDE.md regra 5). O estado de cada pokémon em partida é um snapshot
+// congelado em JSON, montado uma única vez quando a partida começa (a partir do
+// espelho local Pokemon/Move + o nível do UserPokemon) — depois disso a partida
+// roda inteiramente sobre o nosso banco.
+//
+// Alternado (contraste com o simultâneo antigo): a partida tem `activeUserId`
+// (de quem é a vez) e avança por `round`. Cada rodada = os dois agem uma vez; a
+// iniciativa (quem começa) é por Speed (ver domain/duelInitiative.ts). A ação
+// pendente do jogador da vez é uma `BattleAction` (substitui o par
+// BattlePendingMove do simultâneo).
 // ──────────────────────────────────────────────
 
 enum BattleStatus {
@@ -226,15 +241,11 @@ enum BattleStatus {
   ABANDONED
 }
 
-enum BattleActionType {
-  MOVE
-  SWITCH
-}
-
 model Battle {
   id            String       @id @default(cuid())
   status        BattleStatus @default(IN_PROGRESS)
-  currentTurn   Int          @default(1)
+  round         Int          @default(1)
+  activeUserId  String? // de quem é a vez; setado no create e a cada ação resolvida
   turnStartedAt DateTime     @default(now())
   winnerId      String?
   createdAt     DateTime     @default(now())
@@ -242,7 +253,7 @@ model Battle {
 
   participants BattleParticipant[]
   turnLogs     BattleTurnLog[]
-  pendingMoves BattlePendingMove[]
+  actions      BattleAction[]
 }
 
 model BattleParticipant {
@@ -266,31 +277,33 @@ model BattlePokemon {
   name          String
   spriteUrl     String? @db.Text
   types         Json // string[]
-  level         Int     @default(50)
-  stats         Json // {attack,defense,specialAttack,specialDefense,speed} — hp fica em maxHp/currentHp
+  level         Int // vem de UserPokemon.level (não mais fixo em 50)
+  stats         Json // {attack,defense,specialAttack,specialDefense,speed} — derivados por deriveStats(baseStats, level); hp fica em maxHp/currentHp
   maxHp         Int
   currentHp     Int
   fainted       Boolean @default(false)
-  moves         Json // até 4: [{id,name,type,power,accuracy,damageClass,priority,maxPp,currentPp}]
+  moves         Json // até 6 cartas: [{id,name,type,power,accuracy,damageClass,priority,maxPp,currentPp}]
 
   participant BattleParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   @@unique([participantId, slot])
 }
 
-model BattlePendingMove {
-  id           String           @id @default(cuid())
-  battleId     String
-  userId       String
-  turnNumber   Int
-  actionType   BattleActionType
-  moveSlot     Int?
-  switchToSlot Int?
-  submittedAt  DateTime         @default(now())
+// A carta pendente do jogador da vez (substitui BattlePendingMove do
+// simultâneo). No alternado só o `activeUserId` age por turno; esta linha é a
+// carta que ele escolheu, consumida e apagada quando o turno resolve. O `round`
+// + `userId` a ancoram (uma ação por jogador por rodada).
+model BattleAction {
+  id        String   @id @default(cuid())
+  battleId  String
+  userId    String
+  round     Int
+  cardSlot  Int // 0..5 na barra de golpes
+  createdAt DateTime @default(now())
 
   battle Battle @relation(fields: [battleId], references: [id], onDelete: Cascade)
 
-  @@unique([battleId, userId, turnNumber])
+  @@unique([battleId, round, userId])
 }
 
 model BattleTurnLog {

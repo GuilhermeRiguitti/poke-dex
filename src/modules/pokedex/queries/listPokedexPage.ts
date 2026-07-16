@@ -17,11 +17,11 @@ import { toPokemonCardDTO } from "./toPokemonDTO";
 export async function listPokedexPage(userId: string, page: number): Promise<PokedexPageDTO> {
   const { offset, limit } = pageRange(page);
 
-  const [index, userCards] = await Promise.all([
+  const [index, userPokemons] = await Promise.all([
     fetchPokemonIndex(offset, limit),
-    prisma.userCard.findMany({
+    prisma.userPokemon.findMany({
       where: { userId },
-      select: { pokemonId: true },
+      select: { pokemon: { select: { pokemonApiId: true } } },
     }),
   ]);
 
@@ -35,6 +35,6 @@ export async function listPokedexPage(userId: string, page: number): Promise<Pok
     page,
     totalPages: TOTAL_PAGES,
     pokemons,
-    capturedIds: userCards.map((c) => c.pokemonId),
+    capturedIds: userPokemons.map((up) => up.pokemon.pokemonApiId),
   };
 }

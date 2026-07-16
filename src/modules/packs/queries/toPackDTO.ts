@@ -1,25 +1,19 @@
-import type { NormalizedPokemon } from "@/src/lib/pokeapi";
-import { toPokemonCardDTO } from "@/src/modules/pokedex";
+import type { PokemonCardDTO } from "@/src/modules/pokedex";
 import { bstOf, rarityTier } from "../domain/rarity";
 import type { PackCardDTO } from "../ui/types";
 
 /**
  * Uma carta sorteada → DTO pronto pra tela.
  *
- * O visual reusa `toPokemonCardDTO` do pokedex (whitelist de 5 campos), então o
- * movepool inteiro do NormalizedPokemon (~130 moves com url) NÃO trafega pro
- * cliente — mesma proteção de PESO que a coleção já tem. bst/rarity vêm do
- * domain, campo a campo. Nunca uma linha do Prisma nem o payload cru da PokéAPI.
+ * O visual (`card`) já vem montado do espelho local (Pokemon.name/spriteUrl/
+ * types) — packs não bate mais na PokéAPI (a coleção é UserPokemon, e o espelho
+ * tem tudo que a carta desenha). bst/rarity vêm do domain, campo a campo.
  */
-export function toPackCardDTO(
-  pokemonId: number,
-  pokemon: NormalizedPokemon | null,
-  isNew: boolean
-): PackCardDTO {
+export function toPackCardDTO(pokemonId: number, card: PokemonCardDTO | null, isNew: boolean): PackCardDTO {
   const bst = bstOf(pokemonId);
   return {
     pokemonId,
-    card: pokemon ? toPokemonCardDTO(pokemon) : null,
+    card,
     bst,
     rarity: rarityTier(bst),
     isNew,

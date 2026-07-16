@@ -19,9 +19,9 @@ const prismaMock = {
 vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
 vi.mock("@/src/modules/deck", () => ({
   DECK_LIMIT: 6,
-  readDeckRoster: vi.fn(async () => [{ pokemonId: 25 }]),
+  readDeckSlots: vi.fn(async () => [{ order: 0 }]),
 }));
-vi.mock("@/src/modules/battle/commands/buildTeamSnapshot", () => ({ buildTeamSnapshot: vi.fn(async () => []) }));
+vi.mock("@/src/modules/battle/commands/buildDuelSnapshot", () => ({ buildDuelSnapshot: vi.fn(async () => []) }));
 vi.mock("@/src/modules/battle/commands/resolveTurn", () => ({ tryResolveTurn: vi.fn() }));
 
 const { enqueueBattle } = await import("@/src/modules/battle/commands/enqueueBattle");

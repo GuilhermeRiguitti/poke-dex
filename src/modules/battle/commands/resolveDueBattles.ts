@@ -24,9 +24,9 @@ export interface ResolveDueSummary {
  * o relógio de servidor que faz o tempo passar mesmo sem ninguém olhando.
  *
  * Varre SÓ partidas cujo turno já estourou `TURN_TIMEOUT_MS`: são exatamente as
- * que nenhum request de jogador está mais empurrando. O caminho rápido (os dois
- * jogaram dentro do tempo) continua resolvendo no `submitMove` + polling — o
- * cron não precisa competir com ele, só cobrir o buraco de quando ninguém está lá.
+ * que nenhum request de jogador está mais empurrando. O caminho rápido (o
+ * jogador da vez jogou dentro do tempo) continua resolvendo no `submitAction` +
+ * polling — o cron só cobre o buraco de quando ninguém está lá.
  *
  * Cada partida resolve ISOLADA: uma que exploda (ex. cascade de um usuário
  * deletado no meio) não derruba a varredura das outras. E `resolveIfDue` já é

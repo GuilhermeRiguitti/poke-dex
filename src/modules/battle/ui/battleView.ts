@@ -1,181 +1,126 @@
-import type {
-  TableAttackEvent,
-  TableLogLine,
-  TableMove,
-  TablePokemon,
-  TableScore,
-} from "@/src/modules/battle/ui/BattleTable";
-import type { BattleDTO, BattlePokemonDTO, BattleSideLabelDTO, TurnLogDTO } from "./types";
+import type { BattleDTO, BattleEventDTO, BattlePokemonDTO, BattleStatusDTO } from "./types";
 
-// Traduz o DTO da partida para o que a <BattleTable> desenha.
-//
-// Tudo aqui é função pura: nenhum hook, nenhum fetch, nenhum React. É o que
-// permite testar as regras de apresentação (quem é "Você", o que vira KO, que
-// cor cada linha do log tem) sem montar componente nem canvas.
+// Mapear o BattleDTO -> o que a mesa do duelo desenha é função PURA, mora aqui e
+// tem teste (CLAUDE.md regra 4). Componente é costura. Contraste com o antigo
+// battleView (modelo simultâneo, time + troca, deletado): aqui é 1×1 alternado —
+// o meu pokémon, o do oponente, minha barra de 6 cartas, e de quem é a vez.
 
-// Qual lado eu sou. Precisa bater com a ordenação que o engine persistiu nos
-// eventos do turno — ver resolveTurn.ts: os lados são ordenados por userId.
-export function resolveMySide(
-  participants: { userId: string }[],
-  myUserId: string
-): BattleSideLabelDTO | null {
-  const [sideAUserId] = participants.map((p) => p.userId).sort();
-  if (!sideAUserId) return null;
-  return myUserId === sideAUserId ? "A" : "B";
+export interface DuelCardView {
+  slot: number; // cardSlot 0..5
+  name: string;
+  type: string;
+  power: number | null;
+  currentPp: number;
+  maxPp: number;
+  /** sem PP enquanto ainda há outra carta com PP → não jogável */
+  disabled: boolean;
 }
 
-export function toTablePokemon(pokemon: BattlePokemonDTO): TablePokemon {
+export interface DuelMonView {
+  name: string;
+  level: number;
+  spriteUrl: string | null;
+  types: string[];
+  currentHp: number;
+  maxHp: number;
+  hpPct: number; // 0..100
+  fainted: boolean;
+}
+
+export interface DuelLogLine {
+  key: string;
+  text: string;
+}
+
+export interface DuelView {
+  me: DuelMonView;
+  opp: DuelMonView;
+  cards: DuelCardView[];
+  isMyTurn: boolean;
+  round: number;
+  status: BattleStatusDTO;
+  isOver: boolean;
+  iWon: boolean;
+  logLines: DuelLogLine[];
+}
+
+function activeMon(p: BattleDTO["participants"][number]): BattlePokemonDTO | undefined {
+  return p.pokemons.find((m) => m.slot === p.activeSlot) ?? p.pokemons[0];
+}
+
+function toMonView(m: BattlePokemonDTO): DuelMonView {
+  const hpPct = m.maxHp > 0 ? Math.round((m.currentHp / m.maxHp) * 100) : 0;
   return {
-    slot: pokemon.slot,
-    name: pokemon.name,
-    spriteUrl: pokemon.spriteUrl,
-    types: pokemon.types,
-    maxHp: pokemon.maxHp,
-    currentHp: pokemon.currentHp,
-    fainted: pokemon.fainted,
+    name: m.name,
+    level: m.level,
+    spriteUrl: m.spriteUrl,
+    types: m.types,
+    currentHp: m.currentHp,
+    maxHp: m.maxHp,
+    hpPct,
+    fainted: m.fainted,
   };
 }
 
-export function toTableMoves(pokemon: BattlePokemonDTO): TableMove[] {
-  // `exhausted` espelha exatamente a regra do servidor (submitMove/engine): um
-  // golpe sem PP só é recusado enquanto SOBRAR outro golpe com PP. Se todos
-  // zeraram, o botão continua ativo de propósito — o engine cai no struggle, e
-  // desabilitar tudo deixaria o jogador sem ação nenhuma (= derrota por
-  // abandono depois de 3 turnos).
-  const hasUsableMove = pokemon.moves.some((m) => m.currentPp > 0);
-
-  return pokemon.moves.map((move) => ({
-    name: move.name,
-    type: move.type,
-    power: move.power,
-    accuracy: move.accuracy,
-    currentPp: move.currentPp,
-    maxPp: move.maxPp,
-    exhausted: move.currentPp <= 0 && hasUsableMove,
-  }));
-}
-
-export function toScore(me: BattlePokemonDTO[], opponent: BattlePokemonDTO[]): TableScore {
-  return {
-    myAlive: me.filter((p) => !p.fainted).length,
-    myTotal: me.length,
-    oppAlive: opponent.filter((p) => !p.fainted).length,
-    oppTotal: opponent.length,
-  };
-}
-
-// Os ataques do último turno, que a mesa usa pra animar dano/crit/miss.
-export function toTableEvents(
-  lastLog: TurnLogDTO | null,
-  mySide: BattleSideLabelDTO
-): TableAttackEvent[] | null {
-  if (!lastLog) return null;
-  return lastLog.events
-    .filter((e) => e.type === "attack")
-    .map((e) => ({
-      bySide: e.side === mySide ? ("mine" as const) : ("enemy" as const),
-      damage: e.damage,
-      missed: e.missed,
-      isCrit: e.isCrit,
-      effectiveness: e.effectiveness,
-    }));
-}
-
-function effectivenessSuffix(effectiveness: number): string {
-  if (effectiveness > 1) return " super";
-  if (effectiveness === 0) return " imune";
-  if (effectiveness < 1) return " pouco";
+function effLabel(eff: number): string {
+  if (eff === 0) return ", sem efeito";
+  if (eff > 1) return ", super eficaz";
+  if (eff > 0 && eff < 1) return ", pouco eficaz";
   return "";
 }
 
-function attackTone(isCrit: boolean, effectiveness: number): TableLogLine["tone"] {
-  if (isCrit) return "gold";
-  if (effectiveness > 1) return "ok";
-  if (effectiveness === 0) return "bad";
-  if (effectiveness < 1) return "warn";
-  return "ink";
+function eventText(ev: BattleEventDTO, myUserId: string): string | null {
+  if (ev.type === "roundStart") return `— Rodada ${ev.round} —`;
+  const who = ev.userId === myUserId ? "Você" : "Oponente";
+  if (ev.type === "hesitate") return `${who} hesitou (turno perdido).`;
+  // attack
+  if (ev.missed) return `${who} usou ${ev.cardName} — errou!`;
+  const crit = ev.isCrit ? ", crítico" : "";
+  const ko = ev.targetFainted ? " Nocaute!" : "";
+  return `${who} usou ${ev.cardName} (${ev.damage} de dano${effLabel(ev.effectiveness)}${crit}).${ko}`;
 }
 
-const LOG_TURNS = 3;
-
-// Log de ações do painel direito: últimos turnos, mais recente no topo.
-export function toLogLines(turnLogs: TurnLogDTO[], mySide: BattleSideLabelDTO): TableLogLine[] {
-  const lines: TableLogLine[] = [];
-  const turns = [...turnLogs].sort((a, b) => b.turnNumber - a.turnNumber).slice(0, LOG_TURNS);
-
-  for (const turn of turns) {
-    lines.push({ text: `— TURNO ${String(turn.turnNumber).padStart(2, "0")} —`, tone: "gold" });
-
-    for (const event of turn.events) {
-      const who = event.side === mySide ? "Você" : "Inimigo";
-
-      if (event.type === "switch") {
-        lines.push({
-          text: `${who} → ${event.pokemonName.toUpperCase()}`,
-          tone: event.side === mySide ? "energy" : "enemy",
-        });
-      } else if (event.type === "attack") {
-        const move = event.moveName.replace(/-/g, " ").toUpperCase();
-        if (event.missed) {
-          lines.push({ text: `${who}: ${move} errou`, tone: "inkDim" });
-        } else {
-          const crit = event.isCrit ? " crit" : "";
-          const ko = event.targetFainted ? " KO!" : "";
-          lines.push({
-            text: `${who}: ${move} ${event.damage}${crit}${effectivenessSuffix(event.effectiveness)}${ko}`,
-            tone: attackTone(event.isCrit, event.effectiveness),
-          });
-        }
-      } else {
-        lines.push({ text: `${who}: sem ação`, tone: "inkDim" });
-      }
-    }
-  }
-
-  return lines;
-}
-
-export interface BattleView {
-  mySide: BattleSideLabelDTO;
-  myActive: TablePokemon;
-  oppActive: TablePokemon;
-  bench: TablePokemon[];
-  moves: TableMove[];
-  score: TableScore;
-  logLines: TableLogLine[];
-  lastTurnEvents: TableAttackEvent[] | null;
-  lastTurnNumber: number;
-  needsSwitch: boolean;
-  isOver: boolean;
-  iWon: boolean;
-}
-
-// Um único ponto onde o DTO vira "o que a mesa desenha".
-export function selectBattleView(battle: BattleDTO, myUserId: string): BattleView | null {
-  const mySide = resolveMySide(battle.participants, myUserId);
+/** BattleDTO -> DuelView, do ponto de vista de `myUserId`. null se eu não estou nela. */
+export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | null {
   const me = battle.participants.find((p) => p.userId === myUserId);
-  const opponent = battle.participants.find((p) => p.userId !== myUserId);
-  if (!mySide || !me || !opponent) return null;
+  const opp = battle.participants.find((p) => p.userId !== myUserId);
+  if (!me || !opp) return null;
 
-  const myActive = me.pokemons.find((p) => p.slot === me.activeSlot);
-  const oppActive = opponent.pokemons.find((p) => p.slot === opponent.activeSlot);
-  if (!myActive || !oppActive) return null;
+  const myMon = activeMon(me);
+  const oppMon = activeMon(opp);
+  if (!myMon || !oppMon) return null;
 
-  const lastLog = battle.turnLogs[0] ?? null;
+  const someUsable = myMon.moves.some((mv) => mv.currentPp > 0);
+  const cards: DuelCardView[] = myMon.moves.map((mv, i) => ({
+    slot: i,
+    name: mv.name,
+    type: mv.type,
+    power: mv.power,
+    currentPp: mv.currentPp,
+    maxPp: mv.maxPp,
+    disabled: mv.currentPp <= 0 && someUsable,
+  }));
+
   const isOver = battle.status !== "IN_PROGRESS";
 
+  // turnLogs vêm desc por turnNumber; achata em ordem cronológica pro log.
+  const logLines: DuelLogLine[] = [];
+  for (const log of [...battle.turnLogs].sort((a, b) => a.turnNumber - b.turnNumber)) {
+    log.events.forEach((ev, i) => {
+      const text = eventText(ev, myUserId);
+      if (text) logLines.push({ key: `${log.turnNumber}-${i}`, text });
+    });
+  }
+
   return {
-    mySide,
-    myActive: toTablePokemon(myActive),
-    oppActive: toTablePokemon(oppActive),
-    bench: me.pokemons.filter((p) => p.slot !== me.activeSlot).map(toTablePokemon),
-    moves: toTableMoves(myActive),
-    score: toScore(me.pokemons, opponent.pokemons),
-    logLines: toLogLines(battle.turnLogs, mySide),
-    lastTurnEvents: toTableEvents(lastLog, mySide),
-    lastTurnNumber: lastLog?.turnNumber ?? 0,
-    needsSwitch: myActive.fainted,
+    me: toMonView(myMon),
+    opp: toMonView(oppMon),
+    cards,
+    isMyTurn: !isOver && battle.activeUserId === myUserId,
+    round: battle.round,
+    status: battle.status,
     isOver,
-    iWon: isOver && battle.winnerId === myUserId,
+    iWon: battle.winnerId === myUserId,
+    logLines,
   };
 }

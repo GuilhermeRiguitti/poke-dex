@@ -1,8 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
-import { DECK_LIMIT, readDeckRoster } from "@/src/modules/deck";
+import { DECK_LIMIT, readDeckSlots } from "@/src/modules/deck";
+import { computeInitiative } from "../domain/duelInitiative";
 import type { BattlePokemonState } from "../domain/types";
-import { buildTeamSnapshot } from "./buildTeamSnapshot";
+import { buildDuelSnapshot } from "./buildDuelSnapshot";
 import { tryResolveTurn } from "./resolveTurn";
 
 const MAX_MATCH_ATTEMPTS = 3;
@@ -28,8 +29,8 @@ function toPokemonCreateInput(
 
 // Entra na fila de matchmaking; pareia na hora se possível (POST /api/battle/queue)
 export async function enqueueBattle(userId: string, deckId: string) {
-  const roster = await readDeckRoster(userId, deckId, DECK_LIMIT);
-  if (roster.length === 0) return { error: "empty_deck" as const };
+  const slots = await readDeckSlots(userId, deckId, DECK_LIMIT);
+  if (slots.length === 0) return { error: "empty_deck" as const };
 
   // Já estou numa partida em andamento? Então é pra lá que eu volto — não entro
   // na fila de novo.
@@ -83,15 +84,15 @@ export async function enqueueBattle(userId: string, deckId: string) {
 
   await prisma.matchmakingQueueEntry.deleteMany({ where: { userId } });
 
-  let teamA: Awaited<ReturnType<typeof buildTeamSnapshot>>;
-  let teamB: Awaited<ReturnType<typeof buildTeamSnapshot>>;
+  let teamA: Awaited<ReturnType<typeof buildDuelSnapshot>>;
+  let teamB: Awaited<ReturnType<typeof buildDuelSnapshot>>;
   try {
     [teamA, teamB] = await Promise.all([
-      buildTeamSnapshot(userId, deckId),
-      buildTeamSnapshot(opponent.userId, opponent.deckId),
+      buildDuelSnapshot(userId, deckId),
+      buildDuelSnapshot(opponent.userId, opponent.deckId),
     ]);
   } catch (err) {
-    console.error("buildTeamSnapshot failed:", err);
+    console.error("buildDuelSnapshot failed:", err);
     // Devolve o oponente pra fila pra não deixar ele travado esperando.
     await prisma.matchmakingQueueEntry.upsert({
       where: { userId: opponent.userId },
@@ -101,8 +102,17 @@ export async function enqueueBattle(userId: string, deckId: string) {
     return { error: "snapshot_failed" as const };
   }
 
+  // Iniciativa da rodada 1: quem tem Speed efetivo maior começa (desempate
+  // determinístico por userId). É quem entra como activeUserId. Ver §3.1.
+  const order = computeInitiative(
+    { userId, active: teamA[0].state },
+    { userId: opponent.userId, active: teamB[0].state }
+  );
+
   const battle = await prisma.battle.create({
     data: {
+      round: 1,
+      activeUserId: order[0],
       participants: {
         create: [
           {

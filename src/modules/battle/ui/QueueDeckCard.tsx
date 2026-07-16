@@ -17,14 +17,14 @@ export default function QueueDeckCard({
   onSearch: () => void;
   onCancel: () => void;
 }) {
-  const isEmpty = deck.pokemonCount === 0;
+  const isEmpty = deck.slotCount === 0;
 
   return (
     <div className="clip-card mt-8 w-full max-w-sm border border-edge bg-panel p-6">
       <p className="text-sm font-semibold">
         <span className="text-ink-dim">Deck:</span>{" "}
         <span className="font-title tracking-wide">{deck.name}</span>{" "}
-        <span className="text-ink-dim">— {deck.pokemonCount}/6 pokémons</span>
+        <span className="text-ink-dim">— {deck.slotCount}/6 loadouts</span>
       </p>
 
       {isEmpty && (

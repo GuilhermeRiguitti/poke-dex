@@ -14,19 +14,20 @@ export function dexNumber(pokemonId: number): string {
 }
 
 export interface CollectionCardView {
-  userCardId: string;
+  userPokemonId: string;
   pokemonId: number;
   dexNumber: string;
-  /** o nome, ou "#0025" quando a PokéAPI não devolveu o pokémon */
+  /** o nome, ou "#0025" quando a espécie não veio do espelho */
   name: string;
   artworkUrl: string | null;
   types: string[];
   /** tipo que pinta a moldura (--type-c). "normal" quando não se sabe. */
   accentType: string;
+  level: number;
   inDeck: boolean;
-  /** id do DeckCard, pra remover. null quando não está no deck. */
-  deckCardId: string | null;
-  /** false = botão de deck desabilitado (deck cheio e este não está nele) */
+  /** id do DeckSlot, pra remover do deck. null quando não está no deck. */
+  deckSlotId: string | null;
+  /** false = não dá pra montar mais um loadout (deck cheio e este não está nele) */
   canToggle: boolean;
 }
 
@@ -35,6 +36,7 @@ export interface DeckSlotView {
   pokemonId: number | null;
   name: string | null;
   iconUrl: string | null;
+  level: number | null;
 }
 
 export interface CollectionView {
@@ -47,46 +49,45 @@ export interface CollectionView {
 }
 
 export function collectionView(collection: CollectionDTO): CollectionView {
-  const deckCards = collection.deck?.cards ?? [];
-  const deckCount = deckCards.length;
+  const slots = collection.deck?.slots ?? [];
+  const deckCount = slots.length;
 
-  // userCardId -> id do DeckCard. É o que diz se uma carta está no deck, e com
-  // que id ela sai dele.
-  const deckCardByUserCard = new Map(deckCards.map((dc) => [dc.userCardId, dc.id]));
+  // userPokemonId -> id do DeckSlot. Diz se um pokémon está no deck e com que id
+  // o loadout dele sai.
+  const slotByUserPokemon = new Map(slots.map((s) => [s.userPokemonId, s.id]));
 
   const cards: CollectionCardView[] = collection.cards.map((card) => {
-    const deckCardId = deckCardByUserCard.get(card.userCardId) ?? null;
-    const inDeck = deckCardId !== null;
+    const deckSlotId = slotByUserPokemon.get(card.userPokemonId) ?? null;
+    const inDeck = deckSlotId !== null;
 
     return {
-      userCardId: card.userCardId,
+      userPokemonId: card.userPokemonId,
       pokemonId: card.pokemonId,
       dexNumber: dexNumber(card.pokemonId),
-      // A carta existe mesmo se a PokéAPI não respondeu — o jogador TEM esse
-      // pokémon. Sem nome, cai no número da dex; sem sprite, o card desenha
-      // sem sprite. O que não pode é a carta sumir da coleção por erro de rede.
       name: card.pokemon?.name ?? dexNumber(card.pokemonId),
       artworkUrl: card.pokemon?.artworkUrl ?? null,
       types: card.pokemon?.types ?? [],
       accentType: card.pokemon?.types[0] ?? "normal",
+      level: card.level,
       inDeck,
-      deckCardId,
+      deckSlotId,
       canToggle: canToggleIntoDeck(deckCount, inDeck),
     };
   });
 
-  const cardByUserCardId = new Map(collection.cards.map((c) => [c.userCardId, c]));
+  const cardByUserPokemonId = new Map(collection.cards.map((c) => [c.userPokemonId, c]));
 
   const deckSlots: DeckSlotView[] = Array.from({ length: DECK_LIMIT }, (_, i) => {
-    const deckCard = deckCards[i];
-    const card = deckCard ? cardByUserCardId.get(deckCard.userCardId) : undefined;
+    const slot = slots[i];
+    const card = slot ? cardByUserPokemonId.get(slot.userPokemonId) : undefined;
 
-    if (!card) return { pokemonId: null, name: null, iconUrl: null };
+    if (!card) return { pokemonId: null, name: null, iconUrl: null, level: null };
 
     return {
       pokemonId: card.pokemonId,
       name: card.pokemon?.name ?? dexNumber(card.pokemonId),
       iconUrl: card.pokemon?.iconUrl ?? null,
+      level: card.level,
     };
   });
 

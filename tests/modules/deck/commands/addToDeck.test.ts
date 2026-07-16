@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// addToDeck é a ponte entre a regra do deck (máximo 6) e o banco. A regra pura
-// já tem teste (domain/rules.test.ts); o que falta cobrir é o que SÓ quebra em
-// produção: o jogador clica "+ Deck" em dois cards ao mesmo tempo (ou dá
-// duplo-clique) e duas lambdas chegam aqui juntas.
-//
-// O que estes testes travam: quem NÃO pode entrar no deck não escreve NADA.
+// addToDeck monta um loadout (1 UserPokemon + cartas do learnset). A regra pura
+// do limite (máx. 6 slots) já tem teste em domain/rules.test.ts; o que só quebra
+// em produção é a concorrência: dois requests juntos (duas abas/duplo-clique)
+// não podem estourar o deck pra 7 nem montar carta fora do learnset.
 
 const tx = {
-  deckCard: { findUnique: vi.fn(), count: vi.fn(), upsert: vi.fn() },
+  deckSlot: { findUnique: vi.fn(), count: vi.fn(), upsert: vi.fn(), findUniqueOrThrow: vi.fn() },
+  deckSlotCard: { createMany: vi.fn() },
 };
 
 const prismaMock = {
-  userCard: { findUnique: vi.fn() },
+  userPokemon: { findUnique: vi.fn() },
+  pokemonMove: { count: vi.fn() },
   deck: { findFirst: vi.fn(), create: vi.fn() },
   $transaction: vi.fn(),
 };
@@ -22,87 +22,97 @@ vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
 const { addToDeck } = await import("@/src/modules/deck/commands/addToDeck");
 const { DECK_LIMIT } = await import("@/src/modules/deck/domain/rules");
 
+const MOVES = ["m0", "m1", "m2", "m3", "m4", "m5"];
+const input = { userPokemonId: "up-1", moveIds: MOVES };
+
 beforeEach(() => {
   vi.clearAllMocks();
 
-  prismaMock.userCard.findUnique.mockResolvedValue({ id: "uc-1", userId: "alpha" });
+  prismaMock.userPokemon.findUnique.mockResolvedValue({ id: "up-1", userId: "alpha", pokemonId: "species-1" });
+  prismaMock.pokemonMove.count.mockResolvedValue(MOVES.length); // todas no learnset
   prismaMock.deck.findFirst.mockResolvedValue({ id: "deck-1" });
   prismaMock.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) => fn(tx));
 
-  tx.deckCard.findUnique.mockResolvedValue(null); // não está no deck
-  tx.deckCard.count.mockResolvedValue(0);
-  tx.deckCard.upsert.mockResolvedValue({
-    id: "dc-1",
-    userCardId: "uc-1",
-    userCard: { pokemonId: 25 },
+  tx.deckSlot.findUnique.mockResolvedValue(null); // ainda não está no deck
+  tx.deckSlot.count.mockResolvedValue(0);
+  tx.deckSlot.upsert.mockResolvedValue({ id: "slot-1" });
+  tx.deckSlotCard.createMany.mockResolvedValue({ count: MOVES.length });
+  tx.deckSlot.findUniqueOrThrow.mockResolvedValue({
+    id: "slot-1",
+    userPokemonId: "up-1",
+    order: 0,
+    cards: MOVES.map((moveId, i) => ({ moveId, order: i })),
   });
 });
 
 describe("addToDeck", () => {
-  it("põe o pokémon no deck quando há vaga", async () => {
-    const result = await addToDeck("alpha", "uc-1");
+  it("monta o loadout quando há vaga", async () => {
+    const result = await addToDeck("alpha", input);
 
-    expect(result).toEqual({
-      ok: true,
-      card: { id: "dc-1", userCardId: "uc-1", pokemonId: 25 },
-    });
-    expect(tx.deckCard.upsert).toHaveBeenCalledOnce();
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.slot.userPokemonId).toBe("up-1");
+    expect(result.slot.cards).toHaveLength(6);
+    expect(tx.deckSlot.upsert).toHaveBeenCalledOnce();
+    expect(tx.deckSlotCard.createMany).toHaveBeenCalledOnce();
   });
 
   // O CASO QUE IMPORTA: deck cheio. Não basta devolver erro — não pode SOBRAR
-  // escrita nenhuma. Se o upsert rodasse "mesmo assim", o deck iria a 7.
+  // escrita. Se o upsert rodasse "mesmo assim", o deck iria a 7.
   it("com o deck cheio, recusa e NÃO escreve nada", async () => {
-    tx.deckCard.count.mockResolvedValue(DECK_LIMIT);
+    tx.deckSlot.count.mockResolvedValue(DECK_LIMIT);
 
-    const result = await addToDeck("alpha", "uc-1");
+    const result = await addToDeck("alpha", input);
 
     expect(result).toEqual({ ok: false, error: "deck_full" });
-    expect(tx.deckCard.upsert).not.toHaveBeenCalled();
+    expect(tx.deckSlot.upsert).not.toHaveBeenCalled();
+    expect(tx.deckSlotCard.createMany).not.toHaveBeenCalled();
   });
 
-  // A contagem tem que rodar DENTRO da transação, junto com o insert. Se ela
-  // rodasse fora, duas lambdas concorrentes leriam "5" ao mesmo tempo e as
-  // DUAS inseririam — deck com 7. Este teste prova que o count e o upsert veem
-  // o mesmo `tx`, e não o client solto.
+  // Contagem e insert na MESMA transação: se a contagem rodasse fora, duas
+  // lambdas leriam "5" ao mesmo tempo e as duas inseririam — deck com 7.
   it("checa o limite e insere dentro da MESMA transação", async () => {
-    await addToDeck("alpha", "uc-1");
+    await addToDeck("alpha", input);
 
     expect(prismaMock.$transaction).toHaveBeenCalledOnce();
-    expect(tx.deckCard.count).toHaveBeenCalled();
-    expect(tx.deckCard.upsert).toHaveBeenCalled();
+    expect(tx.deckSlot.count).toHaveBeenCalled();
+    expect(tx.deckSlot.upsert).toHaveBeenCalled();
   });
 
-  // Duplo-clique no MESMO card com o deck já cheio: ele JÁ está no deck, então
-  // não está entrando ninguém novo — o limite não se aplica, e o upsert (na
-  // constraint @unique) não cria uma segunda linha.
-  it("um card que já está no deck não esbarra no limite", async () => {
-    tx.deckCard.findUnique.mockResolvedValue({ id: "dc-1" });
-    tx.deckCard.count.mockResolvedValue(DECK_LIMIT);
+  // Remontar um pokémon que JÁ está no deck não esbarra no limite (está só
+  // trocando as cartas do slot existente).
+  it("um pokémon que já está no deck não esbarra no limite", async () => {
+    tx.deckSlot.findUnique.mockResolvedValue({ id: "slot-1", order: 2 });
+    tx.deckSlot.count.mockResolvedValue(DECK_LIMIT);
 
-    const result = await addToDeck("alpha", "uc-1");
+    const result = await addToDeck("alpha", input);
 
     expect(result.ok).toBe(true);
-    expect(tx.deckCard.count).not.toHaveBeenCalled();
+    expect(tx.deckSlot.count).not.toHaveBeenCalled();
   });
 
-  // Um userCardId de OUTRO jogador tem que dar a mesma resposta que um id que
-  // não existe — e, de novo, não pode escrever nada.
-  it("recusa o card de outro dono sem escrever nada", async () => {
-    prismaMock.userCard.findUnique.mockResolvedValue({ id: "uc-1", userId: "beta" });
+  it("recusa o pokémon de outro dono sem escrever nada", async () => {
+    prismaMock.userPokemon.findUnique.mockResolvedValue({ id: "up-1", userId: "beta", pokemonId: "species-1" });
 
-    const result = await addToDeck("alpha", "uc-1");
+    const result = await addToDeck("alpha", input);
 
     expect(result).toEqual({ ok: false, error: "not_found" });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
-    expect(tx.deckCard.upsert).not.toHaveBeenCalled();
   });
 
-  it("recusa um card inexistente sem escrever nada", async () => {
-    prismaMock.userCard.findUnique.mockResolvedValue(null);
+  it("recusa cartas fora do learnset da espécie", async () => {
+    prismaMock.pokemonMove.count.mockResolvedValue(MOVES.length - 1); // uma não é aprendível
 
-    const result = await addToDeck("alpha", "uc-1");
+    const result = await addToDeck("alpha", input);
 
-    expect(result).toEqual({ ok: false, error: "not_found" });
+    expect(result).toEqual({ ok: false, error: "invalid_cards" });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("recusa loadout sem carta nenhuma", async () => {
+    const result = await addToDeck("alpha", { userPokemonId: "up-1", moveIds: [] });
+
+    expect(result).toEqual({ ok: false, error: "invalid_cards" });
+    expect(prismaMock.userPokemon.findUnique).not.toHaveBeenCalled();
   });
 });

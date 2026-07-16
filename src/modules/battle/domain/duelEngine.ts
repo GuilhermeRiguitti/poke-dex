@@ -1,9 +1,28 @@
 import { calculateDamage } from "./damage";
-import { STRUGGLE } from "./engine";
 import { computeInitiative } from "./duelInitiative";
 import { effectivenessMultiplier, TypeEffectivenessMap } from "./typeChart";
-import type { BattlePokemonState } from "./types";
+import type { BattleMoveDef, BattlePokemonState } from "./types";
 import type { DuelAction, DuelEvent, DuelSide, DuelState } from "./duelTypes";
+
+/**
+ * Carta de último recurso, quando NENHUMA carta do ativo tem PP. Sem isso, um
+ * pokémon sem PP não teria ação nenhuma e ficaria travado (acumulando falta por
+ * não jogar = derrota por abandono). Não vem da PokéAPI: os valores são nossos
+ * (o struggle real tem recuo, que este sistema não modela). maxPp/currentPp 0 e
+ * é um objeto COMPARTILHADO — quem usa não pode decrementá-lo (viraria -1 e
+ * vazaria entre partidas), por isso a guarda `currentPp > 0` antes de gastar.
+ */
+export const STRUGGLE: BattleMoveDef = {
+  id: 0,
+  name: "struggle",
+  type: "normal",
+  power: 50,
+  accuracy: null, // sempre acerta
+  damageClass: "physical",
+  priority: 0,
+  maxPp: 0,
+  currentPp: 0,
+};
 
 // Motor PURO do duelo alternado (PLANO_JOGO.md §3) — Fase A1. Recebe um
 // DuelState + UMA ação e devolve o novo estado. Sem banco, sem rede, sem

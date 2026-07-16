@@ -1,8 +1,8 @@
-import { BattleMoveDef, BattlePokemonState, BattleSideState, BattleState } from "@/src/modules/battle/domain/types";
+import { BattleMoveDef, BattlePokemonState } from "@/src/modules/battle/domain/types";
 
-// Helpers só pra testes (engine.test.ts, damage.test.ts etc.): montam
-// estados de batalha com valores fake/redondos, sem tocar em PokéAPI nem
-// banco. Nada aqui reflete dados reais de pokémon.
+// Helpers só pra testes (duelEngine.test.ts, damage.test.ts): montam pokémon e
+// cartas de batalha com valores fake/redondos, sem tocar em PokéAPI nem banco.
+// Nada aqui reflete dados reais de pokémon.
 
 let nextMoveId = 1;
 
@@ -41,24 +41,6 @@ export function makeMon(overrides: Partial<BattlePokemonState> = {}): BattlePoke
     currentHp: maxHp,
     fainted: false,
     moves: [makeMove()],
-    ...overrides,
-  };
-}
-
-export function makeSide(overrides: Partial<BattleSideState> = {}): BattleSideState {
-  return {
-    userId: "user-a",
-    activeSlot: 1,
-    team: [makeMon()],
-    ...overrides,
-  };
-}
-
-export function makeState(overrides: Partial<BattleState> = {}): BattleState {
-  return {
-    turnNumber: 1,
-    sideA: makeSide({ userId: "user-a" }),
-    sideB: makeSide({ userId: "user-b" }),
     ...overrides,
   };
 }

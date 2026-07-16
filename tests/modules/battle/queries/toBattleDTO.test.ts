@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { toBattleDTO } from "@/src/modules/battle/queries/toBattleDTO";
 
-// A linha que tryResolveTurn devolve quando o turno AINDA NÃO resolveu (o caso
-// comum do polling: eu joguei, o oponente não) vem com `pendingMoves` dentro —
-// as jogadas dos dois lados deste turno. As rotas fazem NextResponse.json()
-// nisso. Sem o mapper, dava pra abrir o devtools e ler o move do oponente
-// antes do turno virar.
+// A linha que resolveIfDue devolve pode vir com `actions` dentro — a carta que o
+// jogador da vez escolheu e que ainda NÃO resolveu. As rotas fazem
+// NextResponse.json() nisso. Sem o mapper, dava pra abrir o devtools e ler a
+// carta pendente do oponente antes do turno virar. E os `stats` de cada pokémon
+// (informação de jogo do inimigo) também não podem vazar.
 function rowMidTurn() {
   return {
     id: "b1",
     status: "IN_PROGRESS",
-    currentTurn: 3,
+    round: 3,
+    activeUserId: "zeta",
     winnerId: null,
     turnStartedAt: new Date(),
     participants: [
@@ -26,7 +27,7 @@ function rowMidTurn() {
             name: "pikachu",
             spriteUrl: null,
             types: ["electric"],
-            level: 50,
+            level: 12,
             stats: { hp: 110, attack: 90, defense: 70, specialAttack: 100, specialDefense: 80, speed: 130 },
             maxHp: 110,
             currentHp: 60,
@@ -48,23 +49,21 @@ function rowMidTurn() {
         ],
       },
     ],
-    turnLogs: [{ turnNumber: 2, events: [{ type: "noAction", side: "B" }] }],
-    // O oponente já escolheu o golpe dele neste turno.
-    pendingMoves: [
-      { id: "pm1", battleId: "b1", userId: "zeta", turnNumber: 3, actionType: "MOVE", moveSlot: 2, switchToSlot: null },
-    ],
+    turnLogs: [{ turnNumber: 3, events: [{ type: "hesitate", userId: "zeta" }] }],
+    // O oponente da vez já escolheu a carta dele neste round.
+    actions: [{ id: "act1", battleId: "b1", userId: "zeta", round: 3, cardSlot: 2 }],
   };
 }
 
 describe("toBattleDTO", () => {
-  it("não vaza pendingMoves — a jogada do oponente no turno em aberto", () => {
+  it("não vaza `actions` — a carta pendente do jogador da vez", () => {
     const dto = toBattleDTO(rowMidTurn());
 
-    expect(dto).not.toHaveProperty("pendingMoves");
-    // Blindagem de verdade: o moveSlot do oponente não pode existir em lugar
-    // NENHUM do payload serializado, nem aninhado.
-    expect(JSON.stringify(dto)).not.toContain("pendingMoves");
-    expect(JSON.stringify(dto)).not.toContain("zeta");
+    expect(dto).not.toHaveProperty("actions");
+    // Blindagem de verdade: o cardSlot pendente não pode existir em lugar NENHUM
+    // do payload serializado, nem aninhado.
+    expect(JSON.stringify(dto)).not.toContain("actions");
+    expect(JSON.stringify(dto)).not.toContain("cardSlot");
   });
 
   it("não vaza os stats de batalha dos pokémons", () => {
@@ -77,12 +76,14 @@ describe("toBattleDTO", () => {
     const dto = toBattleDTO(rowMidTurn());
     const pokemon = dto.participants[0].pokemons[0];
 
-    expect(dto.currentTurn).toBe(3);
+    expect(dto.round).toBe(3);
+    expect(dto.activeUserId).toBe("zeta");
     expect(dto.status).toBe("IN_PROGRESS");
     expect(pokemon.name).toBe("pikachu");
+    expect(pokemon.level).toBe(12);
     expect(pokemon.currentHp).toBe(60);
     expect(pokemon.types).toEqual(["electric"]);
     expect(pokemon.moves[0].name).toBe("thunderbolt");
-    expect(dto.turnLogs[0].events[0]).toEqual({ type: "noAction", side: "B" });
+    expect(dto.turnLogs[0].events[0]).toEqual({ type: "hesitate", userId: "zeta" });
   });
 });
