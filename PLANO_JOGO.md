@@ -328,9 +328,35 @@ select cron.unschedule('resolve-battle-turns');
 
 | Fase | Entrega | Por que nessa ordem |
 |---|---|---|
-| **0 — Fundação de dados** | Tabelas `Pokemon`/`Move`/`PokemonMove`, seed, refresh cron, stats por nível, `UserPokemon` com nível/XP. Reset total da base. | Tudo depende dos dados virem da API e do nível existir. |
+| **0 — Fundação de dados** ✅ | Tabelas `Pokemon`/`Move`/`PokemonMove`, seed, refresh cron, stats por nível, `UserPokemon` com nível/XP. Reset total da base. | Tudo depende dos dados virem da API e do nível existir. |
 | **A — Duelo tático completo (MVP)** | Deck 1 loadout; turno alternado por iniciativa; **energia** por rodada + custo de carta; joga 1 das 6 cartas; **cartas de reação + janela de reação em tempo real**; HP→0 acaba. Realtime: reveal ao vivo, timer real sincronizado, Presence/abandono. | É o jogo tático inteiro já jogável. Maior e mais arriscado que um MVP mínimo — por isso a Fase 0 tem que estar sólida antes. |
 | **D — Profundidade** | Efeitos ricos da API (status, mudança de stat, prioridade), cooldowns, evolução por nível, e **opcional** time de até 3 (troca). | Complexidade que empilha por cima do núcleo estável. |
+
+### Estado da Fase 0 (implementada — dev local)
+
+✅ **Feito e verificado** (`tsc`·`vitest` 159·`eslint`·`next build` verdes):
+- **Schema + migration `20260716005502_phase0_pokedex_mirror`**: `Pokemon`,
+  `Move`, `PokemonMove` (learnset n:n), `UserPokemon` (nível/XP, `@@unique
+  [userId,pokemonId]`). RLS ligada nas 4 tabelas na mesma migration (AGENTS.md).
+  **Aditiva** — `UserCard`/`DeckCard`/battle seguem intactos até a Fase A migrar.
+- **`pokedex/domain/leveling.ts`** (+ 12 testes): `deriveStats` (fórmula §6, sem
+  nível 50 fixo), curva de XP (`applyXp`/`xpForNextLevel`) e `skillPowerMult` —
+  os valores de **F4** isolados em constantes tunáveis (`XP_PER_LEVEL`,
+  `SKILL_POWER_K`).
+- **`pokedex/commands/syncPokedex.ts`**: motor único (seed + refresh), upsert
+  idempotente por `pokemonApiId`/`moveApiId`. **Não** usa `$transaction` de
+  propósito (bulk re-rodável, não é escrita-claim atômica).
+- **Seed**: `npm run seed` (`prisma/seed.ts`, via `tsx`). **Gen 1 semeada no dev
+  local**: 151 espécies, 592 moves, 14368 vínculos de learnset.
+- **Refresh cron**: `POST /api/cron/refresh-pokedex` (Bearer `CRON_SECRET`,
+  `authorizeCron` compartilhado com `resolve-turns` em `lib/cronAuth.ts`) →
+  `refreshPokedex` re-sincroniza o lote mais antigo (50/passada).
+
+⏳ **Pendente da Fase 0 (infra de prod, não código):**
+1. **Rodar a migration no Supabase** (`prisma migrate deploy`) e **semear prod**
+   (`npm run seed` com as env de prod, ou faixa por geração).
+2. **Agendar o `refresh-pokedex` no `pg_cron`** (1×/dia) — mesmo runbook do §8.3,
+   trocando a rota pra `/api/cron/refresh-pokedex`.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta

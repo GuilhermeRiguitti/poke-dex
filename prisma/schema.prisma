@@ -16,19 +16,20 @@ datasource db {
 // ──────────────────────────────────────────────
 
 model User {
-  id            String    @id
+  id            String   @id
   name          String
-  email         String    @unique
+  email         String   @unique
   emailVerified Boolean
-  image         String?   @db.Text
+  image         String?  @db.Text
   createdAt     DateTime
   updatedAt     DateTime
 
-  sessions  Session[]
-  accounts  Account[]
-  userCards UserCard[]
-  decks     Deck[]
-  packState PackState?
+  sessions     Session[]
+  accounts     Account[]
+  userCards    UserCard[]
+  userPokemons UserPokemon[]
+  decks        Deck[]
+  packState    PackState?
 }
 
 model Session {
@@ -117,6 +118,86 @@ model DeckCard {
 }
 
 // ──────────────────────────────────────────────
+// Espelho da PokéAPI (PLANO_JOGO.md §5 e §7) — Fase 0.
+//
+// Revertendo de propósito a decisão histórica de "nunca espelhar Pokémon":
+// o duelo tático precisa CONSULTAR/FILTRAR por atributo (montar deck, listar
+// learnset, ordenar por stat), coisa que o key-value cru de PokeApiCache não
+// faz. As chaves de gestão são `pokemonApiId`/`moveApiId` (National Dex / move
+// id da API) — identificam, deduplicam e guiam o refetch. `fetchedAt` diz o
+// quão velho está o dado; o cron de refresh re-sincroniza o mais antigo.
+//
+// RLS: como toda tabela nova (AGENTS.md), estas nascem com RLS ligada na
+// mesma migration — deny-all pra API PostgREST pública, transparente pro
+// runtime (Prisma como `postgres`, dono + BYPASSRLS).
+// ──────────────────────────────────────────────
+
+model Pokemon {
+  id           String   @id @default(cuid())
+  pokemonApiId Int      @unique // National Dex id — chave de refetch/dedup
+  name         String
+  types        Json // string[], ex: ["electric"]
+  baseStats    Json // {hp,atk,def,spa,spd,spe} — base stats crus da API
+  spriteUrl    String?  @db.Text
+  fetchedAt    DateTime @default(now())
+
+  learnset     PokemonMove[]
+  userPokemons UserPokemon[]
+}
+
+model Move {
+  id          String   @id @default(cuid())
+  moveApiId   Int      @unique
+  name        String
+  type        String
+  power       Int?
+  accuracy    Int?
+  pp          Int
+  priority    Int      @default(0)
+  damageClass String // physical | special | status
+  effect      Json? // efeitos estruturados (status, stat stage, etc.) — nulo por ora
+  fetchedAt   DateTime @default(now())
+
+  learnedBy PokemonMove[]
+}
+
+// Learnset (n:n): todo Pokémon tem acesso ao learnset inteiro que a API
+// devolve (PLANO_JOGO.md §1). A PK composta é o próprio par, então o upsert
+// do sync é idempotente por (pokemonId, moveId).
+model PokemonMove {
+  pokemonId String
+  moveId    String
+
+  pokemon Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
+  move    Move    @relation(fields: [moveId], references: [id], onDelete: Cascade)
+
+  @@id([pokemonId, moveId])
+}
+
+// ──────────────────────────────────────────────
+// Coleção com nível incremental (PLANO_JOGO.md §5) — Fase 0.
+// Substitui, no jogo novo, o `UserCard` (que segue vivo pro jogo atual até a
+// Fase A migrar a batalha). Cada instância nasce nível 1 e sobe com XP; o
+// nível deriva TODO stat de batalha via a fórmula da série (domain/leveling).
+// @@unique([userId, pokemonId]): 1 instância por espécie — fecha a corrida de
+// captura por construção (CLAUDE.md regra 6), como já faz UserCard.
+// ──────────────────────────────────────────────
+
+model UserPokemon {
+  id         String   @id @default(cuid())
+  userId     String
+  pokemonId  String // espécie (Pokemon.id)
+  level      Int      @default(1)
+  xp         Int      @default(0)
+  capturedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pokemon Pokemon @relation(fields: [pokemonId], references: [id])
+
+  @@unique([userId, pokemonId])
+}
+
+// ──────────────────────────────────────────────
 // Cache persistente de respostas da PokéAPI (pokémon/move/type nunca mudam
 // pra uma geração já lançada — cache "eterno" entre invocações serverless)
 // ──────────────────────────────────────────────
@@ -161,11 +242,11 @@ model Battle {
 }
 
 model BattleParticipant {
-  id           String @id @default(cuid())
-  battleId     String
-  userId       String
-  activeSlot   Int    @default(1)
-  missedTurns  Int    @default(0) // faltas (turno sem ação): +1 por timeout vencido, -1 por jogada. Chegou em MAX_MISSES => ABANDONED
+  id          String @id @default(cuid())
+  battleId    String
+  userId      String
+  activeSlot  Int    @default(1)
+  missedTurns Int    @default(0) // faltas (turno sem ação): +1 por timeout vencido, -1 por jogada. Chegou em MAX_MISSES => ABANDONED
 
   battle   Battle          @relation(fields: [battleId], references: [id], onDelete: Cascade)
   pokemons BattlePokemon[]
@@ -194,14 +275,14 @@ model BattlePokemon {
 }
 
 model BattlePendingMove {
-  id           String            @id @default(cuid())
+  id           String           @id @default(cuid())
   battleId     String
   userId       String
   turnNumber   Int
   actionType   BattleActionType
   moveSlot     Int?
   switchToSlot Int?
-  submittedAt  DateTime          @default(now())
+  submittedAt  DateTime         @default(now())
 
   battle Battle @relation(fields: [battleId], references: [id], onDelete: Cascade)
 
