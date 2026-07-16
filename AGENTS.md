@@ -23,9 +23,25 @@ ALTER TABLE "MinhaTabela" ENABLE ROW LEVEL SECURITY;
   fechar não tira nada do jogo.
 - **Nunca `FORCE ROW LEVEL SECURITY`.** FORCE sujeita o próprio dono à RLS → sem
   policy vira deny-all pro runtime também = **app fora do ar**.
-- **Não crie policy pra calar o linter.** O aviso `rls_enabled_no_policy` (INFO) é o
-  estado desejado; policy com `auth.uid()` seria inútil — não usamos Supabase Auth.
+- **Não crie policy pra calar o linter — nas tabelas do APP.** O aviso
+  `rls_enabled_no_policy` (INFO) é o estado desejado; policy com `auth.uid()` seria
+  inútil — não usamos Supabase Auth.
 - Depois de mexer no schema, rode o advisor de segurança do Supabase: o alerta
   `rls_disabled_in_public` (ERROR) denuncia a tabela esquecida.
 
 Referência: `prisma/migrations/20260714010000_enable_rls_all_tables`.
+
+## A ÚNICA exceção: `realtime.messages` (quando o Realtime entrar)
+
+A regra "deny-all, sem policy" vale pras tabelas do **app** (schema `public`). O
+Realtime do duelo (PLANO_JOGO.md §8) é a exceção consciente: pra um jogador
+assinar o canal `battle:<id>`, precisa existir **uma policy em
+`realtime.messages`** (schema `realtime`, não `public`) autorizando **participante
+↔ topic**. Isso **não reabre** o PostgREST: a `anon`/`publishable` key no browser só
+destrava o WebSocket; ela continua sem acesso de leitura a `Battle`/`User` via REST,
+porque as tabelas do app seguem deny-all. **"Abrir o Realtime ≠ abrir o PostgREST."**
+
+⚠️ Gotcha ao escrever essa policy: os ids são **cuid (texto)**, não uuid. `auth.uid()`
+faz cast pra `uuid` → copiar da doc do Supabase faz a policy **negar tudo em
+silêncio**. Leia o `sub` como texto:
+`current_setting('request.jwt.claims', true)::jsonb->>'sub'`.

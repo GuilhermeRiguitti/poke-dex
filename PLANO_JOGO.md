@@ -352,11 +352,38 @@ select cron.unschedule('resolve-battle-turns');
   `authorizeCron` compartilhado com `resolve-turns` em `lib/cronAuth.ts`) →
   `refreshPokedex` re-sincroniza o lote mais antigo (50/passada).
 
-⏳ **Pendente da Fase 0 (infra de prod, não código):**
-1. **Rodar a migration no Supabase** (`prisma migrate deploy`) e **semear prod**
-   (`npm run seed` com as env de prod, ou faixa por geração).
-2. **Agendar o `refresh-pokedex` no `pg_cron`** (1×/dia) — mesmo runbook do §8.3,
-   trocando a rota pra `/api/cron/refresh-pokedex`.
+✅ **Infra de prod (atualizado 2026-07-15):** o `.env` agora aponta pro **Supabase**;
+a migration `phase0` já está aplicada lá (tabelas existem) e a **Gen 1 foi semeada
+no Supabase** (`npm run seed`). O `syncPokedex` passou a inserir o learnset com
+`createMany`+`skipDuplicates` (o upsert por linha estourava o tempo da lambda no
+cron); `DEFAULT_REFRESH_BATCH` caiu pra 20 (o gargalo do refresh é a rede da PokéAPI).
+
+⏳ **Pendente da Fase 0:**
+1. **Agendar o `refresh-pokedex` no `pg_cron`** (1×/dia) — mesmo runbook do §8.3,
+   trocando a rota pra `/api/cron/refresh-pokedex` e usando a URL de prod da Vercel.
+
+### Estado da Fase A (parcial)
+
+✅ **A1 — núcleo puro do duelo alternado FEITO** (`tsc`+168 testes verdes):
+`battle/domain/duelTypes.ts` (`DuelState`: `activeUserId`, round, order,
+`actedThisRound`; ação de UM ator), `duelInitiative.ts` (Speed manda, desempate
+determinístico por userId), `duelEngine.ts` (`startDuel`/`applyDuelAction` —
+aplica UMA ação, passa a vez, recalcula iniciativa a cada rodada, encerra 1×1 no
+faint). Reaproveita `calculateDamage`/`typeChart`/`STRUGGLE`. Arquivos NOVOS ao
+lado do engine simultâneo antigo — o jogo atual segue vivo.
+
+✅ **Realtime destravado:** `SUPABASE_JWT_SECRET` (legacy secret, "still used to
+verify") já está no `.env`; URL + publishable key vêm do MCP. Falta codar
+(policy `realtime.messages`, trigger, rota do token, cliente) — é a fatia A3.
+
+⏳ **Próxima fatia — A1-wiring (backend, verificável sem Realtime):** migration
+destrutiva (reset liberado) — `Battle` ganha `activeUserId`/round; `BattleAction`
+no lugar de `BattlePendingMove`; `DeckSlot`/`DeckSlotCard`; `BattlePokemon` montado
+de `UserPokemon`+nível (`deriveStats`) + 6 cartas. Reescrever buildTeamSnapshot
+(lê o espelho, não a PokéAPI ao vivo), enqueueBattle, submitMove→submitAction,
+resolveTurn com `applyDuelAction` (mesma trava otimista + transação). queries+DTO.
+Popular `UserPokemon` no packs. **Depois:** UI battle-room, A2 energia, A3
+reação+Realtime, Fase D.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta

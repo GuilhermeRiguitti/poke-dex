@@ -73,13 +73,17 @@ model Verification {
 }
 
 // ──────────────────────────────────────────────
-// Game / user collection tables
+// Game / user collection tables (JOGO ATUAL — simultâneo, 4 cartas)
 //
-// Dados de Pokémon (nome, sprite, stats, tipos, moves) NÃO são espelhados
-// aqui — vêm sempre ao vivo da PokéAPI. `pokemonId` é só o id público da
-// PokéAPI, salvo em texto plano (não há conteúdo protegido por direitos
-// autorais em um inteiro sequencial, e criptografá-lo quebraria índice/unique
-// sem nenhum ganho real).
+// ATENÇÃO: a partir da Fase 0 (PLANO_JOGO.md), o projeto ESPELHA Pokémon/Move
+// nas tabelas `Pokemon`/`Move`/`PokemonMove` (ver a seção "Espelho da PokéAPI"
+// abaixo). A afirmação histórica de "nunca espelhar" foi revertida de propósito.
+// Estas tabelas (`UserCard`/`Deck`/`DeckCard`) são do jogo ANTIGO e seguem vivas
+// até a Fase A migrar a batalha; a coleção nova é `UserPokemon` + `DeckSlot`.
+//
+// Aqui, `pokemonId` é o id público da PokéAPI salvo em texto plano (não há
+// conteúdo protegido por direitos autorais num inteiro sequencial, e
+// criptografá-lo quebraria índice/unique sem ganho real).
 // ──────────────────────────────────────────────
 
 model UserCard {

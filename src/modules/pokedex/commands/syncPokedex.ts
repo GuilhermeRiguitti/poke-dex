@@ -127,18 +127,20 @@ export async function syncPokedex(
   });
 
   // 3) learnset n:n: um vínculo por par (só pros moves que resolveram).
+  // createMany + skipDuplicates (ON CONFLICT DO NOTHING na PK composta) em vez
+  // de upsert por linha: são milhares de vínculos, e um round-trip por linha
+  // estouraria o timeout da lambda no cron de refresh (§7). Idempotente igual.
   let linksSynced = 0;
   for (const { pokemonId, moveApiIds } of synced) {
-    for (const moveApiId of moveApiIds) {
-      const moveId = moveIdByApiId.get(moveApiId);
-      if (!moveId) continue;
-      await prisma.pokemonMove.upsert({
-        where: { pokemonId_moveId: { pokemonId, moveId } },
-        create: { pokemonId, moveId },
-        update: {},
-      });
-      linksSynced++;
-    }
+    const moveIds = [...new Set(moveApiIds.map((apiId) => moveIdByApiId.get(apiId)))].filter(
+      (moveId): moveId is string => Boolean(moveId),
+    );
+    if (moveIds.length === 0) continue;
+    await prisma.pokemonMove.createMany({
+      data: moveIds.map((moveId) => ({ pokemonId, moveId })),
+      skipDuplicates: true,
+    });
+    linksSynced += moveIds.length;
   }
 
   return {

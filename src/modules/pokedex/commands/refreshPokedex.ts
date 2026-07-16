@@ -10,8 +10,12 @@ import { syncPokedex, type SyncPokedexSummary } from "./syncPokedex";
 // Teto por passada porque a rota roda numa lambda: sincronizar tudo de uma vez
 // estouraria o tempo. A cada disparo pega os N mais velhos; ao longo dos dias a
 // tabela inteira gira. Idempotente (o sync é upsert por apiId).
-
-export const DEFAULT_REFRESH_BATCH = 50;
+//
+// 20 (não 151) porque cada espécie ainda puxa a PokéAPI (a própria + os moves
+// dela): o gargalo do refresh é a REDE, não o banco. 20 espécies cabem no tempo
+// de uma lambda; a Gen 1 inteira gira em ~8 dias de cron diário — e dado de
+// geração lançada quase não muda, então girar devagar sobra.
+export const DEFAULT_REFRESH_BATCH = 20;
 
 export interface RefreshPokedexSummary extends SyncPokedexSummary {
   batch: number;
