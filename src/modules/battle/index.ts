@@ -44,3 +44,8 @@ export { submitMove } from "./commands/submitMove";
 export type { SubmitMoveInput } from "./commands/submitMove";
 export { enqueueBattle } from "./commands/enqueueBattle";
 export { leaveQueue } from "./commands/leaveQueue";
+
+// Motor de servidor: o pg_cron do Supabase dispara a rota que chama isto pra
+// resolver turnos vencidos sem depender do polling do cliente (ver PLANO_JOGO.md §8).
+export { resolveDueBattles } from "./commands/resolveDueBattles";
+export type { ResolveDueSummary } from "./commands/resolveDueBattles";
