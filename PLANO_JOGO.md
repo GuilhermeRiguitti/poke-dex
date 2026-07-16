@@ -389,12 +389,20 @@ status)` + transação; `submitMove`→`submitAction` ("é a sua vez" + carta);
 (sem vazar a `BattleAction` pendente). **UI quebrada de propósito** (coleção, deck,
 battle-room) — é o follow-up abaixo.
 
-⏳ **Próxima fatia — UI do modelo novo (a fatia que a UI adiada exige):**
-(a) tela de montar deck/loadout (escolher 1 `UserPokemon` + 6 cartas do learnset,
-via `POST /api/deck` com `{userPokemonId, moveIds}`); (b) battle-room do turno
-alternado (de quem é a vez via `activeUserId`, barra de 6 cartas, timer);
-recolar coleção (`CollectionGrid`/`CollectionCardActions`) no `CollectionDTO` novo
-(`userPokemonId`/`level`). **Depois:** A2 energia, A3 reação+Realtime, Fase D.
+✅ **UI do modelo novo FEITA** (projeto inteiro verde: `tsc` · `vitest` 139 ·
+`eslint` · `next build`):
+- **Coleção** recolada no `CollectionDTO` novo (`userPokemonId`/`level`): card
+  mostra o nível; `CollectionCardActions` abre o **`LoadoutBuilder`** (modal) que
+  busca o learnset (`GET /api/deck/learnset/[userPokemonId]`) e escolhe até 6
+  cartas → `POST /api/deck {userPokemonId, moveIds}`. "No deck ✓" remove o slot.
+- **Battle-room** reescrito pro duelo alternado em **HTML** (`DuelTable` +
+  `battleView.ts` puro/testado + `useBattleRoom` pollando `round`+`activeUserId`):
+  mostra de quem é a vez, barra de 6 cartas (PP/tipo/power), HP, log. O canvas
+  **Konva foi aposentado** (`BattleTable`/`useHtmlImage` deletados) — repor é polish.
+
+⏳ **Próxima fatia:** timer sincronizado na tela, A2 energia, A3 reação+Realtime,
+Fase D, e (opcional) repor o canvas Konva com capricho visual. F4/energia/reação =
+afinar jogando.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta
