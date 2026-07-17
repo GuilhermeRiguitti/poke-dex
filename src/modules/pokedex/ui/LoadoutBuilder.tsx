@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CARDS_PER_SLOT } from "@/src/modules/deck/domain/rules";
 import type { LearnsetMoveDTO } from "@/src/modules/deck/ui/types";
 import { typeColor } from "@/src/lib/typeColors";
@@ -44,6 +45,15 @@ export default function LoadoutBuilder({
     };
   }, [userPokemonId]);
 
+  // Trava o scroll do fundo enquanto o modal está aberto.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   const toggle = (moveId: string) => {
     setSelected((prev) => {
       if (prev.includes(moveId)) return prev.filter((id) => id !== moveId);
@@ -72,7 +82,11 @@ export default function LoadoutBuilder({
     }
   };
 
-  return (
+  // Portal pro <body>: o card-frame fica com um transform residual do
+  // animate-rise (fill both), e transform faz o ancestral virar containing
+  // block de `fixed` — sem o portal, o "modal" renderiza DENTRO do card,
+  // recortado pelo overflow/clip-path dele.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
       onClick={onClose}
@@ -157,6 +171,7 @@ export default function LoadoutBuilder({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
