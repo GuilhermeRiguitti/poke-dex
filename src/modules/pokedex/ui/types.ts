@@ -17,23 +17,21 @@ export interface PokemonCardDTO {
   types: string[];
 }
 
-/** Um pokémon da coleção do usuário: a carta dele + o pokémon em si. */
+/** Um pokémon da coleção do usuário: a carta dele + nível + o pokémon em si. */
 export interface CollectionCardDTO {
-  /** id do UserCard — é o que "soltar" e "+ deck" mandam pro servidor */
-  userCardId: string;
-  pokemonId: number;
-  /**
-   * null quando a PokéAPI não devolveu esse pokémon (cache frio + rede fora).
-   * A coleção AINDA precisa desenhar a carta — o jogador tem esse pokémon, e
-   * um erro de rede não pode fazer a coleção dele parecer menor do que é.
-   */
+  /** id do UserPokemon — é o que "soltar" e "montar loadout" mandam pro servidor */
+  userPokemonId: string;
+  pokemonId: number; // id público da PokéAPI (National Dex)
+  level: number;
+  xp: number;
+  /** null se a espécie não estiver no espelho (não deveria ocorrer — FK garante). */
   pokemon: PokemonCardDTO | null;
 }
 
 export interface CollectionDTO {
   cards: CollectionCardDTO[];
-  /** null quando o jogador ainda não tem deck (ele nasce no primeiro "+ deck") */
-  deck: { id: string; cards: { id: string; userCardId: string }[] } | null;
+  /** null quando o jogador ainda não tem deck (ele nasce no primeiro loadout) */
+  deck: { id: string; slots: { id: string; userPokemonId: string }[] } | null;
 }
 
 export interface PokedexPageDTO {

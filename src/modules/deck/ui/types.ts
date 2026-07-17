@@ -1,26 +1,43 @@
-// Contrato de dados entre o servidor e a UI, pro deck.
+// Contrato de dados entre o servidor e a UI, pro deck (jogo novo: loadouts).
 //
-// Espelho ESTREITO das linhas do Prisma: nada daqui pode ser a linha crua.
-// A linha de Deck carrega userId; a de DeckCard carrega deckId e userCardId
-// cruzados — nada disso é do jogador, e nada disso precisa chegar no browser.
+// Espelho ESTREITO das linhas do Prisma: nada daqui pode ser a linha crua. A
+// linha de Deck carrega userId; a de DeckSlot/DeckSlotCard carrega ids cruzados
+// — nada disso precisa (nem deve) chegar no browser.
 
-/** Uma vaga preenchida do deck. `userCardId` é o que a UI manda pra remover. */
-export interface DeckCardDTO {
-  /** id do DeckCard (é o que o DELETE /api/deck/[id] recebe) */
+/** Uma carta (skill) escolhida num slot. `moveId` é o Move.id do espelho. */
+export interface DeckSlotCardDTO {
+  moveId: string;
+  order: number; // 0..5, posição na barra
+}
+
+/** Um loadout do time: 1 UserPokemon + suas cartas. */
+export interface DeckSlotDTO {
+  /** id do DeckSlot (é o que o DELETE /api/deck/[id] recebe) */
   id: string;
-  userCardId: string;
-  pokemonId: number;
+  userPokemonId: string;
+  order: number; // 0..5, posição no time
+  cards: DeckSlotCardDTO[];
 }
 
 export interface DeckDTO {
   id: string;
   name: string;
-  cards: DeckCardDTO[];
+  slots: DeckSlotDTO[];
 }
 
 /** O deck como a tela da fila precisa dele: só o tamanho, sem os membros. */
 export interface DeckSummaryDTO {
   id: string;
   name: string;
-  pokemonCount: number;
+  slotCount: number;
+}
+
+/** Uma carta possível do learnset — o que o seletor de loadout mostra. */
+export interface LearnsetMoveDTO {
+  /** Move.id (cuid) — é o que vai em moveIds no POST /api/deck */
+  moveId: string;
+  name: string;
+  type: string;
+  power: number | null;
+  damageClass: "physical" | "special" | "status";
 }

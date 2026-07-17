@@ -10,5 +10,6 @@ import type { QueueDeckDTO } from "../ui/types";
 // com o Deck.userId sem @unique) é o módulo deck, num arquivo só; aqui só
 // sobra a tradução pro contrato da UI da fila.
 export async function getQueueDeck(userId: string): Promise<QueueDeckDTO> {
-  return getDeckSummary(userId);
+  const summary = await getDeckSummary(userId);
+  return { id: summary.id, name: summary.name, slotCount: summary.slotCount };
 }

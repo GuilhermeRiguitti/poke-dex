@@ -1,5 +1,5 @@
-import { fetchAndCachePokemon } from "@/src/lib/pokeapiCache";
 import { prisma } from "@/src/lib/prisma";
+import type { PokemonCardDTO } from "@/src/modules/pokedex";
 import { canOpenFree, FREE_PACK_INTERVAL_MS } from "../domain/cooldown";
 import { drawPack } from "../domain/rarity";
 import { toPackStateDTO } from "../queries/readPackState";
@@ -8,27 +8,28 @@ import type { OpenPackResultDTO } from "../ui/types";
 
 export type OpenPackResult =
   | ({ ok: true; source: "free" | "extra" } & OpenPackResultDTO)
-  | { ok: false; error: "on_cooldown" };
+  | { ok: false; error: "on_cooldown" | "empty_pokedex" };
+
+/** Uma espécie do espelho como o pacote precisa dela. */
+type MirrorSpecies = { id: string; pokemonApiId: number; card: PokemonCardDTO };
 
 /**
- * Abre um pacote: sorteia 6 cartas ponderadas por raridade e as põe na coleção.
- * É a ÚNICA forma de obter pokémon (o "Capturar" direto morreu).
+ * Abre um pacote: sorteia PACK_SIZE cartas ponderadas por raridade e cria os
+ * UserPokemon (nível 1) na coleção. É a ÚNICA forma de obter pokémon.
  *
- * `rng` é injetado só pra teste; em produção é Math.random.
+ * O pool do sorteio é o ESPELHO LOCAL (Pokemon), não a dex inteira: só dá pra
+ * ganhar espécie que existe no nosso banco (o UserPokemon tem FK pro Pokemon).
+ * Conforme mais gerações são semeadas, o pool cresce sozinho. bstOf/rarity ainda
+ * cobrem 1..1025 (tabela estática), então o peso do sorteio segue correto.
  *
- * A ordem aqui é ditada pelo serverless (CLAUDE.md, regra 5 e 6):
+ * Ordem ditada pelo serverless (CLAUDE.md regras 5 e 6):
  *  1. Garante a linha e lê o estado (upsert barato).
- *  2. Pré-checa elegibilidade ANTES de sortear/buscar. Sem isso, spammar o
- *     botão em cooldown dispararia 6 fetches na PokéAPI por clique.
- *  3. Sorteia e AQUECE O CACHE fora da transação — I/O de rede não segura
- *     transação aberta, e é aqui que os NormalizedPokemon da DTO são obtidos.
- *  4. Dentro da transação: CLAIM atômico primeiro. Quem perde a corrida (dois
- *     cliques, duas lambdas) sai com count 0 e NÃO escreve nenhuma carta.
+ *  2. Pré-checa elegibilidade ANTES de sortear.
+ *  3. Lê o pool do espelho e sorteia FORA da transação.
+ *  4. Dentro da transação: CLAIM atômico primeiro; quem perde a corrida sai com
+ *     count 0 e NÃO cria nenhum UserPokemon.
  */
-export async function openPack(
-  userId: string,
-  rng: () => number = Math.random
-): Promise<OpenPackResult> {
+export async function openPack(userId: string, rng: () => number = Math.random): Promise<OpenPackResult> {
   const now = Date.now();
 
   const state = await prisma.packState.upsert({
@@ -43,16 +44,32 @@ export async function openPack(
     return { ok: false, error: "on_cooldown" };
   }
 
-  // Sorteio e aquecimento de cache FORA da transação (I/O lento antes do claim).
-  const drawnIds = drawPack(rng);
-  const pokemons = await Promise.all(drawnIds.map((id) => fetchAndCachePokemon(id)));
+  // Pool do espelho + sorteio FORA da transação. O card já sai daqui montado.
+  const species = await prisma.pokemon.findMany({
+    select: { id: true, pokemonApiId: true, name: true, spriteUrl: true, types: true },
+  });
+  if (species.length === 0) return { ok: false, error: "empty_pokedex" };
+
+  const byApiId = new Map<number, MirrorSpecies>();
+  for (const s of species) {
+    byApiId.set(s.pokemonApiId, {
+      id: s.id,
+      pokemonApiId: s.pokemonApiId,
+      card: {
+        id: s.pokemonApiId,
+        name: s.name,
+        artworkUrl: s.spriteUrl,
+        iconUrl: s.spriteUrl,
+        types: s.types as string[],
+      },
+    });
+  }
+
+  const drawnIds = drawPack(rng, undefined, Array.from(byApiId.keys()));
 
   const result = await prisma.$transaction(
     async (tx) => {
       // ── CLAIM atômico ──────────────────────────────────────────────────
-      // Prefere o pacote diário; só gasta um extra se o diário não estiver
-      // disponível. O updateMany condicionado é a trava: só um request casa a
-      // condição e escreve.
       let source: "free" | "extra" | null = null;
 
       if (freeAvailable) {
@@ -74,18 +91,20 @@ export async function openPack(
 
       if (!source) return null; // perdeu a corrida — nada escrito
 
-      // isNew: quais desses o jogador AINDA NÃO tinha, antes deste upsert.
-      const owned = await tx.userCard.findMany({
-        where: { userId, pokemonId: { in: drawnIds } },
+      const speciesIds = drawnIds.map((apiId) => byApiId.get(apiId)!.id);
+
+      // isNew: quais espécies o jogador AINDA NÃO tinha antes deste upsert.
+      const owned = await tx.userPokemon.findMany({
+        where: { userId, pokemonId: { in: speciesIds } },
         select: { pokemonId: true },
       });
       const ownedSet = new Set(owned.map((c) => c.pokemonId));
 
-      // upsert na @unique([userId,pokemonId]): repetida é no-op, mas a carta
-      // "sai" no pacote do mesmo jeito (marcada isNew:false pela UI).
+      // upsert na @@unique([userId, pokemonId]): repetida é no-op (não reseta
+      // nível/XP), mas a carta "sai" no pacote igual (marcada isNew:false).
       await Promise.all(
-        drawnIds.map((pokemonId) =>
-          tx.userCard.upsert({
+        speciesIds.map((pokemonId) =>
+          tx.userPokemon.upsert({
             where: { userId_pokemonId: { userId, pokemonId } },
             create: { userId, pokemonId },
             update: {},
@@ -105,9 +124,10 @@ export async function openPack(
 
   if (!result) return { ok: false, error: "on_cooldown" };
 
-  const cards = drawnIds.map((pokemonId, i) =>
-    toPackCardDTO(pokemonId, pokemons[i], !result.ownedSet.has(pokemonId))
-  );
+  const cards = drawnIds.map((apiId) => {
+    const s = byApiId.get(apiId)!;
+    return toPackCardDTO(apiId, s.card, !result.ownedSet.has(s.id));
+  });
 
   return { ok: true, source: result.source, cards, packState: toPackStateDTO(result.updated) };
 }

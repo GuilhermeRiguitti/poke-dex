@@ -20,6 +20,7 @@ export default function PokemonCard({
   accentType,
   index,
   highlighted,
+  level,
   children,
 }: {
   pokemonId: number;
@@ -32,6 +33,8 @@ export default function PokemonCard({
   index: number;
   /** moldura destacada (a coleção usa pra marcar quem está no deck) */
   highlighted?: boolean;
+  /** nível do UserPokemon (só a coleção passa; a dex não) */
+  level?: number;
   /** o rodapé: os botões. É a única parte que difere entre as telas. */
   children?: React.ReactNode;
 }) {
@@ -69,6 +72,11 @@ export default function PokemonCard({
           />
         )}
         <span className="mt-1 font-title uppercase tracking-wide">{name}</span>
+        {level != null && (
+          <span className="lv-badge mt-1">
+            <span>Lv {level}</span>
+          </span>
+        )}
       </Link>
 
       {children && <div className="mt-2">{children}</div>}

@@ -224,6 +224,15 @@ O que te obriga daqui pra frente (a regra completa está no `AGENTS.md`):
 - Depois de mexer no schema, rode o advisor de segurança do Supabase — o alerta
   `rls_disabled_in_public` (ERROR) acusa a tabela esquecida.
 
+> **Fronteira do Realtime (Fase A, PLANO_JOGO.md §8.1) — não confunda com o acima.**
+> Quando o Realtime do duelo entrar, ele **exige uma policy** — mas em
+> `realtime.messages` (schema `realtime`), **não** nas tabelas do app (que seguem
+> deny-all). Abrir o WebSocket com a `publishable` key **não** reabre o PostgREST:
+> a key não lê `Battle`/`User` via REST. **"Abrir o Realtime ≠ abrir o PostgREST."**
+> A policy lê o `sub` do JWT como **texto** (ids são cuid, não uuid) —
+> `auth.uid()` da doc faz cast pra uuid e nega tudo em silêncio. É a ÚNICA policy
+> do projeto; a regra "sem policy" continua valendo pra todo o schema `public`.
+
 ### 6. Concorrência: assuma duas lambdas ao mesmo tempo
 
 Os dois jogadores fazem polling a cada 2s. Todo `command` roda concorrente com

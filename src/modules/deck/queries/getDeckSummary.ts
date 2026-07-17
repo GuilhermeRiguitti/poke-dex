@@ -20,12 +20,12 @@ export async function getDeckSummary(userId: string): Promise<DeckSummaryDTO> {
 
   const deck = await prisma.deck.findUniqueOrThrow({
     where: { id },
-    select: { id: true, name: true, _count: { select: { deckCards: true } } },
+    select: { id: true, name: true, _count: { select: { slots: true } } },
   });
 
   return toDeckSummaryDTO({
     id: deck.id,
     name: deck.name,
-    pokemonCount: deck._count.deckCards,
+    slotCount: deck._count.slots,
   });
 }

@@ -16,6 +16,30 @@ export type {
 
 export { PAGE_SIZE, MAX_POKEMON, TOTAL_PAGES, clampPage, pageRange } from "./domain/pagination";
 
+// Nível incremental + stats derivados 100% da API (PLANO_JOGO.md §6). Puro,
+// sem banco — seguro em qualquer camada.
+export {
+  MIN_LEVEL,
+  MAX_LEVEL,
+  XP_PER_LEVEL,
+  SKILL_POWER_K,
+  deriveStats,
+  calcHp,
+  calcStat,
+  applyXp,
+  xpForNextLevel,
+  skillPowerMult,
+} from "./domain/leveling";
+export type { BaseStats, DerivedStats, Progress } from "./domain/leveling";
+
+// Espelho da PokéAPI (Pokemon/Move/PokemonMove). syncPokedex é o motor da seed
+// e do refresh; refreshPokedex é o que a rota de cron chama. Ambos ESCREVEM —
+// só command/rota, nunca render (CLAUDE.md regra 2).
+export { syncPokedex } from "./commands/syncPokedex";
+export type { SyncPokedexSummary, SyncPokedexOptions } from "./commands/syncPokedex";
+export { refreshPokedex, DEFAULT_REFRESH_BATCH } from "./commands/refreshPokedex";
+export type { RefreshPokedexSummary, RefreshPokedexOptions } from "./commands/refreshPokedex";
+
 // Todas as queries abaixo SÓ LEEM — podem ser chamadas do render de uma page.
 // A escrita (inclusive a do cache da PokéAPI) mora nos commands.
 export { listPokedexPage } from "./queries/listPokedexPage";

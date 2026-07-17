@@ -3,17 +3,17 @@ import { prisma } from "@/src/lib/prisma";
 export type RemoveFromDeckResult = { ok: true } | { ok: false; error: "not_found" };
 
 /**
- * Tira um pokémon do deck (recebe o id do DeckCard, não o do UserCard).
+ * Tira um loadout do deck (recebe o id do DeckSlot). As DeckSlotCard caem junto
+ * por onDelete: Cascade no schema.
  *
- * O `deck: { userId }` no where é o que impede um jogador de deletar o
- * DeckCard de outro passando um id qualquer — a checagem de dono vai no
- * próprio DELETE, e não num findUnique antes dele (que seria uma corrida, além
- * de duas idas ao banco). count === 0 cobre os dois casos de uma vez: não
- * existe, ou não é seu.
+ * O `deck: { userId }` no where impede um jogador de apagar o slot de outro
+ * passando um id qualquer — a checagem de dono vai no próprio DELETE (não num
+ * findUnique antes, que seria corrida + ida extra ao banco). count === 0 cobre
+ * "não existe" e "não é seu" de uma vez.
  */
-export async function removeFromDeck(userId: string, deckCardId: string): Promise<RemoveFromDeckResult> {
-  const { count } = await prisma.deckCard.deleteMany({
-    where: { id: deckCardId, deck: { userId } },
+export async function removeFromDeck(userId: string, deckSlotId: string): Promise<RemoveFromDeckResult> {
+  const { count } = await prisma.deckSlot.deleteMany({
+    where: { id: deckSlotId, deck: { userId } },
   });
 
   return count > 0 ? { ok: true } : { ok: false, error: "not_found" };

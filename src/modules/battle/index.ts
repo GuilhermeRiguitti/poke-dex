@@ -7,16 +7,7 @@
 // "use client" fosse reexportado por este barrel, toda rota de API que
 // importa getBattleState arrastaria a UI (e o Konva) junto.
 
-export type {
-  BattleStats,
-  BattleMoveDef,
-  BattlePokemonState,
-  BattleSideState,
-  BattleState,
-  BattleAction,
-  BattleSideLabel,
-  BattleEvent,
-} from "./domain/types";
+export type { BattleStats, BattleMoveDef, BattlePokemonState } from "./domain/types";
 
 // O contrato de dados que sai daqui pra UI (tipos são apagados na compilação,
 // então exportá-los não puxa nada pro bundle).
@@ -40,7 +31,12 @@ export { getBattleStatus } from "./queries/getBattleStatus";
 export { getQueueStatus } from "./queries/getQueueStatus";
 export { getQueueDeck } from "./queries/getQueueDeck";
 
-export { submitMove } from "./commands/submitMove";
-export type { SubmitMoveInput } from "./commands/submitMove";
+export { submitAction } from "./commands/submitAction";
+export type { SubmitActionInput } from "./commands/submitAction";
 export { enqueueBattle } from "./commands/enqueueBattle";
 export { leaveQueue } from "./commands/leaveQueue";
+
+// Motor de servidor: o pg_cron do Supabase dispara a rota que chama isto pra
+// resolver turnos vencidos sem depender do polling do cliente (ver PLANO_JOGO.md §8).
+export { resolveDueBattles } from "./commands/resolveDueBattles";
+export type { ResolveDueSummary } from "./commands/resolveDueBattles";

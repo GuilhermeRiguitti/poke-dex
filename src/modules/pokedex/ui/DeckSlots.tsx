@@ -58,7 +58,7 @@ export default function DeckSlots({
                 )}
                 <span className="font-title text-[10px] uppercase tracking-wide">{slot.name}</span>
                 <span className="lv-badge">
-                  <span>Lv 50</span>
+                  <span>Lv {slot.level}</span>
                 </span>
               </>
             )}

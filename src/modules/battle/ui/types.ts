@@ -1,9 +1,9 @@
-// Contrato de dados entre o servidor e a UI da batalha.
+// Contrato de dados entre o servidor e a UI da batalha (duelo alternado).
 //
-// É de propósito um espelho ESTREITO das linhas do Prisma: só entra aqui o que
-// o jogador pode ver. A linha do banco carrega coisas que ele NÃO pode (ver
-// toBattleDTO), então nada deve ser serializado pro client sem passar por esse
-// mapper — nem por props de Server Component, nem por NextResponse.json.
+// Espelho ESTREITO das linhas do Prisma: só entra aqui o que o jogador pode ver.
+// A linha do banco carrega a carta pendente do ativo (BattleAction); nada deve
+// ser serializado pro client sem passar pelo mapper (toBattleDTO) — nem por
+// props de Server Component, nem por NextResponse.json.
 
 export interface BattleMoveDTO {
   id: number;
@@ -24,6 +24,7 @@ export interface BattlePokemonDTO {
   name: string;
   spriteUrl: string | null;
   types: string[];
+  level: number;
   maxHp: number;
   currentHp: number;
   fainted: boolean;
@@ -37,23 +38,22 @@ export interface ParticipantDTO {
   pokemons: BattlePokemonDTO[];
 }
 
-// Rótulo do lado. Não é "eu/inimigo": é a ordenação estável por userId que o
-// engine persiste nos eventos do turno (ver resolveTurn.ts).
-export type BattleSideLabelDTO = "A" | "B";
-
+// Eventos do turno do duelo (renderização + BattleTurnLog). Chaveados por
+// userId, não por lado A/B — no alternado o "lado" perde sentido; o que importa
+// é quem agiu. Espelha DuelEvent (domain/duelTypes.ts).
 export type BattleEventDTO =
-  | { type: "switch"; side: "A" | "B"; toSlot: number; pokemonName: string }
   | {
       type: "attack";
-      side: "A" | "B";
-      moveName: string;
+      userId: string;
+      cardName: string;
       damage: number;
       effectiveness: number;
       isCrit: boolean;
       missed: boolean;
       targetFainted: boolean;
     }
-  | { type: "noAction"; side: "A" | "B" };
+  | { type: "hesitate"; userId: string }
+  | { type: "roundStart"; round: number; firstUserId: string };
 
 export interface TurnLogDTO {
   turnNumber: number;
@@ -65,7 +65,8 @@ export type BattleStatusDTO = "IN_PROGRESS" | "FINISHED" | "ABANDONED";
 export interface BattleDTO {
   id: string;
   status: BattleStatusDTO;
-  currentTurn: number;
+  round: number;
+  activeUserId: string | null;
   winnerId: string | null;
   participants: ParticipantDTO[];
   turnLogs: TurnLogDTO[];
@@ -75,5 +76,5 @@ export interface BattleDTO {
 export interface QueueDeckDTO {
   id: string;
   name: string;
-  pokemonCount: number;
+  slotCount: number;
 }

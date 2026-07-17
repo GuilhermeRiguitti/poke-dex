@@ -10,18 +10,18 @@ import type {
 
 // Fronteira de serialização: linha do Prisma -> o que o jogador pode ver.
 //
-// Isso NÃO é boilerplate. A linha que tryResolveTurn devolve carrega
-// `pendingMoves` (as jogadas ainda não resolvidas dos DOIS lados) e os `stats`
-// de cada pokémon. Mandar a linha crua pro browser entrega a jogada do
-// oponente antes do turno resolver. Aqui só passa campo que está escrito
-// abaixo, então o vazamento não volta por descuido.
+// NÃO é boilerplate. A linha que resolveIfDue devolve pode vir com `actions` (a
+// carta pendente do jogador da vez) e com os `stats` de cada pokémon. Mandar a
+// linha crua pro browser entrega a jogada do oponente antes do turno resolver.
+// Aqui só passa o que está escrito abaixo — whitelist explícita fecha o vazamento.
 
 // Estrutural de propósito: aceita qualquer linha que tenha ao menos isto —
-// inclusive as que trazem pendingMoves junto, que é justamente o ponto.
+// inclusive as que trazem `actions` junto, que é justamente o ponto.
 interface BattleRow {
   id: string;
   status: string;
-  currentTurn: number;
+  round: number;
+  activeUserId: string | null;
   winnerId: string | null;
   participants: {
     id: string;
@@ -34,6 +34,7 @@ interface BattleRow {
       name: string;
       spriteUrl: string | null;
       types: unknown;
+      level: number;
       maxHp: number;
       currentHp: number;
       fainted: boolean;
@@ -58,8 +59,8 @@ function toMoveDTO(move: BattleMoveDef): BattleMoveDTO {
 }
 
 function toPokemonDTO(row: BattleRow["participants"][number]["pokemons"][number]): BattlePokemonDTO {
-  // types/moves são colunas Json no Prisma; quem escreveu foi buildTeamSnapshot,
-  // então a forma é conhecida — o cast é a leitura desse contrato, não um chute.
+  // types/moves são colunas Json; quem escreveu foi buildDuelSnapshot, então a
+  // forma é conhecida — o cast é a leitura desse contrato.
   const moves = (row.moves as BattleMoveDef[]) ?? [];
   return {
     id: row.id,
@@ -68,11 +69,12 @@ function toPokemonDTO(row: BattleRow["participants"][number]["pokemons"][number]
     name: row.name,
     spriteUrl: row.spriteUrl,
     types: (row.types as string[]) ?? [],
+    level: row.level,
     maxHp: row.maxHp,
     currentHp: row.currentHp,
     fainted: row.fainted,
     moves: moves.map(toMoveDTO),
-    // level e stats NÃO entram: a UI não usa, e stats do inimigo é informação de jogo.
+    // stats NÃO entram: a UI não usa, e stat do inimigo é informação de jogo.
   };
 }
 
@@ -89,13 +91,14 @@ export function toBattleDTO(row: BattleRow): BattleDTO {
   return {
     id: row.id,
     status: row.status as BattleStatusDTO,
-    currentTurn: row.currentTurn,
+    round: row.round,
+    activeUserId: row.activeUserId,
     winnerId: row.winnerId,
     participants: row.participants.map(toParticipantDTO),
     turnLogs: row.turnLogs.map((log) => ({
       turnNumber: log.turnNumber,
       events: (log.events as BattleEventDTO[]) ?? [],
     })),
-    // pendingMoves NÃO entra. Ver o comentário no topo.
+    // `actions` (a carta pendente do ativo) NÃO entra. Ver o comentário no topo.
   };
 }
