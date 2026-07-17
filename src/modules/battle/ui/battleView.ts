@@ -32,6 +32,27 @@ export interface DuelLogLine {
   text: string;
 }
 
+/**
+ * A ÚLTIMA ação do duelo, já traduzida pro ponto de vista de quem olha
+ * ("me"/"opp") — é o gatilho puro das animações da mesa. A UI compara o
+ * `turnNumber` pra saber quando disparar (e não re-animar o que já viu).
+ * Regra 4: a decisão de "quem lunga, quem treme, qual número flutua" é função
+ * pura e mora aqui; o componente só costura o efeito.
+ */
+export interface DuelTurnFx {
+  turnNumber: number;
+  actor: "me" | "opp";
+  kind: "attack" | "hesitate";
+  cardName: string | null;
+  /** quem toma o dano (oposto do actor). null em hesitate. */
+  target: "me" | "opp" | null;
+  damage: number;
+  effectiveness: number;
+  isCrit: boolean;
+  missed: boolean;
+  fainted: boolean;
+}
+
 export interface DuelView {
   me: DuelMonView;
   opp: DuelMonView;
@@ -42,6 +63,8 @@ export interface DuelView {
   isOver: boolean;
   iWon: boolean;
   logLines: DuelLogLine[];
+  /** null antes da 1ª ação; a UI ignora se o turnNumber não mudou. */
+  fx: DuelTurnFx | null;
 }
 
 function activeMon(p: BattleDTO["participants"][number]): BattlePokemonDTO | undefined {
@@ -78,6 +101,53 @@ function eventText(ev: BattleEventDTO, myUserId: string): string | null {
   const crit = ev.isCrit ? ", crítico" : "";
   const ko = ev.targetFainted ? " Nocaute!" : "";
   return `${who} usou ${ev.cardName} (${ev.damage} de dano${effLabel(ev.effectiveness)}${crit}).${ko}`;
+}
+
+function sideOf(userId: string, myUserId: string): "me" | "opp" {
+  return userId === myUserId ? "me" : "opp";
+}
+
+/**
+ * A última ação jogável (attack/hesitate) entre todos os turnos, do ponto de
+ * vista de `myUserId`. Um turno pode carregar `roundStart` + a ação; pegamos a
+ * ação. Devolve null enquanto nada aconteceu (mesa recém-aberta).
+ */
+function selectLatestFx(battle: BattleDTO, myUserId: string): DuelTurnFx | null {
+  const logsDesc = [...battle.turnLogs].sort((a, b) => b.turnNumber - a.turnNumber);
+  for (const log of logsDesc) {
+    const ev = [...log.events].reverse().find((e) => e.type === "attack" || e.type === "hesitate");
+    if (!ev) continue;
+
+    if (ev.type === "hesitate") {
+      return {
+        turnNumber: log.turnNumber,
+        actor: sideOf(ev.userId, myUserId),
+        kind: "hesitate",
+        cardName: null,
+        target: null,
+        damage: 0,
+        effectiveness: 1,
+        isCrit: false,
+        missed: false,
+        fainted: false,
+      };
+    }
+
+    const actor = sideOf(ev.userId, myUserId);
+    return {
+      turnNumber: log.turnNumber,
+      actor,
+      kind: "attack",
+      cardName: ev.cardName,
+      target: actor === "me" ? "opp" : "me",
+      damage: ev.damage,
+      effectiveness: ev.effectiveness,
+      isCrit: ev.isCrit,
+      missed: ev.missed,
+      fainted: ev.targetFainted,
+    };
+  }
+  return null;
 }
 
 /** BattleDTO -> DuelView, do ponto de vista de `myUserId`. null se eu não estou nela. */
@@ -122,5 +192,6 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
     isOver,
     iWon: battle.winnerId === myUserId,
     logLines,
+    fx: selectLatestFx(battle, myUserId),
   };
 }

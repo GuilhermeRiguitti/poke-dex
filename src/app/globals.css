@@ -180,6 +180,114 @@ a { color: inherit; text-decoration: none; }
 }
 .lv-badge > span { display: inline-block; transform: skewX(10deg); }
 
+/* ══════════════════════════════════════════════════════════════
+   DUELO — animações da mesa (ataque, impacto, dano) + mão de cartas
+   O gatilho é puro (battleView.ts → DuelTurnFx); aqui só o movimento.
+   ══════════════════════════════════════════════════════════════ */
+
+/* respiro do pokémon ativo (flutua parado) */
+@keyframes sprite-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.sprite-idle { animation: sprite-idle 3.2s ease-in-out infinite; }
+
+/* o atacante dá um passo — pra cima (eu, embaixo) ou pra baixo (oponente) */
+@keyframes lunge-up {
+  0% { transform: translate(0, 0); }
+  35% { transform: translate(8px, -26px) scale(1.07); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes lunge-down {
+  0% { transform: translate(0, 0); }
+  35% { transform: translate(-8px, 26px) scale(1.07); }
+  100% { transform: translate(0, 0); }
+}
+.fx-lunge-up { animation: lunge-up 0.5s var(--ease-snap); }
+.fx-lunge-down { animation: lunge-down 0.5s var(--ease-snap); }
+
+/* quem toma o golpe treme */
+@keyframes hit-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  15% { transform: translate(-7px, 2px) rotate(-3deg); }
+  30% { transform: translate(6px, -2px) rotate(3deg); }
+  45% { transform: translate(-5px, 1px) rotate(-2deg); }
+  60% { transform: translate(4px, 0) rotate(2deg); }
+  75% { transform: translate(-2px, 0) rotate(0); }
+}
+.fx-hit { animation: hit-shake 0.5s ease-in-out; }
+
+/* clarão vermelho no impacto */
+@keyframes fx-flash {
+  0% { opacity: 0; }
+  25% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+.fx-flash { animation: fx-flash 0.5s ease-out forwards; }
+
+/* número de dano que sobe e some */
+@keyframes dmg-float {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); }
+  22% { opacity: 1; transform: translate(-50%, -8px) scale(1.18); }
+  100% { opacity: 0; transform: translate(-50%, -58px) scale(1); }
+}
+.dmg-float { animation: dmg-float 1.05s ease-out forwards; }
+
+/* selo de efetividade (SUPER EFICAZ / POUCO EFICAZ) */
+@keyframes fx-pop {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.4) skewX(-8deg); }
+  25% { opacity: 1; transform: translate(-50%, 0) scale(1.12) skewX(-8deg); }
+  78% { opacity: 1; transform: translate(-50%, 0) scale(1) skewX(-8deg); }
+  100% { opacity: 0; transform: translate(-50%, -12px) scale(1) skewX(-8deg); }
+}
+.fx-pop { animation: fx-pop 1s ease-out forwards; }
+
+/* tela treme no crítico / nocaute */
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-6px, 3px); }
+  40% { transform: translate(5px, -3px); }
+  60% { transform: translate(-4px, 2px); }
+  80% { transform: translate(3px, -1px); }
+}
+.screen-shake { animation: screen-shake 0.45s ease-in-out; }
+
+/* ── mão de cartas (deck de carteado) ─────────────────────────── */
+.hand { position: relative; }
+.hand-card {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: var(--cw);
+  margin-left: calc(var(--cw) / -2);
+  transform-origin: bottom center;
+  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--rot));
+  transition: transform 0.2s var(--ease-snap), filter 0.2s, opacity 0.2s;
+  cursor: pointer;
+  will-change: transform;
+}
+/* a carta em foco sobe, endireita e cresce — sobrepõe as vizinhas */
+/* a carta em foco sobe, endireita, cresce e ganha um glow da cor do tipo
+   (drop-shadow segue o recorte chanfrado; box-shadow seria cortado pelo clip) */
+.hand-card:not(:disabled):hover,
+.hand-card:not(:disabled):focus-visible {
+  transform: translateX(var(--tx)) translateY(-42px) rotate(0deg) scale(1.15);
+  z-index: 60 !important;
+  filter: brightness(1.12)
+    drop-shadow(0 0 14px color-mix(in srgb, var(--type-c) 55%, transparent))
+    drop-shadow(0 14px 24px rgba(0, 0, 0, 0.6));
+}
+.hand-card:disabled { cursor: not-allowed; }
+.hand-card--dead { opacity: 0.34; filter: grayscale(0.7); }
+
+/* jogar a carta: ela dispara pra cima e some */
+@keyframes card-launch {
+  0% { opacity: 1; transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--rot)); }
+  28% { opacity: 1; transform: translateX(var(--tx)) translateY(-50px) rotate(0deg) scale(1.16); }
+  100% { opacity: 0; transform: translateX(calc(var(--tx) * 0.3)) translateY(-170px) rotate(0deg) scale(0.7); }
+}
+.hand-card--cast { animation: card-launch 0.5s var(--ease-snap) forwards; z-index: 70 !important; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -77,4 +77,42 @@ describe("selectDuelView", () => {
   it("devolve null se eu não estou na partida", () => {
     expect(selectDuelView(battle(), "estranho")).toBeNull();
   });
+
+  describe("fx (gatilho puro das animações)", () => {
+    it("pega a última ação do turno mais alto, do meu ponto de vista", () => {
+      // turnLogs: turno 4 = roundStart (sem ação), turno 3 = meu ataque.
+      // O fx deve pular o roundStart e cair no ataque do turno 3.
+      const fx = selectDuelView(battle(), "me")!.fx!;
+      expect(fx.turnNumber).toBe(3);
+      expect(fx.kind).toBe("attack");
+      expect(fx.actor).toBe("me");
+      expect(fx.target).toBe("opp"); // alvo é o oposto do actor
+      expect(fx.damage).toBe(22);
+      expect(fx.effectiveness).toBe(2);
+    });
+
+    it("inverte actor/target pelo ponto de vista do oponente", () => {
+      const fx = selectDuelView(battle(), "opp")!.fx!;
+      expect(fx.actor).toBe("opp"); // eu (opp) não fui quem agiu
+      expect(fx.target).toBe("me"); // o dano veio pra mim
+    });
+
+    it("hesitate: actor definido, target null, sem dano", () => {
+      const b = battle({
+        turnLogs: [{ turnNumber: 5, events: [{ type: "hesitate", userId: "opp" }] }],
+      });
+      const fx = selectDuelView(b, "me")!.fx!;
+      expect(fx.kind).toBe("hesitate");
+      expect(fx.actor).toBe("opp");
+      expect(fx.target).toBeNull();
+      expect(fx.damage).toBe(0);
+    });
+
+    it("fx é null quando ninguém agiu ainda (só roundStart)", () => {
+      const b = battle({
+        turnLogs: [{ turnNumber: 1, events: [{ type: "roundStart", round: 1, firstUserId: "me" }] }],
+      });
+      expect(selectDuelView(b, "me")!.fx).toBeNull();
+    });
+  });
 });
