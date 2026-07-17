@@ -1,20 +1,6 @@
 # TODO
-- level 50 e fake, ver porque colocou e se tem como nao ser fake
-- varias pages client ajustar e componentizar oq for preciso
-- configurar o projeto
 - Api client com react query tan stack 
 
-# Estrutura organizacional a implementar
-raiz/
-    /.claude
-    /.next
-    /prisma
-    /src
-        /app
-        /layouts
-            /components
-            layout.tsx
-        /modules
 
 # SEGURANCA
 
@@ -70,15 +56,7 @@ raiz/
 - [ ] `/design-system` está FORA do grupo (game) => rota pública, sem sessão.
 
 
-
-# MELHORIA
-- sistema de abrir pacote pra obter pokemons, pokemons vao ser mais dificil conseguir
-baseado em algum stats que define fortitude, quando maior esse stats menor a chance dele ser sortido
-
-
 # PRISMA CLIENT GLOBAL
-
-
 
 # VERIFICAR ISSO
 
@@ -95,3 +73,4 @@ Também estão lá: o par getBattleState (escreve) vs readBattleState (só lê),
 
 # TELA POKDEMON DETALHE
 Detalhar melhor as skills em formato de cartas, verificar todas e melhorar UI e exibicao das cartas (parece ter mais cartaz do que disponiveis na batalha , verificar sobre isso e montar uma pre selecao de skills pra da a opcao do usuario montar um deck mais customizado , combinando skills com variedade de pokemon, e ao mesmo tempo n precisar carregar todas as skills na UI da batalha
+

@@ -31,17 +31,22 @@ ALTER TABLE "MinhaTabela" ENABLE ROW LEVEL SECURITY;
 
 Referência: `prisma/migrations/20260714010000_enable_rls_all_tables`.
 
-## A ÚNICA exceção: `realtime.messages` (quando o Realtime entrar)
+## A ÚNICA exceção: `realtime.messages` (implementada)
 
 A regra "deny-all, sem policy" vale pras tabelas do **app** (schema `public`). O
 Realtime do duelo (PLANO_JOGO.md §8) é a exceção consciente: pra um jogador
-assinar o canal `battle:<id>`, precisa existir **uma policy em
-`realtime.messages`** (schema `realtime`, não `public`) autorizando **participante
-↔ topic**. Isso **não reabre** o PostgREST: a `anon`/`publishable` key no browser só
+assinar o canal `battle:<id>`, existe **uma policy em `realtime.messages`**
+(schema `realtime`, não `public`) autorizando **participante ↔ topic** — em
+`supabase/migrations/20260717000000_realtime_battle_broadcast.sql` (fora das
+migrations Prisma de propósito: o schema `realtime` só existe na plataforma).
+Isso **não reabre** o PostgREST: a `anon`/`publishable` key no browser só
 destrava o WebSocket; ela continua sem acesso de leitura a `Battle`/`User` via REST,
 porque as tabelas do app seguem deny-all. **"Abrir o Realtime ≠ abrir o PostgREST."**
 
-⚠️ Gotcha ao escrever essa policy: os ids são **cuid (texto)**, não uuid. `auth.uid()`
-faz cast pra `uuid` → copiar da doc do Supabase faz a policy **negar tudo em
-silêncio**. Leia o `sub` como texto:
-`current_setting('request.jwt.claims', true)::jsonb->>'sub'`.
+⚠️ Gotchas dessa policy (os dois negam tudo **em silêncio** se errar):
+- Os ids são **cuid (texto)**, não uuid. `auth.uid()` faz cast pra `uuid` →
+  copiar da doc do Supabase quebra. Leia o `sub` como texto:
+  `current_setting('request.jwt.claims', true)::jsonb->>'sub'`.
+- A policy roda como `authenticated`, que é **deny-all nas tabelas do app** — a
+  checagem de participação (`BattleParticipant`) tem que passar por função
+  **`SECURITY DEFINER`** (dona: `postgres`), senão o `EXISTS` volta vazio sempre.
