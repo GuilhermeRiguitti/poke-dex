@@ -326,13 +326,24 @@ start`, banco em :54322, API em :54321). Entregue (projeto verde: tsc · vitest
    404 até esse deploy subir. Depois do merge: conferir
    `select status_code from net._http_response order by id desc limit 5;`
    (deve virar 200) e jogar um duelo em prod.
-2. **Aplicar o SQL do Realtime no Supabase de PROD** (mesmo arquivo, via MCP
-   `apply_migration`) e rodar o advisor de segurança. Sem isso o prod segue
-   100% no polling de 2s (funciona — o Realtime é aditivo).
+2. ✅ **SQL do Realtime aplicado no PROD (2026-07-17)** via MCP `apply_migration`
+   (policy + trigger + funções). **Endurecido:** as funções foram movidas de
+   `public` pra um schema **`private`** — no `public` elas ficavam expostas como
+   RPC do PostgREST (`/rest/v1/rpc/...`, advisor acusou 3 WARN
+   `*_security_definer_function_executable`); `private` não é exposto. Advisor
+   de segurança **LIMPO** depois (só os `rls_enabled_no_policy` INFO desejados).
+   Verificado com `set role authenticated`: participante real → true, forasteiro
+   → false. O arquivo `supabase/migrations/...` foi atualizado pra refletir a
+   versão `private` (era a fonte da verdade do local também).
 3. **Jogar um duelo com 2 browsers no dev local** pra ver o push na tela (o
    e2e provou o transporte; falta o olho no jogo). ⚠️ Dev server que já estava
    de pé precisa **restart** ao trocar o `.env` — o singleton do Prisma segura
    a URL antiga mesmo com o "Reload env" do Next.
+4. **Confirmar as 4 envs do Realtime na Vercel** (o dono disse que setou):
+   `NEXT_PUBLIC_SUPABASE_URL` (prod), `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+   `SUPABASE_JWT_SECRET` (o legacy secret do PROD — tem que casar com o que o
+   Realtime valida), `CRON_SECRET`. Sem elas o prod cai no polling (funciona,
+   só sem push).
 
 ### 8.3 Runbook do cron
 
