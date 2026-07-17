@@ -41,7 +41,7 @@ export default function PokemonCard({
   return (
     <div
       data-highlighted={highlighted || undefined}
-      className="card-frame clip-card animate-rise flex flex-col p-3 data-[highlighted]:border-flare/60"
+      className="card-frame clip-card animate-rise flex flex-col p-3 data-highlighted:border-flare/60"
       style={
         {
           "--type-c": typeColor(accentType),
