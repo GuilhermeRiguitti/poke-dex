@@ -107,6 +107,12 @@ body {
 
 a { color: inherit; text-decoration: none; }
 
+/* scrollbar fina e escura — a branca padrão do SO grita no tema */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge) transparent;
+}
+
 /* ── assinatura: cantos chanfrados (Overwatch) ─────────────── */
 .clip-card {
   clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);

@@ -126,15 +126,26 @@ Toda page/rota é uma **função efêmera**: ela acorda com o request, responde,
 nem turno resolve, nem timeout de jogador expira, nem partida encerra.
 
 Por isso a batalha resolve o turno **na leitura**: o cliente faz polling em
-`GET /api/battle/[id]/status` a cada **2s** (`useBattleRoom.ts`), e é esse
-request que executa `resolveTurn()`. O polling **não é "atualizar a tela"** — ele
-é o **motor do jogo**. Sem ele a partida congela.
+`GET /api/battle/[id]/status` (`useBattleRoom.ts`), e é esse request que executa
+`resolveTurn()`. O polling **não é "atualizar a tela"** — ele é o **motor do
+jogo**. Sem ele a partida congela.
 
 > **Isso NÃO é gambiarra e NÃO é dívida técnica. É a única opção do ambiente.**
-> Se você acha que dá pra "melhorar" trocando por WebSocket, por um job, por um
-> cron de 1 minuto ou por um `setInterval` no servidor: **nada disso existe no
-> Hobby.** Não tente. Se um dia sair do Hobby, isso vira uma decisão de
-> arquitetura consciente — não uma limpeza de código.
+> Se você acha que dá pra "melhorar" com um job, um `setInterval` no servidor ou
+> uma conexão longa segurada pela lambda: **nada disso existe no Hobby.** Não
+> tente. Se um dia sair do Hobby, isso vira uma decisão de arquitetura
+> consciente — não uma limpeza de código.
+
+Duas peças **de fora da Vercel** complementam (não substituem) o polling:
+
+- **Supabase Realtime = SINAL, não computação.** O trigger no `Battle` empurra
+  `{battleId, round, status}` pro canal `battle:<id>`; o cliente reage refazendo
+  o `GET` que passa pelo DTO. Com o canal assinado, o polling **relaxa de 2s pra
+  20s** (rede de segurança); qualquer erro no canal devolve os 2s. O push nunca
+  executa `resolveTurn` — quem resolve continua sendo o request.
+- **`pg_cron` no Supabase = o relógio de backstop** (`resolve-battle-turns`,
+  30s): resolve turno vencido de partida que ninguém está olhando. Roda no
+  Supabase, não na Vercel — o "worker que não existe no Hobby" mora lá.
 
 O que isso obriga, e você **não pode** quebrar:
 
@@ -211,8 +222,9 @@ Por que deny-all não afeta o runtime (e por que é seguro):
   **dono das tabelas** (FORCE off → o dono ignora RLS) **e** tem `BYPASSRLS`.
   Bypass por dois caminhos. `anon`/`authenticated` não têm nenhum → bloqueados.
   Confere: `SELECT rolname, rolbypassrls FROM pg_roles;` + dono em `pg_class`.
-- **Nada no código usa `@supabase/supabase-js` nem a anon key** — a API pública que
-  a RLS fecha não é usada pelo jogo.
+- **O `@supabase/supabase-js` no código é SÓ o WebSocket do Realtime**
+  (`lib/supabaseBrowser.ts`, com a `publishable` key). Nenhum código lê tabela
+  via PostgREST — a API pública que a RLS fecha continua fora do jogo.
 
 O que te obriga daqui pra frente (a regra completa está no `AGENTS.md`):
 
@@ -224,14 +236,19 @@ O que te obriga daqui pra frente (a regra completa está no `AGENTS.md`):
 - Depois de mexer no schema, rode o advisor de segurança do Supabase — o alerta
   `rls_disabled_in_public` (ERROR) acusa a tabela esquecida.
 
-> **Fronteira do Realtime (Fase A, PLANO_JOGO.md §8.1) — não confunda com o acima.**
-> Quando o Realtime do duelo entrar, ele **exige uma policy** — mas em
+> **Fronteira do Realtime (implementada — PLANO_JOGO.md §8.1) — não confunda com
+> o acima.** O Realtime do duelo **exige uma policy** — mas em
 > `realtime.messages` (schema `realtime`), **não** nas tabelas do app (que seguem
-> deny-all). Abrir o WebSocket com a `publishable` key **não** reabre o PostgREST:
-> a key não lê `Battle`/`User` via REST. **"Abrir o Realtime ≠ abrir o PostgREST."**
-> A policy lê o `sub` do JWT como **texto** (ids são cuid, não uuid) —
-> `auth.uid()` da doc faz cast pra uuid e nega tudo em silêncio. É a ÚNICA policy
-> do projeto; a regra "sem policy" continua valendo pra todo o schema `public`.
+> deny-all). Ela vive em `supabase/migrations/20260717000000_realtime_battle_broadcast.sql`
+> (fora das migrations Prisma de propósito: o schema `realtime` só existe na
+> plataforma). Abrir o WebSocket com a `publishable` key **não** reabre o
+> PostgREST: a key não lê `Battle`/`User` via REST. **"Abrir o Realtime ≠ abrir o
+> PostgREST."** A policy lê o `sub` do JWT como **texto** (ids são cuid, não uuid)
+> — `auth.uid()` da doc faz cast pra uuid e nega tudo em silêncio. E a checagem
+> de participação passa por uma função **`SECURITY DEFINER`** — a policy roda
+> como `authenticated`, que é deny-all nas tabelas do app; sem isso ela nega tudo
+> em silêncio. É a ÚNICA policy do projeto; a regra "sem policy" continua valendo
+> pra todo o schema `public`.
 
 ### 6. Concorrência: assuma duas lambdas ao mesmo tempo
 

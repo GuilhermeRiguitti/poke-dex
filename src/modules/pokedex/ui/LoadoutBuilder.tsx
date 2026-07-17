@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CARDS_PER_SLOT } from "@/src/modules/deck/domain/rules";
 import type { LearnsetMoveDTO } from "@/src/modules/deck/ui/types";
+import { typeColor } from "@/src/lib/typeColors";
 
 // Modal de montar loadout: busca o learnset da espécie e deixa escolher até 6
 // cartas (CARDS_PER_SLOT). É o coração do jogo novo — o deck deixou de ser "só
@@ -77,15 +78,19 @@ export default function LoadoutBuilder({
       onClick={onClose}
     >
       <div
-        className="clip-card flex max-h-[85vh] w-full max-w-lg flex-col border border-edge bg-panel p-5"
+        className="clip-card flex max-h-[85vh] w-full max-w-xl flex-col border border-edge bg-panel p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-title text-lg uppercase tracking-wide">
             Montar <span className="text-flare">{name}</span>
           </h2>
-          <span className="text-sm font-bold text-ink-dim">
-            {selected.length}/{CARDS_PER_SLOT}
+          <span
+            className={`font-title text-sm tracking-wide ${
+              selected.length === CARDS_PER_SLOT ? "text-ok" : "text-ink-dim"
+            }`}
+          >
+            {selected.length}/{CARDS_PER_SLOT} cartas
           </span>
         </div>
 
@@ -99,25 +104,34 @@ export default function LoadoutBuilder({
               Essa espécie não tem cartas no espelho.
             </p>
           ) : (
-            <ul className="grid gap-1.5">
+            <ul className="grid grid-cols-2 gap-2">
               {moves.map((m) => {
-                const on = selected.includes(m.moveId);
+                // A posição na seleção É a posição na barra da batalha — o
+                // badge numerado mostra isso, não é só "check".
+                const pos = selected.indexOf(m.moveId);
+                const on = pos !== -1;
+                const capped = !on && selected.length >= CARDS_PER_SLOT;
                 return (
                   <li key={m.moveId}>
                     <button
                       onClick={() => toggle(m.moveId)}
-                      className={`flex w-full items-center justify-between gap-2 border px-3 py-2 text-left text-sm transition-colors ${
-                        on ? "border-flare bg-flare/15" : "border-edge bg-panel-2 hover:border-ink-dim"
+                      disabled={capped}
+                      style={{ borderLeftColor: typeColor(m.type) }}
+                      className={`clip-btn relative flex w-full cursor-pointer flex-col items-start gap-0.5 border-l-4 px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
+                        on ? "bg-flare/15 hover:bg-flare/25" : "bg-panel-2 hover:bg-panel"
                       }`}
-                      style={{ ["--type-c" as string]: `var(--type-${m.type})` }}
                     >
-                      <span className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--type-c)" }} />
-                        <span className="font-semibold capitalize">{m.name.replace(/-/g, " ")}</span>
-                        <span className="text-xs uppercase text-ink-dim">{m.type}</span>
+                      {on && (
+                        <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center bg-flare font-title text-[10px] text-white">
+                          {pos + 1}
+                        </span>
+                      )}
+                      <span className="w-full truncate pr-5 text-sm font-semibold capitalize">
+                        {m.name.replace(/-/g, " ")}
                       </span>
-                      <span className="text-xs font-bold text-ink-dim">
-                        {m.power ? `${m.power} pow` : m.damageClass}
+                      <span className="flex w-full items-center justify-between text-xs text-ink-dim">
+                        <span className="uppercase" style={{ color: typeColor(m.type) }}>{m.type}</span>
+                        <span className="font-bold">{m.power ? `${m.power}pw` : m.damageClass}</span>
                       </span>
                     </button>
                   </li>

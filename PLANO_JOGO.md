@@ -283,13 +283,56 @@ Duas peças, papéis diferentes — **não confundir** (foi o erro clássico da 
 - Bug do `migrate dev` (P1014 no `ALTER _prisma_migrations`) corrigido com guard
   `IF EXISTS` na migration de RLS.
 
+✅ **Pré-requisitos do Realtime destravados (2026-07-16):** MCP do Supabase
+funcionando (só `list_branches` erra — branching é feature paga, ignorar);
+`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` **já no
+`.env`** (públicas); `SUPABASE_JWT_SECRET` já estava. Advisor de segurança limpo
+(zero `rls_disabled_in_public`; os `rls_enabled_no_policy` INFO são o estado
+desejado).
+
+✅ **Jobs agendados e envs de prod setadas (2026-07-16):** `resolve-battle-turns`
+(30s) e `refresh-pokedex` (03:15 UTC diário) ativos no `pg_cron`, apontando pra
+URL de prod `https://poke-dex-rgt.vercel.app`; as 4 envs (`CRON_SECRET`,
+`SUPABASE_JWT_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) setadas na Vercel pelo dono.
+
+✅ **Fatia A3 — Realtime CODADA e verificada no stack local (2026-07-17):**
+decisão de abertura resolvida como **Supabase CLI local** (Docker; `npx supabase
+start`, banco em :54322, API em :54321). Entregue (projeto verde: tsc · vitest
+141 · eslint · next build):
+- `supabase/migrations/20260717000000_realtime_battle_broadcast.sql` — policy em
+  `realtime.messages` (participante ↔ topic `battle:<id>`, `sub` lido como
+  TEXTO) + trigger `battle_broadcast_update` no `Battle` via `realtime.send`
+  (payload mínimo `{battleId, round, status}`). **Fora das migrations Prisma de
+  propósito** (schema `realtime` só existe na plataforma). Descoberta que não
+  estava no plano: a checagem de participação precisa de função **`SECURITY
+  DEFINER`** — a policy roda como `authenticated`, deny-all nas tabelas do app;
+  sem ela, nega tudo em silêncio.
+- `GET /api/realtime/token` — better-auth → JWT HS256 (`lib/realtimeToken.ts`,
+  testado; claims `sub` + `role: authenticated`, TTL 1h).
+- `useBattleRoom` — push → refetch do DTO; canal assinado relaxa o polling de
+  2s pra **20s** (fallback); erro/queda no canal devolve os 2s. `lib/supabaseBrowser.ts`
+  é o singleton do socket (`@supabase/supabase-js` entrou SÓ pra isso).
+- **e2e no stack local passou:** participante assina (SUBSCRIBED), UPDATE no
+  `Battle` entrega o broadcast mínimo, **não-participante é negado**
+  (`Unauthorized ... Channel topic`). Rota do token dirigida de verdade
+  (401 sem sessão; JWT correto com sessão).
+- CLAUDE.md (consequências #1 e #5) e AGENTS.md atualizados: a fronteira do
+  Realtime saiu de "quando entrar" pra implementada.
+
 ⏳ **Pendente:**
-1. **Agendar o job** — precisa da **URL de produção da Vercel** (o `.env` só tem
-   `localhost`). SQL em §8.3.
-2. **Setar `CRON_SECRET` na Vercel** (Settings → Environment Variables), MESMO valor
-   do Vault. Reexibir: `select decrypted_secret from vault.decrypted_secrets where name='cron_secret';`
-3. **Fase 2 Realtime no cliente** (as decisões de §8.1) — ainda não codada. Até lá o
-   polling de 2s segue como fallback (e é o motor do dev local, que não tem Realtime).
+1. **Merge `refactor-resolve-turn` → `main` (dono).** A Vercel deploya a `main`,
+   que ainda tem o jogo VELHO — quebrado contra o banco já migrado; o cron toma
+   404 até esse deploy subir. Depois do merge: conferir
+   `select status_code from net._http_response order by id desc limit 5;`
+   (deve virar 200) e jogar um duelo em prod.
+2. **Aplicar o SQL do Realtime no Supabase de PROD** (mesmo arquivo, via MCP
+   `apply_migration`) e rodar o advisor de segurança. Sem isso o prod segue
+   100% no polling de 2s (funciona — o Realtime é aditivo).
+3. **Jogar um duelo com 2 browsers no dev local** pra ver o push na tela (o
+   e2e provou o transporte; falta o olho no jogo). ⚠️ Dev server que já estava
+   de pé precisa **restart** ao trocar o `.env` — o singleton do Prisma segura
+   a URL antiga mesmo com o "Reload env" do Next.
 
 ### 8.3 Runbook do cron
 
@@ -400,9 +443,14 @@ battle-room) — é o follow-up abaixo.
   mostra de quem é a vez, barra de 6 cartas (PP/tipo/power), HP, log. O canvas
   **Konva foi aposentado** (`BattleTable`/`useHtmlImage` deletados) — repor é polish.
 
-⏳ **Próxima fatia:** timer sincronizado na tela, A2 energia, A3 reação+Realtime,
-Fase D, e (opcional) repor o canvas Konva com capricho visual. F4/energia/reação =
-afinar jogando.
+✅ **Transporte Realtime FEITO (2026-07-17, ver §8.2):** push → refetch no
+`useBattleRoom`, polling relaxa pra 20s com canal de pé. Verificado e2e no
+Supabase CLI local.
+
+⏳ **Próxima fatia:** timer sincronizado na tela, A2 energia, A3 reação (a
+janela de reação em si — o transporte que ela precisa já está de pé), Fase D, e
+(opcional) repor o canvas Konva com capricho visual. F4/energia/reação = afinar
+jogando.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta
