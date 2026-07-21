@@ -1,0 +1,33 @@
+-- Worker de servidor da batalha, lado Supabase (ver TODO_TURNO.md).
+-- pg_cron: agendador dentro do Postgres (1-59s no plano free) — o worker que
+--   não existe na Vercel Hobby. Cria schema `cron`.
+-- pg_net: cliente HTTP assíncrono; o job usa net.http_post pra bater na rota
+--   POST /api/cron/resolve-turns. Cria schema `net`.
+-- Extensões de plataforma do Supabase: ficam AQUI, não em prisma/migrations
+-- (um Postgres local/CI vanilla não as tem e o prisma migrate quebraria).
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- ⚠️ GAP CONHECIDO (reprodutibilidade): os DOIS jobs de cron que rodam hoje no
+-- prod — `resolve-battle-turns` (30s, backstop do turno) e `refresh-pokedex`
+-- (diário) — foram agendados FORA de qualquer migration (nenhuma entrada de
+-- ledger os cria; esta migration só criou as extensões). Um ambiente novo sobe
+-- com as extensões mas SEM os jobs.
+--
+-- Não versionamos o `cron.schedule` direto aqui de propósito: o comando embute
+-- a URL do deploy (https://<app>.vercel.app/api/cron/...), que é específica do
+-- ambiente — versionar a URL de prod faria um staging bater no prod. Ao subir um
+-- ambiente novo, agende manualmente (troque a URL e o secret do header):
+--
+--   select cron.schedule('resolve-battle-turns', '30 seconds', $$
+--     select net.http_post(
+--       url     := 'https://SEU-APP.vercel.app/api/cron/resolve-turns',
+--       headers := jsonb_build_object('Authorization', 'Bearer ' || 'SEU_CRON_SECRET')
+--     );
+--   $$);
+--   select cron.schedule('refresh-pokedex', '15 3 * * *', $$
+--     select net.http_post(
+--       url     := 'https://SEU-APP.vercel.app/api/cron/refresh-pokedex',
+--       headers := jsonb_build_object('Authorization', 'Bearer ' || 'SEU_CRON_SECRET')
+--     );
+--   $$);

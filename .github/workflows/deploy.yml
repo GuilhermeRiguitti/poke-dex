@@ -1,0 +1,71 @@
+name: Deploy
+
+# Pipeline inteiro sob nosso controle (o dono optou por assumir o deploy em vez
+# da integração Git automática da Vercel).
+#
+# ⚠️ PRÉ-REQUISITO: a integração Git da Vercel (auto-deploy do branch `main`)
+# PRECISA estar DESLIGADA no dashboard da Vercel — senão cada push deploya DUAS
+# vezes (a Vercel + este workflow). Ver DEPLOY.md.
+#
+# Ordem importa em ambiente NOVO (em prod já está tudo aplicado → cada passo é
+# no-op): o Prisma cria as tabelas → o Supabase liga RLS/extensões/realtime
+# SOBRE elas → só então build+deploy. Se QUALQUER migration falhar, não deploya.
+
+on:
+  push:
+    branches: [main]
+
+# Nunca deixa dois deploys de main correndo em cima do banco ao mesmo tempo.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # ── 1. Schema do app (ledger _prisma_migrations) ─────────────────────
+      # Roda ANTES do Supabase: as migrations de RLS/realtime referenciam essas
+      # tabelas (num banco vazio, ligar RLS/trigger sobre tabela inexistente quebra).
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      # ── 2. Plataforma: RLS, extensões, realtime (ledger supabase) ────────
+      # supabase/migrations/ espelha o ledger remoto 1:1 → em prod isto é no-op;
+      # num ambiente novo aplica as 4 em ordem. É o análogo do `migrate deploy`.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Supabase db push
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push
+        env:
+          SUPABASE_PROJECT_REF: zonyjgqlzaavavufxxvz
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      # ── 3. Build + deploy na Vercel via CLI (não a integração Git) ───────
+      # `vercel pull` traz as env vars de produção do projeto → `vercel build`
+      # roda o mesmo `prisma generate && next build` de sempre com elas.
+      - name: Vercel deploy (prod)
+        run: |
+          npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx vercel build --prod --token="$VERCEL_TOKEN"
+          npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

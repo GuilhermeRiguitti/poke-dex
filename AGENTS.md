@@ -37,8 +37,9 @@ A regra "deny-all, sem policy" vale pras tabelas do **app** (schema `public`). O
 Realtime do duelo (PLANO_JOGO.md §8) é a exceção consciente: pra um jogador
 assinar o canal `battle:<id>`, existe **uma policy em `realtime.messages`**
 (schema `realtime`, não `public`) autorizando **participante ↔ topic** — em
-`supabase/migrations/20260717000000_realtime_battle_broadcast.sql` (fora das
-migrations Prisma de propósito: o schema `realtime` só existe na plataforma).
+`supabase/migrations/20260717055605_realtime_harden_functions_private_schema.sql`
+(par com a `…055314_realtime_battle_broadcast.sql`; fora das migrations Prisma de
+propósito: o schema `realtime` só existe na plataforma).
 Isso **não reabre** o PostgREST: a `anon`/`publishable` key no browser só
 destrava o WebSocket; ela continua sem acesso de leitura a `Battle`/`User` via REST,
 porque as tabelas do app seguem deny-all. **"Abrir o Realtime ≠ abrir o PostgREST."**
