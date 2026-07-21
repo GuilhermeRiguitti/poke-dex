@@ -133,6 +133,8 @@ Variables). Env nova na Vercel só vale depois de **redeploy**.
 | `404` | deploy de prod não tem a rota (branch não mergeado) | mergear/deployar |
 | `timeout` | lambda estourou 5s do `pg_net` | ok se raro; a rota é idempotente |
 
-**Estado atual (2026-07-17):** os 2 jobs estão **agendados e ativos**; tomam 404
-até o merge `refactor-resolve-turn` → `main` subir o deploy novo. Pós-merge,
-conferir o `net._http_response` virando 200.
+**Como as rotas entram no ar:** elas vivem no app da Vercel e sobem pelo pipeline
+de CI (`.github/workflows/deploy.yml` → push em `main`). Se o `net._http_response`
+acusar 404, o deploy de prod ainda não tem a rota — confira o run do Actions. 401
+é `CRON_SECRET` divergente entre o Vault e a Vercel. Os 2 jobs seguem agendados
+no Supabase (o wipe do banco não os apaga; ver DEPLOY.md).

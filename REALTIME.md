@@ -6,10 +6,12 @@ Efeito prático: com o canal assinado, o polling relaxa de 2s → 20s (rede de s
 # Arquivos
 supabase/migrations/20260717055314_realtime_battle_broadcast.sql	trigger no Battle + policy em realtime.messages + 2 funções SECURITY DEFINER (versão inicial em public). Não é Prisma (toca o schema realtime)
 supabase/migrations/20260717055605_realtime_harden_functions_private_schema.sql	endurece: move as funções pro schema private (fecha os WARN do advisor de RPC). Estado final
-src/lib/supabaseBrowser.ts	cliente do browser, existe só pro WebSocket (singleton, 1 socket/aba)
-src/lib/realtimeToken.ts	assina o JWT curto (HS256) que o Realtime valida — sub=userId, role=authenticated
+src/modules/realtime/domain/signRealtimeToken.ts	assina o JWT curto (HS256) que o Realtime valida — sub=userId, role=authenticated
+src/modules/realtime/index.ts	API de servidor do módulo (createRealtimeToken)
+src/modules/realtime/ui/supabaseBrowser.ts	cliente do browser, existe só pro WebSocket (singleton, 1 socket/aba)
+src/modules/realtime/ui/useRealtimeChannel.ts	hook do canal: assina battle:<id>, no broadcast dispara o refetch
 src/app/api/realtime/token/route.ts	troca a sessão better-auth pelo JWT; sem secret → 503 (degrada pro polling)
-src/modules/battle/ui/useBattleRoom.ts	assina battle:<id>, no broadcast faz refetch; controla o ritmo do polling
+src/modules/battle/ui/useBattleRoom.ts	usa useRealtimeChannel; controla o ritmo do polling (2s ↔ 20s)
 Fluxo em 1 linha
 UPDATE Battle → trigger broadcast_battle_update → realtime.send() no topic battle:<id> → policy checa participante ↔ topic → WebSocket entrega o sinal → cliente refaz GET /api/battle/[id] → DTO.
 
