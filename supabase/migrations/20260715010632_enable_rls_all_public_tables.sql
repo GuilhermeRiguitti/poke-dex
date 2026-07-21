@@ -1,22 +1,19 @@
--- App usa Prisma como role `postgres` (BYPASSRLS + dona das tabelas).
--- RLS sem policies = deny-all para anon/authenticated (PostgREST), Prisma segue intacto.
+-- Deny-all RLS em TODA tabela do schema public. O app fala com o banco via
+-- Prisma como role `postgres` (dono + BYPASSRLS → não passa por RLS); a API
+-- PostgREST pública (anon/authenticated), sim. RLS sem policy = deny-all pra ela.
 --
--- ⚠️ Depende das tabelas já existirem → em ambiente novo o `prisma migrate deploy`
--- roda ANTES do `supabase db push` (é a ordem do .github/workflows/deploy.yml).
--- Conteúdo fiel ao que foi aplicado no prod (ledger supabase_migrations, v20260715010632).
-ALTER TABLE public."_prisma_migrations"     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."User"                   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."Session"                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."Account"                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."Verification"           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."UserCard"               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."Deck"                   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."DeckCard"               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."PokeApiCache"           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."Battle"                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."BattleParticipant"      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."BattlePokemon"          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."BattlePendingMove"      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."BattleTurnLog"          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."MatchmakingQueueEntry"  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."PackState"              ENABLE ROW LEVEL SECURITY;
+-- ⚠️ DINÂMICO de propósito (não uma lista fixa): roda DEPOIS do `prisma migrate
+-- deploy` (as tabelas já existem) e o schema EVOLUI — `UserCard`→`UserPokemon`,
+-- `DeckCard`→`DeckSlot/DeckSlotCard`, `Pokemon`/`Move`/... entraram depois. Uma
+-- lista fixa quebraria no rebuild ao referenciar tabela que não existe mais.
+-- Aqui varremos o que existir. Idempotente: ligar RLS já-ligada é no-op, então
+-- convive de boa com o RLS que as próprias migrations Prisma já ligam por tabela.
+do $$
+declare r record;
+begin
+  for r in
+    select tablename from pg_tables where schemaname = 'public'
+  loop
+    execute format('alter table public.%I enable row level security', r.tablename);
+  end loop;
+end $$;
