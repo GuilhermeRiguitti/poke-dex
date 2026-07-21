@@ -1,5 +1,9 @@
 generator client {
   provider = "prisma-client-js"
+  // "native" = a plataforma que roda o `prisma generate` (runner do GitHub, dev local).
+  // "rhel-openssl-3.0.x" = runtime serverless da Vercel — como buildamos FORA da
+  // Vercel (no runner), o engine dela não vem sozinho e precisa ser gerado aqui.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
