@@ -47,7 +47,10 @@ jobs:
       # num ambiente novo aplica as 4 em ordem. É o análogo do `migrate deploy`.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Versão FIXA (não "latest"): "latest" consulta a API do GitHub pra
+          # resolver a última release, e essa chamada não-autenticada rate-limita
+          # (60/h por IP, compartilhado entre runners). Pinar evita a chamada.
+          version: 2.109.1
       - name: Supabase db push
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
