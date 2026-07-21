@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { jwtVerify } from "jose";
-import { signRealtimeToken, REALTIME_TOKEN_TTL_SECONDS } from "@/src/lib/realtimeToken";
+import { signRealtimeToken, REALTIME_TOKEN_TTL_SECONDS } from "@/src/modules/realtime/domain/signRealtimeToken";
 
 // O Supabase Realtime valida HS256 com o legacy JWT secret usado como string
 // CRUA. A policy em realtime.messages lê o `sub` como TEXTO (ids são cuid) e

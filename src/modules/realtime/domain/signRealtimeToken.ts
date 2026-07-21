@@ -1,5 +1,8 @@
 import { SignJWT } from "jose";
 
+// Regra pura do módulo realtime: assinar o JWT que o Supabase Realtime valida.
+// Sem Prisma, sem fetch, sem React — por isso mora em domain/ e tem teste.
+
 // Quanto tempo o token do Realtime vale. Curto o bastante pra não virar
 // credencial de longa vida, longo o bastante pra cobrir uma partida inteira
 // sem o cliente precisar renovar no meio.

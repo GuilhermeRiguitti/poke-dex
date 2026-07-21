@@ -300,7 +300,8 @@ URL de prod `https://poke-dex-rgt.vercel.app`; as 4 envs (`CRON_SECRET`,
 decisão de abertura resolvida como **Supabase CLI local** (Docker; `npx supabase
 start`, banco em :54322, API em :54321). Entregue (projeto verde: tsc · vitest
 141 · eslint · next build):
-- `supabase/migrations/20260717000000_realtime_battle_broadcast.sql` — policy em
+- `supabase/migrations/20260717055314_realtime_battle_broadcast.sql` (+ a irmã
+  `…055605_realtime_harden_functions_private_schema.sql`) — policy em
   `realtime.messages` (participante ↔ topic `battle:<id>`, `sub` lido como
   TEXTO) + trigger `battle_broadcast_update` no `Battle` via `realtime.send`
   (payload mínimo `{battleId, round, status}`). **Fora das migrations Prisma de
@@ -308,11 +309,14 @@ start`, banco em :54322, API em :54321). Entregue (projeto verde: tsc · vitest
   estava no plano: a checagem de participação precisa de função **`SECURITY
   DEFINER`** — a policy roda como `authenticated`, deny-all nas tabelas do app;
   sem ela, nega tudo em silêncio.
-- `GET /api/realtime/token` — better-auth → JWT HS256 (`lib/realtimeToken.ts`,
-  testado; claims `sub` + `role: authenticated`, TTL 1h).
+- `GET /api/realtime/token` — better-auth → JWT HS256 (`modules/realtime`:
+  `createRealtimeToken` no index chama `domain/signRealtimeToken`, testado;
+  claims `sub` + `role: authenticated`, TTL 1h).
 - `useBattleRoom` — push → refetch do DTO; canal assinado relaxa o polling de
-  2s pra **20s** (fallback); erro/queda no canal devolve os 2s. `lib/supabaseBrowser.ts`
-  é o singleton do socket (`@supabase/supabase-js` entrou SÓ pra isso).
+  2s pra **20s** (fallback); erro/queda no canal devolve os 2s. A assinatura do
+  canal mora em `modules/realtime/ui/useRealtimeChannel` e
+  `modules/realtime/ui/supabaseBrowser` é o singleton do socket
+  (`@supabase/supabase-js` entrou SÓ pra isso).
 - **e2e no stack local passou:** participante assina (SUBSCRIBED), UPDATE no
   `Battle` entrega o broadcast mínimo, **não-participante é negado**
   (`Unauthorized ... Channel topic`). Rota do token dirigida de verdade

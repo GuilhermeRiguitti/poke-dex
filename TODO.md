@@ -74,3 +74,9 @@ Também estão lá: o par getBattleState (escreve) vs readBattleState (só lê),
 # TELA POKDEMON DETALHE
 Detalhar melhor as skills em formato de cartas, verificar todas e melhorar UI e exibicao das cartas (parece ter mais cartaz do que disponiveis na batalha , verificar sobre isso e montar uma pre selecao de skills pra da a opcao do usuario montar um deck mais customizado , combinando skills com variedade de pokemon, e ao mesmo tempo n precisar carregar todas as skills na UI da batalha
 
+# VER ESSE SCRPT
+`scripts\generate-rarity.mjs`
+
+
+# SEGURANÇA EM DEPLOY (VER SOBRE)
+Como você optou por repository secrets (sem o gate de aprovação do environment), a trava é disciplina, não o pipeline: toda migration nova que for pra main precisa ser lida antes procurando DROP/DELETE/ALTER ... DROP. Se um dia isso te preocupar, o environment: Production com "required reviewer" é a rede — mas isso é decisão sua, e por ora está do jeito que você quis.

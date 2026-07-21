@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import { getSupabaseBrowser } from "@/src/lib/supabaseBrowser";
+import { useRealtimeChannel } from "@/src/modules/realtime/ui/useRealtimeChannel";
 import type { BattleDTO } from "./types";
 
 // Sem Realtime, o polling é o MOTOR do jogo (a leitura resolve o turno —
@@ -30,8 +29,6 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
   const [battle, setBattle] = useState(initialBattle);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // Canal Realtime assinado e saudável? Controla o ritmo do polling.
-  const [live, setLive] = useState(false);
 
   const latest = useRef({
     round: battle.round,
@@ -51,44 +48,15 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
   }, [battleId, applyBattle]);
 
   // ── Realtime: push → refetch ─────────────────────────────────────────────
-  useEffect(() => {
-    if (latest.current.status !== "IN_PROGRESS") return;
-    const supabase = getSupabaseBrowser();
-    if (!supabase) return; // sem env do Supabase → segue 100% no polling
-
-    let cancelled = false;
-    let channel: RealtimeChannel | null = null;
-
-    (async () => {
-      // Sessão better-auth → JWT curto que o Realtime aceita. Se falhar
-      // (secret ausente, 401...), não liga o canal — polling de 2s segura.
-      const res = await fetch("/api/realtime/token");
-      if (!res.ok || cancelled) return;
-      const { token } = (await res.json()) as { token: string };
-
-      await supabase.realtime.setAuth(token);
-      if (cancelled) return;
-
-      channel = supabase.channel(`battle:${battleId}`, {
-        // private: exige a policy em realtime.messages (participante ↔ topic)
-        config: { private: true },
-      });
-      channel.on("broadcast", { event: "battle_updated" }, () => {
-        void loadFullState();
-      });
-      channel.subscribe((status) => {
-        // Qualquer coisa que não seja SUBSCRIBED (erro, timeout, token
-        // vencido → CLOSED) devolve o polling pro ritmo de motor (2s).
-        if (!cancelled) setLive(status === "SUBSCRIBED");
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-      setLive(false);
-      if (channel) void supabase.removeChannel(channel);
-    };
-  }, [battleId, loadFullState]);
+  // Canal privado battle:<id>; qualquer broadcast = refetch (idempotente). O
+  // `live` que volta controla o ritmo do polling abaixo. Só assina enquanto a
+  // partida está em progresso — acabou, o canal cai e o polling para.
+  const live = useRealtimeChannel(
+    `battle:${battleId}`,
+    "battle_updated",
+    loadFullState,
+    battle.status === "IN_PROGRESS"
+  );
 
   // ── Polling: motor sem Realtime, rede de segurança com ele ──────────────
   useEffect(() => {

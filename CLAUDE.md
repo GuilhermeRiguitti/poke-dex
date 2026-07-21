@@ -223,8 +223,9 @@ Por que deny-all não afeta o runtime (e por que é seguro):
   Bypass por dois caminhos. `anon`/`authenticated` não têm nenhum → bloqueados.
   Confere: `SELECT rolname, rolbypassrls FROM pg_roles;` + dono em `pg_class`.
 - **O `@supabase/supabase-js` no código é SÓ o WebSocket do Realtime**
-  (`lib/supabaseBrowser.ts`, com a `publishable` key). Nenhum código lê tabela
-  via PostgREST — a API pública que a RLS fecha continua fora do jogo.
+  (`modules/realtime/ui/supabaseBrowser.ts`, com a `publishable` key). Nenhum
+  código lê tabela via PostgREST — a API pública que a RLS fecha continua fora
+  do jogo.
 
 O que te obriga daqui pra frente (a regra completa está no `AGENTS.md`):
 
@@ -239,8 +240,8 @@ O que te obriga daqui pra frente (a regra completa está no `AGENTS.md`):
 > **Fronteira do Realtime (implementada — PLANO_JOGO.md §8.1) — não confunda com
 > o acima.** O Realtime do duelo **exige uma policy** — mas em
 > `realtime.messages` (schema `realtime`), **não** nas tabelas do app (que seguem
-> deny-all). Ela vive em `supabase/migrations/20260717000000_realtime_battle_broadcast.sql`
-> (fora das migrations Prisma de propósito: o schema `realtime` só existe na
+> deny-all). Ela vive em `supabase/migrations/20260717055605_realtime_harden_functions_private_schema.sql`
+> (par com a `…055314_realtime_battle_broadcast.sql`; fora das migrations Prisma de propósito: o schema `realtime` só existe na
 > plataforma). Abrir o WebSocket com a `publishable` key **não** reabre o
 > PostgREST: a key não lê `Battle`/`User` via REST. **"Abrir o Realtime ≠ abrir o
 > PostgREST."** A policy lê o `sub` do JWT como **texto** (ids são cuid, não uuid)
