@@ -72,4 +72,15 @@ describe("calculateDamage", () => {
     expect(result.damage).toBe(0);
     expect(result.missed).toBe(false);
   });
+
+  it("move de status reporta efetividade neutra, mesmo que o tipo seria super efetivo", () => {
+    // hypnosis (psychic) vs poison seria 2x, mas status não causa dano: efetividade
+    // não se aplica. Reportar 2 fazia o log dizer "0 de dano, super eficaz".
+    const statusMove = makeMove({ type: "psychic", damageClass: "status", power: null });
+    const defender = makeMon({ types: ["poison"] });
+    const rng = sequenceRng([]);
+    const result = calculateDamage({ attacker, defender, move: statusMove, effectiveness: 2, rng });
+    expect(result.damage).toBe(0);
+    expect(result.effectiveness).toBe(1);
+  });
 });

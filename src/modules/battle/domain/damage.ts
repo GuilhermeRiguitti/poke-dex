@@ -51,8 +51,13 @@ export function rollCrit(rng: () => number, critChance = CRIT_CHANCE): boolean {
 export function calculateDamage(params: DamageRollParams): DamageResult {
   const { attacker, defender, move, effectiveness, rng } = params;
 
+  // Move de status não causa dano: efetividade de tipo não se aplica a ele.
+  // Reportar o multiplicador recebido (ex: psychic 2x vs poison) fazia o log
+  // dizer "0 de dano, super eficaz" — contradição — e disparava a animação de
+  // super efetivo. Neutro (1) some o label; imunidade de move de DANO segue
+  // abaixo, tratada separado, pra "sem efeito" continuar aparecendo.
   if (move.damageClass === "status" || !move.power) {
-    return { damage: 0, effectiveness, isCrit: false, missed: false };
+    return { damage: 0, effectiveness: 1, isCrit: false, missed: false };
   }
 
   if (!rollAccuracy(move, rng)) {
