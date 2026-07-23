@@ -20,6 +20,11 @@ concurrency:
   group: deploy-main
   cancel-in-progress: false
 
+# O passo final cria uma tag/release no repo → o GITHUB_TOKEN precisa poder
+# escrever em `contents`.
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -72,3 +77,17 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # ── 4. Tag de release ────────────────────────────────────────────────
+      # Só chega aqui se migrations + build + deploy passaram → toda release
+      # marca um commit que de fato foi pro ar. `github.run_number` é monotônico
+      # e único por repo; o commit é o do push que disparou o workflow.
+      - name: Create release tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="deploy-${{ github.run_number }}"
+          gh release create "$TAG" \
+            --target "${{ github.sha }}" \
+            --title "$TAG" \
+            --generate-notes

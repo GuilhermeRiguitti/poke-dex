@@ -402,12 +402,12 @@ exposta como RPC) e coberta pela policy que já existe — ela autoriza por TOPI
 não por evento. `useRealtimeChannel` passou a aceitar **vários eventos numa
 assinatura só** (dois canais pro mesmo topic pagariam dois handshakes).
 
-⏳ **Pendente:**
-1. **Merge `refactor-resolve-turn` → `main` (dono).** A Vercel deploya a `main`,
-   que ainda tem o jogo VELHO — quebrado contra o banco já migrado; o cron toma
-   404 até esse deploy subir. Depois do merge: conferir
-   `select status_code from net._http_response order by id desc limit 5;`
-   (deve virar 200) e jogar um duelo em prod.
+✅ **Fechado (2026-07-23):**
+1. ✅ **Merge `refactor-resolve-turn` → `main` + deploy.** A `main` já roda o jogo
+   novo (PR #11 mergeado; CI de migrations + deploy Vercel no ar). As 8 migrations
+   Prisma estão aplicadas no prod (as três últimas — simultâneo, nível 1 e
+   evolução — em 2026-07-23) e as 5 de `supabase/migrations/` também. O cron
+   `resolve-battle-turns` responde 200.
 2. ✅ **SQL do Realtime aplicado no PROD (2026-07-17)** via MCP `apply_migration`
    (policy + trigger + funções). **Endurecido:** as funções foram movidas de
    `public` pra um schema **`private`** — no `public` elas ficavam expostas como
@@ -417,6 +417,7 @@ assinatura só** (dois canais pro mesmo topic pagariam dois handshakes).
    Verificado com `set role authenticated`: participante real → true, forasteiro
    → false. O arquivo `supabase/migrations/...` foi atualizado pra refletir a
    versão `private` (era a fonte da verdade do local também).
+⏳ **Pendente (verificação manual do dono):**
 3. **Jogar um duelo com 2 browsers no dev local** pra ver o push na tela (o
    e2e provou o transporte; falta o olho no jogo). ⚠️ Dev server que já estava
    de pé precisa **restart** ao trocar o `.env` — o singleton do Prisma segura
@@ -425,7 +426,7 @@ assinatura só** (dois canais pro mesmo topic pagariam dois handshakes).
    `NEXT_PUBLIC_SUPABASE_URL` (prod), `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
    `SUPABASE_JWT_SECRET` (o legacy secret do PROD — tem que casar com o que o
    Realtime valida), `CRON_SECRET`. Sem elas o prod cai no polling (funciona,
-   só sem push).
+   só sem push). Os dois crons já disparam no prod, então `CRON_SECRET` está OK.
 
 ### 8.3 Runbook do cron
 
@@ -493,9 +494,10 @@ no Supabase** (`npm run seed`). O `syncPokedex` passou a inserir o learnset com
 `createMany`+`skipDuplicates` (o upsert por linha estourava o tempo da lambda no
 cron); `DEFAULT_REFRESH_BATCH` caiu pra 20 (o gargalo do refresh é a rede da PokéAPI).
 
-⏳ **Pendente da Fase 0:**
-1. **Agendar o `refresh-pokedex` no `pg_cron`** (1×/dia) — mesmo runbook do §8.3,
-   trocando a rota pra `/api/cron/refresh-pokedex` e usando a URL de prod da Vercel.
+✅ **Fase 0 fechada no prod (2026-07-23):** o `refresh-pokedex` está **agendado e
+ativo** no `pg_cron` (`15 3 * * *`, diário), ao lado do `resolve-battle-turns`
+(30s). Gen 1 semeada no prod: 151 espécies, 592 moves, 8697 vínculos de learnset
+(2192 por level-up).
 
 ### Estado da Fase A (parcial)
 
@@ -559,11 +561,10 @@ Supabase CLI local.
   "Aguardando oponente" + selo de oponente pronto.
 - **Realtime**: 2º trigger `battle_action_submitted` (ver §8.2).
 
-⚠️ **A migration NÃO foi aplicada** — o `.env` aponta pro Supabase de PROD. O
-dono roda `npx prisma migrate deploy` (ou `dev`) e **`npm run seed`** (o
-learnset antigo é apagado pela migration: não havia como converter sem o dado da
-API — ver o cabeçalho da migration). O SQL do Realtime novo entra pelo
-`supabase db push` / MCP, como os irmãos.
+✅ **Aplicada no PROD (2026-07-23):** `20260721120000_simultaneous_turns_and_level_learnset`
+está no ledger do Prisma e o `npm run seed` rodou (learnset re-populado a partir
+da API). O trigger `battle_action_submitted` (`supabase/migrations/…121000`) está
+no ledger do Supabase. O `.env` aponta pro Supabase de PROD.
 
 ⏳ **Próxima fatia:** timer sincronizado na tela, energia (A2), Fase D, e
 (opcional) repor o canvas Konva. A "janela de reação" precisa ser
@@ -588,9 +589,17 @@ API — ver o cabeçalho da migration). O SQL do Realtime novo entra pelo
 4. **Snapshot intacto**: `awardBattleXp` mexe no `UserPokemon` (coleção), nunca no
    `BattlePokemon` (congelado) — a evolução vale só da PRÓXIMA partida, de graça.
 
-⚠️ **Pendente (dono):** aplicar a migration `20260722130000` e re-rodar
-`npm run seed` pra popular `evolvesToApiId`/`evolvesToLevel` (o seed de 2026-07-22
-que destravou o learnset rodou ANTES desta coluna existir).
+✅ **Aplicada no PROD (2026-07-23):** as migrations `20260722120000_starting_level_1`
+e `20260722130000_pokemon_level_evolution` estão no ledger do Prisma, e o
+`npm run seed` re-rodou depois — `evolvesToApiId`/`evolvesToLevel` populados
+(53 das 151 espécies da Gen 1 têm evolução por nível gravada).
+
+✅ **Fix de dano (2026-07-23)** — `tsc` · `vitest` 172 · `eslint` · `next build`
+verdes. Move de status (sem `power`) agora reporta efetividade **1** em
+`calculateDamage`, não o multiplicador de tipo. Antes, um status contra um tipo
+que "leva 2×" logava "0 de dano, super eficaz" (contradição) e disparava a
+animação de super efetivo. A imunidade de move de **dano** segue tratada à parte,
+então "sem efeito" continua aparecendo.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta
