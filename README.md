@@ -1,129 +1,76 @@
 # PokéDuel
 
-Um jogo de **duelo tático 1×1 de Pokémon**, fiel à série. Você **coleciona**
-Pokémon (cada um nasce no nível 1 e sobe jogando), monta um **deck** de 1 Pokémon
-+ até 6 cartas (skills liberadas por nível) e enfrenta outro jogador em **turnos
-simultâneos**: os dois escolhem a carta do mesmo round **sem ver a do outro**, e
-quem tem mais Speed executa primeiro.
+Jogo de duelo 1×1 de Pokémon, jogado no navegador. Você coleciona Pokémon, monta
+um deck e batalha contra outro jogador em turnos.
 
-Todo stat vem da **[PokéAPI](https://pokeapi.co/)** — nada é inventado à mão. O
-nível escala os stats e **libera skills novas** (learnset por nível, como no jogo
-original).
+## O jogo
 
-> A visão completa do jogo e o estado de cada fase estão em
-> [`PLANO_JOGO.md`](PLANO_JOGO.md). As regras de arquitetura que valem ouro (e por
-> quê) estão em [`CLAUDE.md`](CLAUDE.md) e [`AGENTS.md`](AGENTS.md).
+- **Coleção com nível.** Cada Pokémon começa no nível 1 e sobe ganhando experiência
+  ao batalhar. Subir de nível aumenta os atributos e **libera golpes novos** — cada
+  Pokémon só sabe os golpes que aprenderia naquele nível no jogo original. Ao chegar
+  no nível certo, ele **evolui**.
+- **Deck.** Você escolhe 1 Pokémon e até 6 golpes dele para levar à batalha.
+- **Turno simultâneo.** Os dois jogadores escolhem a carta do round **ao mesmo
+  tempo, sem ver a escolha do outro**. Quando as duas estão na mesa, o turno é
+  resolvido: quem tem mais Velocidade ataca primeiro (alguns golpes têm prioridade
+  e furam a fila). A graça está em **ler o oponente e apostar**, não em reagir
+  depois de ver a jogada dele.
+- **Fim.** Quando o HP de um Pokémon chega a zero, a batalha acaba.
+
+Todos os atributos e golpes vêm da [PokéAPI](https://pokeapi.co/) — nada é
+inventado à mão.
+
+## Como a batalha avança por dentro
+
+O jogo roda em um servidor **serverless**: não existe um processo ligado o tempo
+todo esperando os jogadores. Quem faz o turno avançar é a **própria tela** —
+enquanto a batalha está aberta, o navegador pergunta o estado ao servidor de tempos
+em tempos, e é essa pergunta que resolve o turno assim que as duas cartas já foram
+jogadas.
+
+Duas peças ajudam:
+
+- **Aviso em tempo real (Realtime).** Em vez de só esperar a próxima pergunta, o
+  servidor avisa a tela na hora em que o turno vira ou o oponente joga a carta,
+  para a batalha responder rápido. É apenas um aviso: quem de fato resolve o turno
+  continua sendo a tela quando pergunta de novo.
+- **Verificação de segurança agendada.** Se os **dois** jogadores fecham a aba no
+  meio da partida, ninguém está mais perguntando o estado ao servidor — e, sem
+  isso, o turno nunca avançaria e a batalha ficaria travada para sempre, sem
+  terminar. Para cobrir esse caso, uma tarefa agendada no banco de dados roda a
+  cada 30 segundos e encerra as batalhas que estão paradas com o tempo do turno já
+  vencido.
 
 ## Stack
 
-- **[Next.js](https://nextjs.org) 16** (App Router) + **React 19** — deploy na
-  **Vercel Hobby** (funções serverless efêmeras).
-- **Postgres no [Supabase](https://supabase.com)** via **[Prisma](https://www.prisma.io)**
-  (conexão pooled/PgBouncer no runtime).
-- **[better-auth](https://better-auth.com)** — login por e-mail e senha.
-- **Supabase Realtime** — push do estado da batalha (é sinal, não computação).
-- **[pg_cron](https://github.com/citusdata/pg_cron)** no Supabase — o "worker"
-  que resolve turnos de partidas que ninguém está olhando.
-- **Tailwind CSS 4** · **Vitest** (testes) · **TypeScript**.
-
-## Como funciona (o resumo que importa)
-
-A Vercel Hobby não tem processo vivo entre requests — **não há worker**. Por isso:
-
-- **A leitura é que empurra a partida.** O cliente faz *polling* do estado da
-  batalha, e é esse request que resolve o turno (`resolveTurn`). Sem ninguém
-  olhando, nada acontece no servidor.
-- **Realtime só avisa** que o turno virou (ou que o oponente trancou a carta),
-  pra tirar o cliente do polling — ele nunca resolve o turno.
-- **`pg_cron` é o relógio de backstop** (a cada 30s), pra resolver o turno vencido
-  de uma partida zumbi.
-
-Isso **não é gambiarra** — é a única opção do ambiente. Detalhes e as regras que
-não podem ser quebradas estão na regra 5 do [`CLAUDE.md`](CLAUDE.md).
-
-## Arquitetura
-
-Código organizado em **módulos** com separação **command/query** (CQRS "lite" — é
-separação por pasta, não event sourcing):
-
-```
-src/modules/<modulo>/
-  index.ts        API pública. Só código de servidor.
-  domain/         Regras puras. Sem Prisma, sem fetch, sem React.
-  queries/        LEITURA. Recebe ids, devolve DTO.
-  commands/       ESCRITA. Recebe intenção, aplica no banco.
-  ui/             Apresentação. Componentes, hooks, view-model, DTOs.
-```
-
-Módulos: `battle` (referência), `deck`, `packs`, `pokedex`, `realtime`.
-Infra compartilhada em `src/lib/` (`prisma`, `auth`, `pokeapi`, `storage`, …).
-A fronteira é o `index.ts` — pages e rotas importam só dele. Ver
-[`CLAUDE.md`](CLAUDE.md) para a tabela de quem-pode-importar-quem.
+- [Next.js](https://nextjs.org) 16 (App Router) + React 19
+- Postgres no [Supabase](https://supabase.com), acessado via [Prisma](https://www.prisma.io)
+- [better-auth](https://better-auth.com) para login (e-mail e senha)
+- Supabase Realtime para o aviso em tempo real da batalha
+- Tailwind CSS 4
+- TypeScript e Vitest (testes)
 
 ## Rodando localmente
 
-Pré-requisitos: **Node 20+** e o **[Supabase CLI](https://supabase.com/docs/guides/local-development)**
-(o banco de dev é o stack Docker local do CLI, não o Supabase remoto — o remoto é
-**produção**).
+Você precisa de **Node 20+** e do **[Supabase CLI](https://supabase.com/docs/guides/cli)**.
+O CLI sobe, usando **Docker**, uma cópia completa do Supabase na sua máquina —
+banco Postgres **e o servidor de Realtime** — para você testar o aviso em tempo
+real da batalha localmente, sem depender de nenhum serviço externo.
 
 ```bash
-# 1. sobe o Postgres local do Supabase (porta 54322)
+# 1. copie o arquivo de exemplo e preencha os valores.
+#    O comando do passo 2 imprime as chaves locais do Supabase.
+cp .env_example .env
+
+# 2. sobe o Supabase local (Docker): banco + realtime
 npx supabase start
 
-# 2. aplica o schema e semeia a Pokédex (Gen 1) a partir da PokéAPI
+# 3. prepara o banco e carrega os Pokémon (Gen 1) a partir da PokéAPI
 npx prisma migrate deploy
 npm run seed
 
-# 3. sobe o app
+# 4. sobe o app
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000).
-
-### Variáveis de ambiente (`.env`)
-
-| Variável | Para quê |
-|---|---|
-| `DATABASE_URL` | conexão **pooled** (PgBouncer, :6543) — o runtime |
-| `DIRECT_URL` | conexão **direta** (:5432) — só pro `prisma migrate` |
-| `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | WebSocket do Realtime no browser |
-| `SUPABASE_JWT_SECRET` | assina o JWT do canal Realtime (better-auth, sem Supabase Auth) |
-| `CRON_SECRET` | Bearer das rotas de cron (`/api/cron/*`) |
-| `NEXT_PUBLIC_APP_URL` · `NEXT_PUBLIC_MOVE_ART_BASE_URL` | URL do app e base das artes de golpe |
-
-## Scripts
-
-```bash
-npm run dev        # servidor de desenvolvimento
-npm run build      # prisma generate + next build
-npm run start      # produção
-npm run seed       # popula Pokemon/Move/PokemonMove a partir da PokéAPI (Gen 1)
-npm test           # vitest run
-npm run lint       # eslint
-```
-
-## Verificação
-
-Antes de dar um trabalho por pronto:
-
-```bash
-npx tsc --noEmit && npx vitest run && npx eslint && npx next build
-```
-
-Precisam de teste: `domain/` (puro), a view-model de `ui/`, o mapper de DTO
-(provando que não vaza o que não pode) e o `command` concorrente (provando que
-quem perde o claim não escreve nada).
-
-## ⛔ Migrations só entram por arquivo versionado
-
-Nunca aplique DDL no banco de prod por fora do git (MCP, SQL Editor, `db push`
-apontado pro prod, etc.). Os dois ledgers (`_prisma_migrations` e
-`supabase_migrations.schema_migrations`) são a fonte da verdade do CI — aplicar
-por fora **trava o próximo deploy**. Toda tabela nova nasce com **RLS ligada** na
-mesma migration. O porquê completo está em [`CLAUDE.md`](CLAUDE.md),
-[`AGENTS.md`](AGENTS.md) e [`DEPLOY.md`](DEPLOY.md).
-
-## Deploy
-
-CI aplica as migrations (Prisma → Supabase) e a Vercel faz o deploy da `main`.
-Passo a passo e os gaps conhecidos em [`DEPLOY.md`](DEPLOY.md).
+Abra [http://localhost:3000](http://localhost:3000) no navegador.
