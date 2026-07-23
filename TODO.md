@@ -78,6 +78,9 @@ Detalhar melhor as skills em formato de cartas, verificar todas e melhorar UI e 
 `scripts\generate-rarity.mjs`
 
 
+
+
+
 # MIGRATIONS / REPRODUZIR O BANCO DO ZERO
 
 Nenhum dos dois quebra o deploy de hoje. Os dois quebram **subir um ambiente novo**
