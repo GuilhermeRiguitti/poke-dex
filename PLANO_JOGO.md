@@ -16,7 +16,7 @@
 
 ## 1. A visão em um parágrafo
 
-**PokéDuel.** Você **coleciona Pokémon** — cada um nasce em **nível 5** e sobe
+**PokéDuel.** Você **coleciona Pokémon** — cada um nasce em **nível 1** e sobe
 jogando. O nível **libera skills**: cada Pokémon só conhece o que já aprendeu por
 level-up naquele nível, exatamente como a PokéAPI descreve (`level_learned_at`).
 Pra montar o deck, você escolhe **um Pokémon** e **até 6 cartas (skills)** dele —
@@ -168,8 +168,8 @@ model UserPokemon {
   id         String @id @default(cuid())
   userId     String
   pokemonId  String            // espécie
-  level      Int    @default(5)     // STARTING_LEVEL
-  xp         Int    @default(125)   // XP TOTAL acumulado; level == levelFromXp(xp)
+  level      Int    @default(1)     // STARTING_LEVEL
+  xp         Int    @default(1)     // XP TOTAL acumulado; level == levelFromXp(xp)
   capturedAt DateTime @default(now())
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   pokemon    Pokemon @relation(fields: [pokemonId], references: [id])
@@ -234,7 +234,7 @@ O nível influencia o jogo por **três** caminhos, todos fiéis à série:
 > Não reintroduzir.
 
 **XP/progressão (implementado):** o pokémon entra na coleção em `STARTING_LEVEL`
-(5) e ganha XP ao fim de cada partida:
+(1 — toda espécie já conhece ≥1 move no nível 1) e ganha XP ao fim de cada partida:
 
 ```
 xp ganho = floor(baseExperience_do_derrotado * nível_do_derrotado / 7)   (gen 5+)
@@ -565,27 +565,32 @@ learnset antigo é apagado pela migration: não havia como converter sem o dado 
 API — ver o cabeçalho da migration). O SQL do Realtime novo entra pelo
 `supabase db push` / MCP, como os irmãos.
 
-⏳ **Próxima fatia:** timer sincronizado na tela, energia (A2), **evolução por
-nível** (ver abaixo), Fase D, e (opcional) repor o canvas Konva. A "janela de
-reação" precisa ser **redesenhada** — o desenho antigo pressupunha turno
-alternado (§3.3).
+⏳ **Próxima fatia:** timer sincronizado na tela, energia (A2), Fase D, e
+(opcional) repor o canvas Konva. A "janela de reação" precisa ser
+**redesenhada** — o desenho antigo pressupunha turno alternado (§3.3).
 
-⏳ **Evolução por nível — fatia própria, ainda NÃO feita.** Ficou de fora desta
-leva de propósito (decisão do dono, 2026-07-21). O que ela precisa, pra quem
-pegar:
-1. **Dado**: `/pokemon-species/{id}` → `evolution_chain`, e `/evolution-chain/{id}`
-   → gatilho (`trigger: level-up`, `min_level`). Hoje o espelho **não** guarda
-   nada disso; entra como coluna/tabela nova (e a mesma chamada traz o
-   `growth_rate`, que fecha o F4 da curva de XP).
-2. **Regra**: ao subir de nível em `awardBattleXp`, se bateu o `min_level` da
-   cadeia, o `UserPokemon` **troca de espécie** (`pokemonId`). Stats vêm de
-   graça (derivam da espécie nova).
-3. **O buraco que precisa de decisão**: o loadout aponta pra `Move` da espécie
-   ANTIGA. Evoluções costumam manter quase todo o learnset, mas não é garantido
-   — é preciso decidir entre podar as cartas órfãs, manter (grandfather) ou
-   forçar remontagem. **Não dá pra implementar sem essa escolha.**
-4. E o snapshot de partida em andamento **não** pode mudar (é congelado) — a
-   evolução só vale da próxima partida em diante.
+✅ **Evolução por nível FEITA (2026-07-22)** — `tsc` · `vitest` 171 · `eslint` ·
+`next build` verdes. Decisão do dono: **podar as órfãs**.
+1. **Dado**: `lib/pokeapi` ganhou `fetchSpeciesEvolutionChainId` +
+   `fetchEvolutionChain`; `syncPokedex` resolve a aresta por nível (cadeia
+   memoizada por `chainId` — a linha inteira compartilha uma cadeia) e grava
+   `Pokemon.evolvesToApiId`/`evolvesToLevel` (migration
+   `20260722130000_pokemon_level_evolution`, aditiva). Só `level-up` COM
+   `min_level` vira aresta — pedra/troca/amizade ficam null (não é progressão por
+   nível). O `growth_rate` (F4) fica pra depois — não é lido ainda.
+2. **Regra**: `pokedex/domain/evolution.ts` (puro, testado) decide
+   `evolutionTargetFor` e `pruneLoadout`; `awardBattleXp` troca `pokemonId` ao
+   subir de nível — **em cadeia** (um XP grande pode cruzar dois estágios). Stats
+   vêm de graça (derivam da espécie nova).
+3. **Órfãs podadas**: na evolução, as DeckSlotCard cujo move a nova espécie não
+   conhece por level-up destravado **saem** (`pruneLoadoutForSpecies`, dentro da
+   transação do claim). As que sobrevivem ficam.
+4. **Snapshot intacto**: `awardBattleXp` mexe no `UserPokemon` (coleção), nunca no
+   `BattlePokemon` (congelado) — a evolução vale só da PRÓXIMA partida, de graça.
+
+⚠️ **Pendente (dono):** aplicar a migration `20260722130000` e re-rodar
+`npm run seed` pra popular `evolvesToApiId`/`evolvesToLevel` (o seed de 2026-07-22
+que destravou o learnset rodou ANTES desta coluna existir).
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta
@@ -631,3 +636,11 @@ direto até o jogo completo.
 - **XP pela fórmula da série**, perdedor leva 25%.
 - **Evolução por nível fica pra fatia própria** — o que ela exige está listado no
   fim de "Estado da Fase A".
+
+**Decidido em 2026-07-22:**
+- **Nível inicial = 1** (era 5). Toda espécie já conhece ≥1 move no nível 1, então
+  abre jogável mesmo com o learnset travado; subir de nível é a progressão. Base
+  online RESETADA (dono liberou — coleções/decks/batalhas zerados) e espelho
+  re-semeado.
+- **Evolução por nível: podar as órfãs.** Na evolução, as cartas que a nova
+  espécie não aprende saem do loadout; as que sobrevivem ficam (§ fim da Fase A).

@@ -155,6 +155,12 @@ model Pokemon {
   spriteUrl      String?  @db.Text
   fetchedAt      DateTime @default(now())
 
+  // Evolução POR NÍVEL (pokedex/domain/evolution.ts). Só level-up com min_level
+  // vira aresta; pedra/troca/amizade ficam null. O alvo é o pokemonApiId da
+  // espécie nova — o awardBattleXp resolve pra Pokemon.id quando o nível bate.
+  evolvesToApiId Int? // National Dex id da evolução por nível, ou null
+  evolvesToLevel Int? // nível mínimo pra evoluir, ou null
+
   learnset     PokemonMove[]
   userPokemons UserPokemon[]
 }
@@ -219,8 +225,8 @@ model UserPokemon {
   id         String   @id @default(cuid())
   userId     String
   pokemonId  String // espécie (Pokemon.id)
-  level      Int      @default(5) // STARTING_LEVEL (pokedex/domain/leveling.ts)
-  xp         Int      @default(125) // = xpForLevel(5); mantém level == levelFromXp(xp)
+  level      Int      @default(1) // STARTING_LEVEL (pokedex/domain/leveling.ts)
+  xp         Int      @default(1) // = xpForLevel(1); mantém level == levelFromXp(xp)
   capturedAt DateTime @default(now())
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -2,12 +2,15 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import {
   extractIdFromUrl,
+  fetchEvolutionChain,
   fetchMove,
   fetchPokemon,
+  fetchSpeciesEvolutionChainId,
   type NormalizedPokemon,
 } from "@/src/lib/pokeapi";
 import type { BaseStats } from "../domain/leveling";
 import { pickLearnEntry, pickVersionGroup, type LearnsetEntry } from "../domain/learnset";
+import { parseLevelUpEvolutions, type EvolutionEdge } from "../domain/evolution";
 
 // Sincroniza o espelho da PokéAPI (Pokemon/Move/PokemonMove) — o motor único
 // da seed inicial (Fase 0) E do cron de refresh (PLANO_JOGO.md §7). Escreve →
@@ -37,6 +40,30 @@ function toBaseStats(p: NormalizedPokemon): BaseStats {
 /** tipos ordenados por slot → ["grass","poison"] (slot 1 primeiro). */
 function toTypeNames(p: NormalizedPokemon): string[] {
   return [...p.types].sort((a, b) => a.slot - b.slot).map((t) => t.type.name);
+}
+
+/**
+ * A evolução POR NÍVEL desta espécie (ou null). A cadeia é buscada uma vez por
+ * `chainId` e memoizada: muitas espécies compartilham a mesma cadeia (Bulbasaur,
+ * Ivysaur e Venusaur têm uma só), então sem o cache o seed refaria o mesmo fetch
+ * três vezes. Falha de rede não aborta o seed — a espécie fica sem evolução.
+ */
+async function resolveEvolutionEdge(
+  speciesApiId: number,
+  chainCache: Map<number, Promise<Map<number, EvolutionEdge>>>,
+): Promise<EvolutionEdge | null> {
+  const chainId = await fetchSpeciesEvolutionChainId(speciesApiId);
+  if (chainId == null) return null;
+
+  let edgesP = chainCache.get(chainId);
+  if (!edgesP) {
+    edgesP = fetchEvolutionChain(chainId).then((root) =>
+      root ? parseLevelUpEvolutions(root) : new Map<number, EvolutionEdge>(),
+    );
+    chainCache.set(chainId, edgesP);
+  }
+  const edges = await edgesP;
+  return edges.get(speciesApiId) ?? null;
 }
 
 /** Roda `task` sobre `items` com no máx. `limit` em voo — gentil com a PokéAPI. */
@@ -84,6 +111,9 @@ export async function syncPokedex(
   { concurrency = 8 }: SyncPokedexOptions = {},
 ): Promise<SyncPokedexSummary> {
   const failedPokemon: number[] = [];
+  // Cadeia de evolução → arestas por nível, memoizada por chainId (espécies da
+  // mesma linha compartilham a cadeia). Ver resolveEvolutionEdge.
+  const chainCache = new Map<number, Promise<Map<number, EvolutionEdge>>>();
 
   // 1) espécies: fetch + upsert, guardando o id do banco e os moveApiIds de cada.
   const fetched = await mapLimit(pokemonApiIds, concurrency, async (apiId) => {
@@ -92,6 +122,10 @@ export async function syncPokedex(
       failedPokemon.push(apiId);
       return null;
     }
+
+    // Evolução por nível desta espécie (fiel: só level-up com min_level). O alvo
+    // é gravado por pokemonApiId — o awardBattleXp resolve pra Pokemon.id na hora.
+    const evolution = await resolveEvolutionEdge(p.id, chainCache);
     // Prisma exige InputJsonValue (com index signature) pra colunas Json; o
     // BaseStats/`string[]` tipados não casam sozinhos, daí o cast no ponto de
     // escrita. Hoisted pra não repetir a whitelist em create/update.
@@ -101,6 +135,8 @@ export async function syncPokedex(
       baseStats: toBaseStats(p) as unknown as Prisma.InputJsonObject,
       baseExperience: p.baseExperience,
       spriteUrl: p.sprites.artwork ?? p.sprites.front_default,
+      evolvesToApiId: evolution?.toApiId ?? null,
+      evolvesToLevel: evolution?.minLevel ?? null,
     };
     const row = await prisma.pokemon.upsert({
       where: { pokemonApiId: p.id },

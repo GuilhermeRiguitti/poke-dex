@@ -33,9 +33,6 @@ export default function PokemonPortrait({
     >
       <div className="flex w-full items-center justify-between">
         <span className="font-title text-sm tracking-wider text-ink-dim">{dexNumber}</span>
-        <span className="lv-badge">
-          <span>Lv 50</span>
-        </span>
       </div>
 
       {artworkUrl && (

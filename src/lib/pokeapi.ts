@@ -157,6 +157,63 @@ export async function fetchMove(idOrName: number | string): Promise<NormalizedMo
   };
 }
 
+/** Um nó da cadeia de evolução, já normalizado (a árvore que a API devolve). */
+export interface NormalizedEvolutionNode {
+  speciesApiId: number;
+  evolvesTo: {
+    details: { trigger: string; minLevel: number | null }[];
+    node: NormalizedEvolutionNode;
+  }[];
+}
+
+/**
+ * GET /pokemon-species/{id} — só o que a evolução precisa: o id da cadeia de
+ * evolução da espécie. Devolve null se a API não trouxe (ex.: forma sem espécie
+ * própria). O `growth_rate` (curva de XP real, F4) mora aqui também, mas fica
+ * pra quando F4 for encarado — hoje não é lido.
+ */
+export async function fetchSpeciesEvolutionChainId(idOrName: number | string): Promise<number | null> {
+  const res = await fetch(`${POKEAPI_BASE}/pokemon-species/${idOrName}`, CACHE_FOREVER);
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const url: string | undefined = data.evolution_chain?.url;
+  if (!url) return null;
+  const id = extractIdFromUrl(url);
+  return Number.isFinite(id) ? id : null;
+}
+
+/** GET /evolution-chain/{id} — a árvore de evolução normalizada, ou null. */
+export async function fetchEvolutionChain(chainId: number): Promise<NormalizedEvolutionNode | null> {
+  const res = await fetch(`${POKEAPI_BASE}/evolution-chain/${chainId}`, CACHE_FOREVER);
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  if (!data.chain?.species?.url) return null;
+
+  interface RawNode {
+    species: { url: string };
+    evolution_details?: { trigger?: { name?: string }; min_level?: number | null }[];
+    evolves_to?: RawNode[];
+  }
+
+  function norm(raw: RawNode): NormalizedEvolutionNode {
+    return {
+      speciesApiId: extractIdFromUrl(raw.species.url),
+      evolvesTo: (raw.evolves_to ?? []).map((child) => ({
+        // evolution_details descreve como se chega NESTA espécie (a partir do pai).
+        details: (child.evolution_details ?? []).map((d) => ({
+          trigger: d.trigger?.name ?? "",
+          minLevel: d.min_level ?? null,
+        })),
+        node: norm(child),
+      })),
+    };
+  }
+
+  return norm(data.chain as RawNode);
+}
+
 export async function fetchType(idOrName: number | string): Promise<NormalizedType | null> {
   const res = await fetch(`${POKEAPI_BASE}/type/${idOrName}`, CACHE_FOREVER);
   if (!res.ok) return null;

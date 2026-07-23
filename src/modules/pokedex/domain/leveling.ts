@@ -21,11 +21,12 @@ export const MIN_LEVEL = 1;
 export const MAX_LEVEL = 100;
 
 /**
- * Nível em que um pokémon entra na coleção. 1 seria fiel a "ovo", não a
- * captura — e, com o learnset travado por nível, um nv.1 abriria com 1-2 cartas
- * só. 5 é o nível de inicial da série e já dá um leque jogável.
+ * Nível em que um pokémon entra na coleção. Todo pokémon nasce em nível 1: no
+ * jogo real toda espécie já conhece ao menos um move no nível 1, então mesmo
+ * com o learnset travado por nível ele abre jogável (com 1+ carta). Subir de
+ * nível é o que destrava o resto do leque — é a progressão.
  */
-export const STARTING_LEVEL = 5;
+export const STARTING_LEVEL = 1;
 
 /** As 6 base stats como a PokéAPI as devolve (guardadas em Pokemon.baseStats). */
 export interface BaseStats {

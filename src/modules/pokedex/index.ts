@@ -46,6 +46,16 @@ export {
 } from "./domain/learnset";
 export type { LearnDetail, LearnsetEntry } from "./domain/learnset";
 
+// Evolução por nível (PLANO_JOGO.md, fim da Fase A). Puro: a decisão de quando
+// evoluir e o que podar do loadout. Quem grava a aresta é syncPokedex; quem
+// troca a espécie é battle/commands/awardBattleXp.
+export {
+  parseLevelUpEvolutions,
+  evolutionTargetFor,
+  pruneLoadout,
+} from "./domain/evolution";
+export type { EvolutionEdge, EvolutionDetail, EvolutionChainNode } from "./domain/evolution";
+
 // Espelho da PokéAPI (Pokemon/Move/PokemonMove). syncPokedex é o motor da seed
 // e do refresh; refreshPokedex é o que a rota de cron chama. Ambos ESCREVEM —
 // só command/rota, nunca render (CLAUDE.md regra 2).
