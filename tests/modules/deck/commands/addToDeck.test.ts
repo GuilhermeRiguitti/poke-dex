@@ -28,7 +28,12 @@ const input = { userPokemonId: "up-1", moveIds: MOVES };
 beforeEach(() => {
   vi.clearAllMocks();
 
-  prismaMock.userPokemon.findUnique.mockResolvedValue({ id: "up-1", userId: "alpha", pokemonId: "species-1" });
+  prismaMock.userPokemon.findUnique.mockResolvedValue({
+    id: "up-1",
+    userId: "alpha",
+    pokemonId: "species-1",
+    level: 12,
+  });
   prismaMock.pokemonMove.count.mockResolvedValue(MOVES.length); // todas no learnset
   prismaMock.deck.findFirst.mockResolvedValue({ id: "deck-1" });
   prismaMock.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) => fn(tx));
@@ -107,6 +112,21 @@ describe("addToDeck", () => {
 
     expect(result).toEqual({ ok: false, error: "invalid_cards" });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  // O modal já esconde as travadas, mas o POST é público: sem este filtro, um
+  // `curl` montaria hyper-beam num pokémon nível 5.
+  it("só conta como aprendível o que o NÍVEL já destravou (level-up <= nível)", async () => {
+    await addToDeck("alpha", input);
+
+    expect(prismaMock.pokemonMove.count).toHaveBeenCalledWith({
+      where: {
+        pokemonId: "species-1",
+        moveId: { in: MOVES },
+        learnMethod: "level-up",
+        levelLearnedAt: { lte: 12 },
+      },
+    });
   });
 
   it("recusa loadout sem carta nenhuma", async () => {

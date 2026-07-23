@@ -21,16 +21,30 @@ export { PAGE_SIZE, MAX_POKEMON, TOTAL_PAGES, clampPage, pageRange } from "./dom
 export {
   MIN_LEVEL,
   MAX_LEVEL,
-  XP_PER_LEVEL,
-  SKILL_POWER_K,
+  STARTING_LEVEL,
+  LOSER_XP_SHARE,
+  FALLBACK_BASE_EXPERIENCE,
   deriveStats,
   calcHp,
   calcStat,
   applyXp,
-  xpForNextLevel,
-  skillPowerMult,
+  xpForLevel,
+  levelFromXp,
+  xpToNextLevel,
+  xpFromDefeat,
 } from "./domain/leveling";
 export type { BaseStats, DerivedStats, Progress } from "./domain/leveling";
+
+// Learnset fiel à série: qual move a espécie aprende, por qual método e em que
+// nível. É o que faz o NÍVEL liberar cartas (e o papel real do nível no jogo).
+export {
+  VERSION_GROUP_PREFERENCE,
+  PLAYABLE_LEARN_METHOD,
+  pickVersionGroup,
+  pickLearnEntry,
+  isUnlockedAt,
+} from "./domain/learnset";
+export type { LearnDetail, LearnsetEntry } from "./domain/learnset";
 
 // Espelho da PokéAPI (Pokemon/Move/PokemonMove). syncPokedex é o motor da seed
 // e do refresh; refreshPokedex é o que a rota de cron chama. Ambos ESCREVEM —

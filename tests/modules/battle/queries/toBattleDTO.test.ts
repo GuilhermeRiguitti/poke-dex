@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { toBattleDTO } from "@/src/modules/battle/queries/toBattleDTO";
 
-// A linha que resolveIfDue devolve pode vir com `actions` dentro — a carta que o
-// jogador da vez escolheu e que ainda NÃO resolveu. As rotas fazem
+// A linha que resolveIfDue lê vem com `actions` dentro — a carta que o oponente
+// escolheu pro round que ainda NÃO resolveu. As rotas fazem
 // NextResponse.json() nisso. Sem o mapper, dava pra abrir o devtools e ler a
-// carta pendente do oponente antes do turno virar. E os `stats` de cada pokémon
-// (informação de jogo do inimigo) também não podem vazar.
+// jogada do adversário JUSTAMENTE na janela em que a escolha é às cegas — que é
+// o coração do turno simultâneo. E os `stats` de cada pokémon (informação de
+// jogo do inimigo) também não podem vazar.
 function rowMidTurn() {
   return {
     id: "b1",
     status: "IN_PROGRESS",
     round: 3,
-    activeUserId: "zeta",
     winnerId: null,
     turnStartedAt: new Date(),
     participants: [
@@ -56,7 +56,7 @@ function rowMidTurn() {
 }
 
 describe("toBattleDTO", () => {
-  it("não vaza `actions` — a carta pendente do jogador da vez", () => {
+  it("não vaza `actions` — a carta que o oponente escolheu no round em aberto", () => {
     const dto = toBattleDTO(rowMidTurn());
 
     expect(dto).not.toHaveProperty("actions");
@@ -64,6 +64,15 @@ describe("toBattleDTO", () => {
     // do payload serializado, nem aninhado.
     expect(JSON.stringify(dto)).not.toContain("actions");
     expect(JSON.stringify(dto)).not.toContain("cardSlot");
+  });
+
+  it("diz QUEM já escolheu, e só do round atual", () => {
+    const row = rowMidTurn();
+    row.actions.push({ id: "act0", battleId: "b1", userId: "alpha", round: 2, cardSlot: 5 });
+    const dto = toBattleDTO(row);
+
+    // zeta jogou no round 3 (atual); a linha de alpha é do round 2 e não conta.
+    expect(dto.submittedUserIds).toEqual(["zeta"]);
   });
 
   it("não vaza os stats de batalha dos pokémons", () => {
@@ -77,7 +86,6 @@ describe("toBattleDTO", () => {
     const pokemon = dto.participants[0].pokemons[0];
 
     expect(dto.round).toBe(3);
-    expect(dto.activeUserId).toBe("zeta");
     expect(dto.status).toBe("IN_PROGRESS");
     expect(pokemon.name).toBe("pikachu");
     expect(pokemon.level).toBe(12);

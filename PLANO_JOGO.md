@@ -1,23 +1,29 @@
-# Plano — de "batalha simultânea de 4 cartas" para duelo tático 1v1
+# Plano — duelo tático 1v1 fiel à série
 
-> **Status: plano de design + estado de implementação.** É o mapa da virada que
-> combinamos: turno **alternado** e reativo, coleção com **nível incremental**, e
-> tudo de stat vindo da **PokéAPI**. A camada de infra (cron/Realtime) já está
-> **parcialmente feita** (ver §8); o jogo em si (turno, coleção, dados) é proposta.
+> **Status: plano de design + estado de implementação.** Coleção com **nível
+> incremental**, tudo de stat vindo da **PokéAPI**, e turno **SIMULTÂNEO** (os
+> dois escolhem às cegas; o Speed decide quem bate primeiro).
 > **Documento único** — o antigo `TODO_TURNO.md` foi fundido aqui.
+>
+> ⚠️ **O turno alternado foi revertido (2026-07-21).** A Fase A1 chegou a
+> implementar turno alternado (`activeUserId`, uma ação por vez). Não é como o
+> Pokémon funciona, e o preço era alto: quem jogava em segundo escolhia **já
+> sabendo** a jogada do outro, e o Speed virava "quem começa a rodada" em vez de
+> "quem bate primeiro". Voltamos ao simultâneo — ver §3. As seções abaixo já
+> refletem o modelo atual.
 
 ---
 
 ## 1. A visão em um parágrafo
 
-**PokéDuel.** Você **coleciona Pokémon** — cada um nasce **nível 1** e sobe jogando.
-Todo Pokémon tem acesso ao **learnset inteiro** que a PokéAPI devolve. Pra montar o
-deck, você escolhe **um Pokémon** e **6 cartas (skills)** dele — sua "barra de
-golpes". A batalha é **1×1, por turnos alternados**: você age, o oponente **vê ao
-vivo** e **reage**, depois joga. A profundidade não vem de trocar de Pokémon; vem
-de **ler o oponente, administrar recurso e reagir na hora certa** — e é exatamente
-onde o Realtime deixa de ser enfeite e vira mecânica (a janela de reação é um
-relógio real, sincronizado, empurrado pelo servidor).
+**PokéDuel.** Você **coleciona Pokémon** — cada um nasce em **nível 5** e sobe
+jogando. O nível **libera skills**: cada Pokémon só conhece o que já aprendeu por
+level-up naquele nível, exatamente como a PokéAPI descreve (`level_learned_at`).
+Pra montar o deck, você escolhe **um Pokémon** e **até 6 cartas (skills)** dele —
+sua "barra de golpes". A batalha é **1×1 por turnos SIMULTÂNEOS**: os dois
+escolhem a carta do mesmo round **sem ver a do outro**, e quem tem mais Speed
+executa primeiro (priority do golpe vem antes de tudo). A profundidade vem de
+**ler o oponente e apostar** — não de reagir depois de ver.
 
 Nada de stat é inventado por nós: **tudo deriva das base stats da API + o nível**.
 
@@ -25,12 +31,14 @@ Nada de stat é inventado por nós: **tudo deriva das base stats da API + o nív
 
 ## 2. Decisões travadas × decisões abertas
 
-**Travadas (minhas escolhas de design; mexo se você quiser):**
-- Turno **alternado** (não simultâneo). Speed vira **iniciativa** (quem começa a rodada).
-- Deck = **1 Pokémon + 6 cartas** desse Pokémon (a carta é uma *skill*, não um Pokémon).
+**Travadas:**
+- Turno **SIMULTÂNEO**, como a série. Dentro do turno a ordem é **priority do
+  golpe → Speed → sorteio** (speed tie). ~~Alternado~~ — revertido em 2026-07-21.
+- Deck = **1 Pokémon + até 6 cartas** desse Pokémon (a carta é uma *skill*).
 - **Stats 100% da API.** Some o nível 50 fixo e todo stat montado à mão.
-- **Nível incremental**: captura no nv.1, sobe com XP, e o nível **multiplica** o
-  efeito das skills (fórmula na §6).
+- **Nível incremental**: entra na coleção no nv.5, sobe com XP de batalha, e o
+  papel dele é **liberar skills** + escalar stats (§6). **Não** multiplica o
+  poder da skill — isso era invenção nossa e saiu.
 - **Espelhar a PokéAPI no nosso banco** (tabelas `Pokemon`/`Move`) com **rotina de
   refresh** — revertendo de propósito a decisão atual de "nunca espelhar" (§7).
 
@@ -42,65 +50,69 @@ Nada de stat é inventado por nós: **tudo deriva das base stats da API + o nív
   dado válido a preservar (nem em prod). Sem migração de compatibilidade.
 
 **Ainda aberta:**
-- **F4 — curva de XP e multiplicador de skill por nível.** Proponho valores (§6) e
-  a gente afina jogando.
+- **F4 — curva de XP.** Hoje: `medium-fast` (total pro nível n = n³) e ganho pela
+  fórmula da série. Afinamos jogando. A curva REAL por espécie
+  (`growth_rate` em `/pokemon-species`) é o próximo passo de fidelidade, e vem de
+  graça se/quando buscarmos species pra evolução.
 
 ---
 
-## 3. O modelo de turno alternado (o coração criativo)
+## 3. O modelo de turno SIMULTÂNEO (fiel à série)
 
-O risco do alternado ingênuo (que eu já te alertei): quem joga em 2º sempre tem mais
-informação → desvantagem de quem começa; e o Speed perde sentido. As três peças
-abaixo curam isso e criam o "tático e reativo".
+Os dois jogadores escolhem a carta do **mesmo round**, sem ver a do outro. Quando
+as duas estão na mesa, o turno resolve inteiro. Não existe "de quem é a vez".
 
-### 3.1 Iniciativa (o Speed volta a importar)
-No começo de cada **rodada**, quem tem **Speed efetivo maior age primeiro** (empate
-= desempate determinístico por id, pra ser reconstruível como já é hoje). Assim o
-Speed é uma decisão de build, não decoração — e quem começa alterna com o ritmo.
+**Por que reverter o alternado:** no alternado, quem jogava em segundo escolhia
+**depois de ver** a jogada do adversário — a informação era assimétrica por
+construção, e o Speed tinha virado "quem começa a rodada". No simultâneo a aposta
+é simétrica e o Speed volta ao papel dele: **bater antes de tomar**.
 
-### 3.2 Economia de energia (a tensão de "gastar ou guardar")  *(fase B)*
-Cada rodada você **ganha energia**. Cartas **custam** energia. Cartas fortes custam
-mais; cartas de reação você só pode usar se **guardou** energia no turno do oponente.
-Isso cria o dilema tático central: *descarrego agora ou seguro pra reagir?*
+### 3.1 Ordem dentro do turno (`domain/turnOrder.ts`)
+1. **Priority do golpe** (quick-attack sai na frente de tudo) — dado real da API.
+2. **Speed efetivo** (que deriva do nível).
+3. Empate total: **sorteio**, como o "speed tie" do jogo.
 
-### 3.3 Janela de reação em tempo real (o showcase do Realtime)  *(fase C)*
-Quando você joga uma carta, o oponente **vê ao vivo** (Broadcast) e, se tiver uma
-**carta de reação** + energia guardada, abre uma **janela curta** (ex. 5s, um
-countdown **real** empurrado pelo servidor) pra responder **antes da sua carta
-resolver**. Fluxo: *age → (oponente reage?) → resolve → vez do oponente.*
+Consequência de jogo: **quem é nocauteado antes de agir perde o turno**. É isso
+que dá peso a montar em cima de Speed ou de priority.
 
-Isso é impossível de fazer bem com o polling de 2s (a janela de reação seria
-grosseira e trapaceável); com Broadcast + timer sincronizado, é preciso e justo.
+### 3.2 Economia de energia (a tensão de "gastar ou guardar")  *(fatia A2)*
+Cada rodada você **ganha energia**; cartas **custam** energia. Dilema: descarrego
+agora ou seguro? Encaixa no simultâneo sem mudar a orquestração — é custo na
+validação da carta + um campo no snapshot.
 
-### 3.4 O que muda no motor
-- `Battle` ganha **de quem é a vez** (`activeUserId`) e a ordem de iniciativa.
-- O turno passa a ser **de um ator só** — o modelo "os dois submetem pro turno N"
-  (`BattlePendingMove`) vira **uma ação por vez** (`BattleAction`).
-- `resolveTurn` deixa de casar duas jogadas e passa a **aplicar uma ação** (e, na
-  fase C, resolver a interação ação↔reação). A **matemática de dano** e o engine
-  puro em TS **continuam** — muda a *orquestração* do turno, não o cálculo.
+### 3.3 Janela de reação *(reavaliar)*
+O desenho original de "reação" (ver a carta do oponente e responder antes de
+resolver) **pressupunha turno alternado** — no simultâneo ninguém vê a jogada do
+outro antes de resolver, que é justamente o ponto. Se quisermos algo reativo,
+tem que ser outra mecânica (ex.: carta defensiva escolhida às cegas, resolvida na
+ordem). **Não implementar como estava escrito.**
 
-> É uma reescrita real da orquestração (não trivial). Mas a trava otimista de
-> concorrência e o "resolver dentro de uma transação" continuam valendo iguais.
+### 3.4 Como o motor ficou
+- `Battle` tem `round` e `turnStartedAt`. **Não tem** `activeUserId`.
+- Cada jogador tem no máximo uma `BattleAction` por round
+  (`@@unique[battleId, round, userId]`) — e ela é **segredo** até resolver.
+- `resolveRound()` (`domain/duelEngine.ts`) casa as DUAS jogadas e aplica na
+  ordem do §3.1. `resolveIfDue()` (command) só dispara quando **as duas cartas
+  estão na mesa** ou o timeout venceu (quem faltou hesita).
+- A trava otimista continua igual, guardando por `(round, status)`.
 
 ---
 
 ## 4. As 4 melhorias de regra, encaixadas no modelo novo
 
-1. **Abandono por desconexão (Presence).** Some o `missedTurns` que decai de 1 em 1
-   (era remédio pra falta de relógio). Regra nova: se é a sua vez e a **Presence**
-   mostra que você saiu e **não voltou em X s → o oponente vence**. Um timeout
-   continua como *backstop* no `pg_cron` (caso raro dos dois offline).
-2. **Timer real na tela.** `turnStartedAt` + duração viram um **countdown
-   sincronizado** empurrado pelo servidor — vale pro turno e pra janela de reação.
-   Abre espaço pra brincar: turno mais curto no começo, ou **banco de tempo estilo
-   xadrez** por partida.
-3. **Feedback ao vivo.** "Oponente está escolhendo", "jogou uma carta" (sem revelar
-   qual até resolver), de quem é a iniciativa — tudo por Broadcast/Presence. Mata a
-   tela morta de espera.
-4. **Anti-enrolação direta.** Com relógio real, turno que estoura **passa
-   automático** (ação nula / "hesitação") — regra legível, sem o contador
-   acumulativo torto de hoje.
+1. **Abandono por desconexão (Presence).** ⏳ Ainda o `missedTurns`. Regra
+   pretendida: a **Presence** mostra que você saiu e **não voltou em X s → o
+   oponente vence**. O timeout segue como *backstop* no `pg_cron`.
+   No simultâneo o contador ficou **simétrico** (os dois estão sempre em turno),
+   o que já matou a regra torta que o alternado precisava pro oponente.
+2. **Timer real na tela.** ⏳ `turnStartedAt` + duração viram um **countdown
+   sincronizado**. Continua valendo (e no simultâneo vale pros dois ao mesmo
+   tempo, que é mais simples).
+3. **Feedback ao vivo.** ✅ **feito**: "oponente pronto / escolhendo" chega por
+   Broadcast (`battle_action_submitted`), **sem revelar a carta** — o DTO manda
+   `submittedUserIds`, nunca o `cardSlot`.
+4. **Anti-enrolação direta.** ✅ turno que estoura resolve mesmo assim; quem não
+   escolheu **hesita** e leva falta.
 
 ---
 
@@ -137,12 +149,16 @@ model Move {                    // skill
   learnedBy   PokemonMove[]
 }
 
-model PokemonMove {             // learnset (n:n)
-  pokemonId String
-  moveId    String
+model PokemonMove {             // learnset (n:n) — COM o "como aprende"
+  pokemonId      String
+  moveId         String
+  levelLearnedAt Int    @default(0)           // 0 se não é level-up
+  learnMethod    String @default("level-up")  // level-up | machine | egg | tutor
+  versionGroup   String @default("")          // jogo de referência da espécie
   pokemon   Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
   move      Move    @relation(fields: [moveId], references: [id], onDelete: Cascade)
   @@id([pokemonId, moveId])
+  @@index([pokemonId, learnMethod, levelLearnedAt])
 }
 ```
 
@@ -152,8 +168,8 @@ model UserPokemon {
   id         String @id @default(cuid())
   userId     String
   pokemonId  String            // espécie
-  level      Int    @default(1)
-  xp         Int    @default(0)
+  level      Int    @default(5)     // STARTING_LEVEL
+  xp         Int    @default(125)   // XP TOTAL acumulado; level == levelFromXp(xp)
   capturedAt DateTime @default(now())
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   pokemon    Pokemon @relation(fields: [pokemonId], references: [id])
@@ -184,12 +200,13 @@ model DeckSlotCard {            // as 6 skills escolhidas
 ```
 *(`Deck` continua, trocando `deckCards` por `slots DeckSlot[]`.)*
 
-**Batalha:** `Battle` ganha `activeUserId` + iniciativa; `BattlePendingMove` →
-`BattleAction` (ação única por turno); o snapshot `BattlePokemon` passa a carregar
-**stats derivados de base+nível**, o **loadout de 6 cartas**, e campos de estado que
-entram por fase (`energy`, `cooldown` por carta, `statusEffects`). O princípio de
-**snapshot congelado no início da partida** (§CLAUDE.md) **se mantém** — nível/API
-mudando no meio não afeta partida em andamento.
+**Batalha:** `Battle` tem `round` (e **não** `activeUserId` — o simultâneo não tem
+"vez"); `BattleAction` é a carta de UM jogador no round, uma por jogador; o
+snapshot `BattlePokemon` carrega **stats derivados de base+nível**, o **loadout**,
+o `userPokemonId` (caminho de volta pra creditar XP) e campos que entram por fase
+(`energy`, `cooldown`, `statusEffects`). O princípio de **snapshot congelado no
+início da partida** (§CLAUDE.md) **se mantém** — nível/API mudando no meio não
+afeta partida em andamento.
 
 ---
 
@@ -203,34 +220,69 @@ HP     = floor(2 * baseHP  * nível / 100) + nível + 10
 Demais = floor(2 * base    * nível / 100) + 5
 ```
 
-- **Nível** entra como multiplicador real de todo stat → cumpre "multiplicador nos
-  status das skills" (o dano da skill escala pelo stat do atacante, que escala com
-  nível). Se quiser que a *skill em si* também escale além do stat, adiciono um
-  `skillPowerMult = 1 + (nível - 1) * k` (k ajustável) — é uma alavanca de balanço.
-- **XP/progressão:** captura no nv.1; ganha XP por batalha (mais por vitória);
-  nível sobe por curva. Depois dá pra amarrar **evolução** (a API dá a cadeia
-  evolutiva) a um nível-alvo — gancho natural pra fase futura.
+O nível influencia o jogo por **três** caminhos, todos fiéis à série:
 
-**Decisão aberta F4:** a curva de XP exata e o valor de `k`. Proponho valores e a
-gente afina jogando.
+1. **Escala os stats** (fórmula acima) — o dano da skill sobe porque o
+   atk/spa do atacante subiu.
+2. **Entra direto na fórmula de dano** (`domain/damage.ts`).
+3. **LIBERA SKILLS** — é o mais importante, e o que faltava. Ver §7.
+
+> ❌ **`skillPowerMult` foi REMOVIDO.** Existia um multiplicador nosso
+> (`1 + (nível-1)*k`) pra fazer a skill escalar *além* do stat. Nunca foi ligado
+> em produção e **não é como o jogo funciona** — no Pokémon o nível não deixa
+> thunderbolt "mais forte" por si; ele sobe seu stat e destrava golpes novos.
+> Não reintroduzir.
+
+**XP/progressão (implementado):** o pokémon entra na coleção em `STARTING_LEVEL`
+(5) e ganha XP ao fim de cada partida:
+
+```
+xp ganho = floor(baseExperience_do_derrotado * nível_do_derrotado / 7)   (gen 5+)
+curva    = medium-fast → XP total pra estar no nível n = n³
+```
+
+`UserPokemon.xp` é o **total acumulado**, e `level` é função dele
+(`levelFromXp`) — não existe par inválido pra reparar depois.
+**Desvio consciente:** o perdedor leva `LOSER_XP_SHARE` (25%) do que levaria.
+Na série quem é nocauteado não ganha nada; aqui isso prenderia quem perde num
+loop sem nunca destravar carta nova.
 
 ---
 
-## 7. Espelhar a PokéAPI + rotina de refresh
+## 7. Espelhar a PokéAPI + learnset por nível + refresh
 
-Hoje o projeto **não** espelha Pokémon (só cacheia JSON cru em `PokeApiCache`).
-Revertemos isso de propósito, porque agora precisamos **consultar/filtrar por
-atributo** (montar deck, listar learnset, ordenar por stat) — coisa que key-value
-JSON não faz bem.
+O projeto espelha `Pokemon`/`Move`/`PokemonMove` porque precisamos
+**consultar/filtrar por atributo** (montar deck, listar learnset, ordenar por
+stat) — coisa que o key-value cru de `PokeApiCache` não faz.
 
-- **Seed inicial:** um backfill que popula `Pokemon`/`Move`/`PokemonMove` a partir da
-  API (começar por uma geração pra não puxar tudo de uma vez).
-- **Rotina de refresh:** **reaproveita o padrão de cron que já subimos** — rota
-  `POST /api/cron/refresh-pokedex` (Bearer `CRON_SECRET`), que dá `upsert` por
-  `pokemonApiId`/`moveApiId` no que estiver com `fetchedAt` velho. `pg_cron` roda
-  isso devagar (1×/dia basta — dados de gen lançada quase não mudam). É o mesmo
-  motor de cron do relógio de turno, outro job.
+- **Seed inicial:** `npm run seed` popula a partir da API (Gen 1 por padrão, pra
+  não puxar 1025 de uma vez).
+- **Rotina de refresh:** `POST /api/cron/refresh-pokedex` (Bearer `CRON_SECRET`)
+  re-sincroniza o lote mais antigo. `pg_cron` roda 1×/dia.
 - `pokemonApiId`/`moveApiId` são a chave: identificam, deduplicam e guiam o refetch.
+
+### 7.1 O learnset é o dado que faltava (a PokéAPI já modela isso)
+
+O espelho guardava só o par `(pokemon, move)` — resultado: **todo pokémon nascia
+sabendo o learnset inteiro**, e o nível não significava nada além de stat.
+
+A API entrega, por move, um `version_group_details[]` com **nível de
+aprendizado**, **método** (`level-up` / `machine` / `egg` / `tutor`) e **jogo**.
+Agora gravamos isso (`domain/learnset.ts` decide, `syncPokedex` grava):
+
+- **Um version group por espécie**, o mais recente em que ela aprende algo por
+  level-up (`VERSION_GROUP_PREFERENCE`). Misturar jogos daria "Pikachu que
+  aprende tudo de todas as gerações" — o oposto de fiel. Exigir level-up evita
+  cair num jogo em que a espécie só aparece com TMs (pokémon sem nada a destravar).
+- **Só `level-up` vira carta**, e só com `levelLearnedAt <= nível`. TM/ovo/tutor
+  ficam gravados (fidelidade do espelho) mas fora do jogo: no jogo real elas não
+  pedem nível, então liberá-las apagaria a progressão que o nível acabou de ganhar.
+- A trava é do **servidor** (`addToDeck`), não da UI: o `POST /api/deck` é
+  público. O modal mostra as travadas com o nível exigido — ver o que vem é
+  metade da progressão.
+
+**Consequência que muda o começo do jogo:** um pokémon novo tem ~3-4 cartas, não
+6. `CARDS_PER_SLOT` virou **teto**, não obrigação.
 
 ---
 
@@ -246,11 +298,18 @@ Duas peças, papéis diferentes — **não confundir** (foi o erro clássico da 
 
 ### 8.1 Realtime — as decisões (não eram óbvias, valem ouro)
 
-- **Realtime é SINAL, não DADO.** O trigger no `Battle` empurra payload mínimo
-  `{battleId, currentTurn, status}` por **Broadcast from Database**; o cliente refaz
-  o `GET /api/battle/[id]` que **já passa pelo DTO**. **NÃO** usar **Postgres
-  Changes** (assinar a tabela): streama a linha crua e **reabre o vazamento de
-  `pendingMoves`** (regra 3 do CLAUDE.md).
+- **Realtime é SINAL, não DADO.** São **dois** triggers de **Broadcast from
+  Database**, os dois com payload mínimo, e o cliente refaz o
+  `GET /api/battle/[id]` que **já passa pelo DTO** (o hook nem lê o payload):
+  - `battle_updated` — UPDATE no `Battle`: o turno resolveu.
+  - `battle_action_submitted` — INSERT em `BattleAction`: o oponente trancou a
+    carta. **Só existe por causa do simultâneo**: escolher a carta não mexe no
+    `Battle`, então sem ele o "oponente pronto" esperaria o próximo poll (20s
+    com o canal de pé). Payload leva `userId`/`round`, **nunca o `cardSlot`** —
+    seria o vazamento da regra 3 pelo WebSocket.
+
+  **NÃO** usar **Postgres Changes** (assinar a tabela): streama a linha crua e
+  reabre exatamente esse vazamento.
 - **Realtime NUNCA é autoritativo.** Só faz o caminho DTO'd disparar mais cedo.
   Mensagem perdida/duplicada/fora de ordem não importa: o refetch é idempotente e o
   **fallback de polling lento (15–30s)** cobre o buraco. Dispensa retry/ack/ordem.
@@ -265,8 +324,13 @@ Duas peças, papéis diferentes — **não confundir** (foi o erro clássico da 
   Supabase Auth. ⚠️ **Gotcha:** `auth.uid()` faz cast pra `uuid`, mas os ids são
   **cuid (texto)** → a policy lê `current_setting('request.jwt.claims', true)::jsonb->>'sub'`
   como **texto**. Copiar `auth.uid()` da doc = policy nega tudo em silêncio.
-- **Cliente mais exigente:** a **janela de reação (§3.3)** — ela *precisa* do timer
-  sincronizado por push pra ser justa (impossível com o polling de 2s).
+- **O que justifica o Realtime hoje** (revisado em 2026-07-21, com o simultâneo):
+  a **assimetria de espera**. Quem submete a 2ª carta resolve o turno no próprio
+  POST e vê o resultado na resposta; quem submeteu **primeiro** não tem request
+  nenhum a caminho — sem push, ele descobre no próximo tick. O push zera essa
+  espera pros dois. E não dá pra resolver isso na Vercel Hobby com SSE/WebSocket
+  (função efêmera, teto de duração): o socket **tem** que vir de fora, e o
+  Supabase já está no stack. Ver a análise completa no fim de §8.2.
 
 ### 8.2 Estado da implementação
 
@@ -323,6 +387,20 @@ start`, banco em :54322, API em :54321). Entregue (projeto verde: tsc · vitest
   (401 sem sessão; JWT correto com sessão).
 - CLAUDE.md (consequências #1 e #5) e AGENTS.md atualizados: a fronteira do
   Realtime saiu de "quando entrar" pra implementada.
+
+✅ **Revisão do Realtime + 2º trigger (2026-07-21):** o uso foi auditado com o
+turno simultâneo no lugar. Conclusão: **continua valendo, e agora com um motivo
+mais forte que antes** — é o único jeito de tirar o jogador que submeteu PRIMEIRO
+da espera cega (ele não tem request a caminho). Alternativas descartadas: SSE e
+WebSocket na Vercel Hobby (função efêmera com teto de duração — o socket tem que
+vir de fora), long-polling (segura invocação e queima cota), e baixar o intervalo
+de poll (2s × 2 jogadores já é ~1 invocação/s por partida).
+Adicionado `supabase/migrations/20260721121000_realtime_action_submitted.sql`:
+trigger de INSERT em `BattleAction` → evento `battle_action_submitted`, payload
+`{battleId, userId, round}` (**sem `cardSlot`**). Função em `private` (não
+exposta como RPC) e coberta pela policy que já existe — ela autoriza por TOPIC,
+não por evento. `useRealtimeChannel` passou a aceitar **vários eventos numa
+assinatura só** (dois canais pro mesmo topic pagariam dois handshakes).
 
 ⏳ **Pendente:**
 1. **Merge `refactor-resolve-turn` → `main` (dono).** A Vercel deploya a `main`,
@@ -387,7 +465,7 @@ select cron.unschedule('resolve-battle-turns');
 | Fase | Entrega | Por que nessa ordem |
 |---|---|---|
 | **0 — Fundação de dados** ✅ | Tabelas `Pokemon`/`Move`/`PokemonMove`, seed, refresh cron, stats por nível, `UserPokemon` com nível/XP. Reset total da base. | Tudo depende dos dados virem da API e do nível existir. |
-| **A — Duelo tático completo (MVP)** | Deck 1 loadout; turno alternado por iniciativa; **energia** por rodada + custo de carta; joga 1 das 6 cartas; **cartas de reação + janela de reação em tempo real**; HP→0 acaba. Realtime: reveal ao vivo, timer real sincronizado, Presence/abandono. | É o jogo tático inteiro já jogável. Maior e mais arriscado que um MVP mínimo — por isso a Fase 0 tem que estar sólida antes. |
+| **A — Duelo tático completo (MVP)** | Deck 1 loadout (cartas **liberadas por nível**); **turno simultâneo** com ordem por priority/Speed; XP e nível subindo por batalha; HP→0 acaba. Falta: **energia** por rodada + custo de carta, timer real sincronizado, Presence/abandono. | É o jogo tático inteiro já jogável. Maior e mais arriscado que um MVP mínimo — por isso a Fase 0 tem que estar sólida antes. |
 | **D — Profundidade** | Efeitos ricos da API (status, mudança de stat, prioridade), cooldowns, evolução por nível, e **opcional** time de até 3 (troca). | Complexidade que empilha por cima do núcleo estável. |
 
 ### Estado da Fase 0 (implementada — dev local)
@@ -397,10 +475,9 @@ select cron.unschedule('resolve-battle-turns');
   `Move`, `PokemonMove` (learnset n:n), `UserPokemon` (nível/XP, `@@unique
   [userId,pokemonId]`). RLS ligada nas 4 tabelas na mesma migration (AGENTS.md).
   **Aditiva** — `UserCard`/`DeckCard`/battle seguem intactos até a Fase A migrar.
-- **`pokedex/domain/leveling.ts`** (+ 12 testes): `deriveStats` (fórmula §6, sem
-  nível 50 fixo), curva de XP (`applyXp`/`xpForNextLevel`) e `skillPowerMult` —
-  os valores de **F4** isolados em constantes tunáveis (`XP_PER_LEVEL`,
-  `SKILL_POWER_K`).
+- **`pokedex/domain/leveling.ts`**: `deriveStats` (fórmula §6, sem nível 50
+  fixo) + curva de XP. *(Reescrito em 2026-07-21: a curva virou a da série e o
+  `skillPowerMult` foi removido — ver §6.)*
 - **`pokedex/commands/syncPokedex.ts`**: motor único (seed + refresh), upsert
   idempotente por `pokemonApiId`/`moveApiId`. **Não** usa `$transaction` de
   propósito (bulk re-rodável, não é escrita-claim atômica).
@@ -462,10 +539,53 @@ battle-room) — é o follow-up abaixo.
 `useBattleRoom`, polling relaxa pra 20s com canal de pé. Verificado e2e no
 Supabase CLI local.
 
-⏳ **Próxima fatia:** timer sincronizado na tela, A2 energia, A3 reação (a
-janela de reação em si — o transporte que ela precisa já está de pé), Fase D, e
-(opcional) repor o canvas Konva com capricho visual. F4/energia/reação = afinar
-jogando.
+✅ **VOLTA AO SIMULTÂNEO + learnset por nível + XP (2026-07-21)** — `tsc` ·
+`vitest` 164 · `eslint` · `next build` verdes. Migration
+`20260721120000_simultaneous_turns_and_level_learnset`:
+- **Turno simultâneo**: `duelTypes`/`duelEngine` (`resolveRound` casa as duas
+  jogadas) + `turnOrder.ts` (priority → Speed → sorteio). `duelInitiative.ts`
+  **deletado**; `Battle.activeUserId` **dropado**. `resolveIfDue` só resolve com
+  as duas cartas na mesa (ou timeout), claim por `(round, status)`, faltas
+  simétricas, **um log por rodada**. `submitAction` não tem mais "é a sua vez".
+- **Learnset por nível** (§7.1): `version_group_details` normalizado em
+  `lib/pokeapi`, decidido em `pokedex/domain/learnset.ts`, gravado em
+  `PokemonMove` (nível/método/jogo). `readLearnset` devolve travadas com o nível
+  exigido; **`addToDeck` recusa carta não destravada** (o POST é público).
+- **XP** (§6): `awardBattleXp` credita dentro da transação do claim (o claim é o
+  que garante pagamento único). `BattlePokemon.userPokemonId` é o caminho de
+  volta. `openPack` cria em `STARTING_LEVEL`.
+- **DTO/UI**: `submittedUserIds` (quem, nunca o quê) → `canPlay` /
+  `waitingOpponent` / `opponentReady`; a mesa mostra "Escolha sua carta" /
+  "Aguardando oponente" + selo de oponente pronto.
+- **Realtime**: 2º trigger `battle_action_submitted` (ver §8.2).
+
+⚠️ **A migration NÃO foi aplicada** — o `.env` aponta pro Supabase de PROD. O
+dono roda `npx prisma migrate deploy` (ou `dev`) e **`npm run seed`** (o
+learnset antigo é apagado pela migration: não havia como converter sem o dado da
+API — ver o cabeçalho da migration). O SQL do Realtime novo entra pelo
+`supabase db push` / MCP, como os irmãos.
+
+⏳ **Próxima fatia:** timer sincronizado na tela, energia (A2), **evolução por
+nível** (ver abaixo), Fase D, e (opcional) repor o canvas Konva. A "janela de
+reação" precisa ser **redesenhada** — o desenho antigo pressupunha turno
+alternado (§3.3).
+
+⏳ **Evolução por nível — fatia própria, ainda NÃO feita.** Ficou de fora desta
+leva de propósito (decisão do dono, 2026-07-21). O que ela precisa, pra quem
+pegar:
+1. **Dado**: `/pokemon-species/{id}` → `evolution_chain`, e `/evolution-chain/{id}`
+   → gatilho (`trigger: level-up`, `min_level`). Hoje o espelho **não** guarda
+   nada disso; entra como coluna/tabela nova (e a mesma chamada traz o
+   `growth_rate`, que fecha o F4 da curva de XP).
+2. **Regra**: ao subir de nível em `awardBattleXp`, se bateu o `min_level` da
+   cadeia, o `UserPokemon` **troca de espécie** (`pokemonId`). Stats vêm de
+   graça (derivam da espécie nova).
+3. **O buraco que precisa de decisão**: o loadout aponta pra `Move` da espécie
+   ANTIGA. Evoluções costumam manter quase todo o learnset, mas não é garantido
+   — é preciso decidir entre podar as cartas órfãs, manter (grandfather) ou
+   forçar remontagem. **Não dá pra implementar sem essa escolha.**
+4. E o snapshot de partida em andamento **não** pode mudar (é congelado) — a
+   evolução só vale da próxima partida em diante.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta
@@ -481,23 +601,33 @@ direto até o jogo completo.
 - **Reset da coleção atual** (4 cartas + decks): o modelo muda demais; provável
   recomeçar a coleção (F3). Migração de batalhas em andamento: encerrar as abertas
   antes de migrar.
-- **Reescrita da orquestração do turno** (simultâneo→alternado): é a parte cara. O
-  engine de *dano* sobrevive; o *fluxo* muda bastante e precisa de teste novo.
-- **Reverter "nunca espelhar Pokémon"**: atualizar CLAUDE.md/schema comments — hoje
-  eles afirmam o contrário, e alguém vai se confundir se ficarem.
+- **Reescrita da orquestração do turno**: feita duas vezes (simultâneo→alternado
+  →simultâneo). O engine de *dano* sobreviveu inteiro nas duas; o *fluxo* é que
+  muda. Lição: **decidir o modelo de turno olhando pro jogo real primeiro** — o
+  alternado custou uma fatia inteira pra descobrir que a informação assimétrica
+  quebrava o duelo.
 - **Custo de dados da API**: o seed puxa muita coisa; respeitar a fair-use (cache
   local, que agora é tabela de verdade) e semear por geração.
-- **Balanceamento**: alternado com iniciativa/energia/reação é potente mas fácil de
-  desbalancear. Só se acerta jogando — daí as fases serem jogáveis cedo.
+- **Learnset por nível muda a cara do começo**: pokémon novo tem ~3-4 cartas, não
+  6. Se ficar seco demais, as alavancas são `STARTING_LEVEL` e o XP por batalha —
+  não voltar a liberar o learnset inteiro.
+- **Balanceamento**: só se acerta jogando — daí as fases serem jogáveis cedo.
 
 ---
 
 ## 11. Decisões
 
 - **F1** ✅ 1×1 puro, schema pronto pra time.
-- **F2** ✅ MVP já com energia + reação (jogo tático completo na Fase A).
+- **F2** ✅ MVP completo na Fase A. *(A "reação" precisa ser redesenhada — §3.3.)*
 - **F3** ✅ reset total da base liberado.
-- **F4** ⏳ curva de XP e multiplicador de skill por nível — afinamos jogando (§6).
+- **F4** ⏳ curva de XP — hoje medium-fast (n³) e ganho pela fórmula da série;
+  afinamos jogando (§6). O ~~multiplicador de skill por nível~~ saiu da questão:
+  não existe no jogo real (§6).
 
-Com F1–F3 travadas, o schema da **Fase 0** já pode ser desenhado por completo. Próximo
-passo natural: detalhar a Fase 0 (schema Prisma final + seed + refresh) e começar.
+**Decidido em 2026-07-21 (esta leva):**
+- **Turno SIMULTÂNEO**, revertendo o alternado (§3).
+- **Learnset travado por nível**, só `level-up`, version group mais recente por
+  espécie (§7.1).
+- **XP pela fórmula da série**, perdedor leva 25%.
+- **Evolução por nível fica pra fatia própria** — o que ela exige está listado no
+  fim de "Estado da Fase A".

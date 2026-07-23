@@ -28,13 +28,16 @@ const { getBattleStatus } = await import("@/src/modules/battle/queries/getBattle
 const BATTLE = {
   id: "b1",
   status: "IN_PROGRESS",
-  currentTurn: 3,
+  round: 3,
   winnerId: null,
   participants: [
     { id: "pa", userId: "alpha", activeSlot: 1, pokemons: [] },
     { id: "pb", userId: "zeta", activeSlot: 1, pokemons: [] },
   ],
   turnLogs: [],
+  // No simultâneo, `actions` é o que diz quem já escolheu a carta do round —
+  // vem no mesmo include (com select estreito, sem cardSlot).
+  actions: [{ userId: "zeta", round: 3 }],
 };
 
 beforeEach(() => {

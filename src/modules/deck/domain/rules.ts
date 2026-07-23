@@ -3,7 +3,13 @@
 /** Um deck tem no máximo 6 loadouts (slots) — o time do jogo. */
 export const DECK_LIMIT = 6;
 
-/** Cada loadout (slot) tem exatamente 6 cartas (skills) — a barra de golpes. */
+/**
+ * Teto de cartas (skills) por loadout — a barra de golpes.
+ *
+ * É TETO, não obrigação: com o learnset liberado por nível (a espécie só
+ * conhece o que já aprendeu), um pokémon recém-capturado tem menos de 6 cartas
+ * disponíveis. Exigir 6 travaria a montagem de deck no começo do jogo.
+ */
 export const CARDS_PER_SLOT = 6;
 
 export function isDeckFull(slotCount: number): boolean {

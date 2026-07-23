@@ -5,9 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // a atomicidade do turno sob concorrência: os dois jogadores fazem polling a
 // cada 2s, então DUAS lambdas chegam aqui ao mesmo tempo o tempo todo.
 //
-// Diferença pro modelo antigo: o claim guarda por (activeUserId, round, status)
-// e o fim de jogo é FOLDED na própria data do claim (updateMany), não numa
-// escrita separada.
+// No SIMULTÂNEO isso fica mais disputado, não menos: além do polling, o request
+// de quem submete a 2ª carta também tenta resolver. O claim guarda por (round,
+// status) — quem perde não escreve NADA.
 
 const tx = {
   battle: { updateMany: vi.fn() },
@@ -15,10 +15,12 @@ const tx = {
   battleParticipant: { update: vi.fn() },
   battleTurnLog: { create: vi.fn() },
   battleAction: { deleteMany: vi.fn() },
+  userPokemon: { findMany: vi.fn(), update: vi.fn() },
 };
 
 const prismaMock = {
   battle: { findUnique: vi.fn() },
+  pokemon: { findMany: vi.fn() },
   $transaction: vi.fn(),
 };
 
@@ -28,13 +30,14 @@ vi.mock("@/src/modules/battle/commands/buildDuelSnapshot", () => ({
   buildTypeChart: vi.fn(async () => ({})),
 }));
 
-const { tryResolveTurn, TURN_TIMEOUT_MS, MAX_MISSES, expiredTurnWindows } = await import(
+const { tryResolveTurn, TURN_TIMEOUT_MS, expiredTurnWindows } = await import(
   "@/src/modules/battle/commands/resolveTurn"
 );
 
-function pokemonRow(currentHp = 100) {
+function pokemonRow(currentHp = 100, userPokemonId = "up-1") {
   return {
     slot: 1,
+    userPokemonId,
     pokemonId: 25,
     name: "pikachu",
     types: ["electric"],
@@ -59,21 +62,23 @@ function pokemonRow(currentHp = 100) {
   };
 }
 
-// Round 3, é a vez de "alpha" (order = [alpha, zeta] por desempate de userId,
-// Speed empatado), e ele JÁ escolheu a carta => pronta pra resolver.
+// Round 3, os DOIS já escolheram => pronta pra resolver. (No simultâneo é isso
+// que destrava a resolução: as duas cartas na mesa.)
 function battleReadyToResolve(oppHp = 100) {
   return {
     id: "b1",
     status: "IN_PROGRESS",
     round: 3,
-    activeUserId: "alpha",
     turnStartedAt: new Date(),
     winnerId: null,
     participants: [
-      { id: "pa", userId: "alpha", activeSlot: 1, missedTurns: 0, pokemons: [pokemonRow()] },
-      { id: "pb", userId: "zeta", activeSlot: 1, missedTurns: 0, pokemons: [pokemonRow(oppHp)] },
+      { id: "pa", userId: "alpha", activeSlot: 1, missedTurns: 0, pokemons: [pokemonRow(100, "up-alpha")] },
+      { id: "pb", userId: "zeta", activeSlot: 1, missedTurns: 0, pokemons: [pokemonRow(oppHp, "up-zeta")] },
     ],
-    actions: [{ battleId: "b1", userId: "alpha", round: 3, cardSlot: 0 }],
+    actions: [
+      { battleId: "b1", userId: "alpha", round: 3, cardSlot: 0 },
+      { battleId: "b1", userId: "zeta", round: 3, cardSlot: 0 },
+    ],
     turnLogs: [],
   };
 }
@@ -89,13 +94,24 @@ function writeCallCount() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // resolveIfDue injeta Math.random no engine. Sem fixar, este arquivo fica
+  // INSTÁVEL: com dois pikachus iguais, o desempate de Speed é sorteio e um
+  // crítico (1/16) nocauteia antes do segundo agir — o teste do PP falhava uma
+  // vez a cada ~16 rodadas. 0.5 = acerta, não critica, e o desempate é estável.
+  vi.spyOn(Math, "random").mockReturnValue(0.5);
   prismaMock.$transaction.mockImplementation(async (fn: (t: typeof tx) => Promise<void>) => fn(tx));
   prismaMock.battle.findUnique.mockResolvedValue(battleReadyToResolve());
+  prismaMock.pokemon.findMany.mockResolvedValue([{ pokemonApiId: 25, baseExperience: 112 }]);
   tx.battle.updateMany.mockResolvedValue({ count: 1 });
   tx.battlePokemon.updateMany.mockResolvedValue({ count: 1 });
   tx.battleParticipant.update.mockResolvedValue({});
   tx.battleTurnLog.create.mockResolvedValue({});
-  tx.battleAction.deleteMany.mockResolvedValue({ count: 1 });
+  tx.battleAction.deleteMany.mockResolvedValue({ count: 2 });
+  tx.userPokemon.findMany.mockResolvedValue([
+    { id: "up-alpha", xp: 8000 },
+    { id: "up-zeta", xp: 8000 },
+  ]);
+  tx.userPokemon.update.mockResolvedValue({});
 });
 
 describe("tryResolveTurn — atomicidade do turno", () => {
@@ -106,22 +122,22 @@ describe("tryResolveTurn — atomicidade do turno", () => {
 
     expect(tx.battle.updateMany).toHaveBeenCalledTimes(1);
     expect(writeCallCount()).toBe(0);
+    expect(tx.userPokemon.update).not.toHaveBeenCalled();
   });
 
-  it("ganhou o claim => aplica, grava o log e apaga a carta do round", async () => {
+  it("ganhou o claim => aplica, grava o log do round e apaga AS DUAS cartas", async () => {
     await tryResolveTurn("b1");
 
-    // turnNumber é o contador monotônico por ação: (round-1)*2 + actedThisRound.
+    // Um log por RODADA no simultâneo (o alternado tinha dois por rodada).
     expect(tx.battleTurnLog.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ battleId: "b1", turnNumber: 4 }) })
+      expect.objectContaining({ data: expect.objectContaining({ battleId: "b1", turnNumber: 3 }) })
     );
-    expect(tx.battleAction.deleteMany).toHaveBeenCalledWith({
-      where: { battleId: "b1", round: 3, userId: "alpha" },
-    });
+    // Sem `userId` no where: o round inteiro é consumido de uma vez.
+    expect(tx.battleAction.deleteMany).toHaveBeenCalledWith({ where: { battleId: "b1", round: 3 } });
     expect(tx.battlePokemon.updateMany).toHaveBeenCalled();
   });
 
-  it("o claim guarda por (activeUserId, round, status) e é a PRIMEIRA escrita", async () => {
+  it("o claim guarda por (round, status) e é a PRIMEIRA escrita", async () => {
     const order: string[] = [];
     tx.battle.updateMany.mockImplementation(async () => {
       order.push("claim");
@@ -136,14 +152,27 @@ describe("tryResolveTurn — atomicidade do turno", () => {
 
     expect(order[0]).toBe("claim");
     const claimArg = tx.battle.updateMany.mock.calls[0][0];
-    expect(claimArg.where).toMatchObject({ id: "b1", status: "IN_PROGRESS", activeUserId: "alpha", round: 3 });
-    // Não encerrou: a vez passa pro oponente (order[1]), round segue 3.
-    expect(claimArg.data).toMatchObject({ activeUserId: "zeta", round: 3 });
+    expect(claimArg.where).toMatchObject({ id: "b1", status: "IN_PROGRESS", round: 3 });
+    expect(claimArg.where).not.toHaveProperty("activeUserId"); // não existe mais
+    expect(claimArg.data).toMatchObject({ round: 4 });
   });
 
-  it("ainda é a vez dele e dá tempo (sem carta, sem timeout) => nem abre transação", async () => {
+  it("SÓ UM jogador escolheu e ainda dá tempo => nem abre transação (é a escolha às cegas)", async () => {
     const battle = battleReadyToResolve();
-    battle.actions = [];
+    battle.actions = [{ battleId: "b1", userId: "alpha", round: 3, cardSlot: 0 }];
+    prismaMock.battle.findUnique.mockResolvedValue(battle);
+
+    await tryResolveTurn("b1");
+
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("ignora carta de round velho (chegou atrasada) e segue esperando", async () => {
+    const battle = battleReadyToResolve();
+    battle.actions = [
+      { battleId: "b1", userId: "alpha", round: 2, cardSlot: 0 },
+      { battleId: "b1", userId: "zeta", round: 2, cardSlot: 0 },
+    ];
     prismaMock.battle.findUnique.mockResolvedValue(battle);
 
     await tryResolveTurn("b1");
@@ -153,36 +182,20 @@ describe("tryResolveTurn — atomicidade do turno", () => {
 });
 
 describe("tryResolveTurn — timeout e abandono", () => {
-  it("timeout sem carta => hesitação; só o ativo leva falta", async () => {
+  it("timeout com uma carta só => o ausente hesita e leva falta; quem jogou ABAIXA a dele", async () => {
     const battle = battleReadyToResolve();
-    battle.actions = [];
+    battle.actions = [{ battleId: "b1", userId: "alpha", round: 3, cardSlot: 0 }];
+    battle.participants[1].missedTurns = 2; // zeta já tinha 2 faltas
     battle.turnStartedAt = new Date(Date.now() - TURN_TIMEOUT_MS - 1000);
     prismaMock.battle.findUnique.mockResolvedValue(battle);
 
     await tryResolveTurn("b1");
 
     expect(prismaMock.$transaction).toHaveBeenCalled();
-    // alpha (ativo) hesitou → +1 falta. zeta (oponente) não muda → sem update.
-    expect(tx.battleParticipant.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "pa" }, data: expect.objectContaining({ missedTurns: 1 }) })
-    );
-    expect(tx.battleParticipant.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "pb" } })
-    );
-  });
-
-  it("3ª falta do ativo => ABANDONED na DATA do claim, vitória do oponente", async () => {
-    const battle = battleReadyToResolve();
-    battle.actions = [];
-    battle.participants[0].missedTurns = 2; // alpha já tinha 2
-    battle.turnStartedAt = new Date(Date.now() - TURN_TIMEOUT_MS - 1000);
-    prismaMock.battle.findUnique.mockResolvedValue(battle);
-
-    await tryResolveTurn("b1");
-
+    // zeta não escolheu → 3ª falta → abandono (e vitória de alpha).
     expect(tx.battle.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: "ABANDONED", winnerId: "zeta" }),
+        data: expect.objectContaining({ status: "ABANDONED", winnerId: "alpha" }),
       })
     );
   });
@@ -200,6 +213,8 @@ describe("tryResolveTurn — timeout e abandono", () => {
         data: expect.objectContaining({ status: "ABANDONED", winnerId: null }),
       })
     );
+    // Sem vencedor não há XP a pagar.
+    expect(tx.userPokemon.update).not.toHaveBeenCalled();
   });
 
   it("conta uma janela de timeout por período vencido, não uma só", () => {
@@ -211,23 +226,31 @@ describe("tryResolveTurn — timeout e abandono", () => {
   });
 });
 
-describe("tryResolveTurn — fim por faint e PP", () => {
-  it("carta derruba o oponente => FINISHED na data do claim, vitória do ativo", async () => {
+describe("tryResolveTurn — fim por faint, PP e XP", () => {
+  it("derrubou o oponente => FINISHED na data do claim, com vencedor", async () => {
     prismaMock.battle.findUnique.mockResolvedValue(battleReadyToResolve(1)); // zeta com 1 HP
 
     await tryResolveTurn("b1");
 
-    expect(tx.battle.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: "FINISHED", winnerId: "alpha" }),
-      })
-    );
+    const claim = tx.battle.updateMany.mock.calls[0][0];
+    expect(claim.data).toMatchObject({ status: "FINISHED" });
+    expect(claim.data.winnerId).toBeTruthy();
   });
 
-  it("grava a coluna `moves` do atacante de volta (senão o PP recarrega sozinho)", async () => {
+  it("paga XP aos DOIS lados na mesma transação do claim (perdedor leva a fatia menor)", async () => {
+    prismaMock.battle.findUnique.mockResolvedValue(battleReadyToResolve(1));
+
     await tryResolveTurn("b1");
 
-    // O ativo (alpha = pA, sideA) gastou 1 PP. Acha o write do participante "pa".
+    expect(tx.userPokemon.update).toHaveBeenCalledTimes(2);
+    const gains = tx.userPokemon.update.mock.calls.map((c) => c[0].data.xp - 8000);
+    // xpFromDefeat(112, 20) = 320 pro vencedor; 25% disso (80) pro perdedor.
+    expect(gains.sort((a, b) => a - b)).toEqual([80, 320]);
+  });
+
+  it("grava a coluna `moves` de volta (senão o PP recarrega sozinho)", async () => {
+    await tryResolveTurn("b1");
+
     const call = tx.battlePokemon.updateMany.mock.calls.find((c) => c[0].where.participantId === "pa");
     expect(call).toBeDefined();
     expect(call![0].data).toHaveProperty("moves");

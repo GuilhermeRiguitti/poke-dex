@@ -1,9 +1,10 @@
-// Contrato de dados entre o servidor e a UI da batalha (duelo alternado).
+// Contrato de dados entre o servidor e a UI da batalha (duelo simultâneo).
 //
 // Espelho ESTREITO das linhas do Prisma: só entra aqui o que o jogador pode ver.
-// A linha do banco carrega a carta pendente do ativo (BattleAction); nada deve
-// ser serializado pro client sem passar pelo mapper (toBattleDTO) — nem por
-// props de Server Component, nem por NextResponse.json.
+// A linha do banco carrega a carta que o oponente já escolheu pro round em
+// aberto (BattleAction.cardSlot); nada deve ser serializado pro client sem
+// passar pelo mapper (toBattleDTO) — nem por props de Server Component, nem por
+// NextResponse.json.
 
 export interface BattleMoveDTO {
   id: number;
@@ -39,8 +40,8 @@ export interface ParticipantDTO {
 }
 
 // Eventos do turno do duelo (renderização + BattleTurnLog). Chaveados por
-// userId, não por lado A/B — no alternado o "lado" perde sentido; o que importa
-// é quem agiu. Espelha DuelEvent (domain/duelTypes.ts).
+// userId, não por lado A/B — o que importa pra tela é quem agiu. Espelha
+// DuelEvent (domain/duelTypes.ts).
 export type BattleEventDTO =
   | {
       type: "attack";
@@ -66,8 +67,13 @@ export interface BattleDTO {
   id: string;
   status: BattleStatusDTO;
   round: number;
-  activeUserId: string | null;
   winnerId: string | null;
+  /**
+   * Quem já escolheu a carta do round atual. É o "oponente pronto" da tela —
+   * e o limite exato do que pode ser dito sobre a jogada alheia antes do turno
+   * resolver: QUEM, nunca O QUÊ (ver toBattleDTO).
+   */
+  submittedUserIds: string[];
   participants: ParticipantDTO[];
   turnLogs: TurnLogDTO[];
 }

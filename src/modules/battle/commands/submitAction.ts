@@ -8,9 +8,17 @@ export type SubmitActionInput = {
   cardSlot: number; // 0..5 na barra
 };
 
-// Registra a carta do jogador da vez e resolve o turno (POST /api/battle/[id]/move).
-// No alternado só o `activeUserId` age por turno, e — sem janela de reação no A1
-// — a carta resolve NA HORA (tryResolveTurn logo abaixo).
+// Registra a carta de UM jogador no round (POST /api/battle/[id]/move).
+//
+// Simultâneo: não existe "é a sua vez" — os dois podem submeter a qualquer
+// momento do round, e a carta fica GUARDADA (segredo) até o outro submeter ou o
+// tempo estourar. Por isso `tryResolveTurn` é chamado aqui mesmo: quem submete
+// por ÚLTIMO é quem, no mesmo request, faz o turno resolver. Quem submeteu
+// primeiro descobre pelo push do Realtime (ou pelo polling).
+//
+// Trocar de ideia é permitido enquanto o round não resolveu (o upsert
+// sobrescreve o cardSlot) — e é seguro, porque a carta do oponente nunca sai do
+// servidor antes da resolução (toBattleDTO).
 export async function submitAction(battleId: string, userId: string, body: SubmitActionInput) {
   const battle = await prisma.battle.findUnique({
     where: { id: battleId },
@@ -22,11 +30,6 @@ export async function submitAction(battleId: string, userId: string, body: Submi
   const me = battle.participants.find((p) => p.userId === userId);
   if (!me) return { error: "forbidden" as const };
 
-  // Não é a sua vez → recusa (a rede de baixo do alternado; o engine também
-  // barra, mas aqui evita gravar uma BattleAction que nunca resolveria).
-  if (battle.activeUserId !== userId) {
-    return { error: "not_your_turn" as const, activeUserId: battle.activeUserId };
-  }
   if (body.round !== battle.round) {
     return { error: "stale_turn" as const, round: battle.round };
   }
@@ -54,7 +57,7 @@ export async function submitAction(battleId: string, userId: string, body: Submi
   const resolved = await tryResolveTurn(battleId);
   if (!resolved) return { error: "not_found" as const };
 
-  // Mesmo DTO que readBattleState devolve: a resposta do POST não pode vazar o
-  // que a linha crua carrega (a carta pendente do ativo). Ver toBattleDTO.
+  // Mesmo DTO que readBattleState devolve: a resposta do POST não pode vazar a
+  // carta que o oponente já escolheu neste round. Ver toBattleDTO.
   return { battle: toBattleDTO(resolved) };
 }

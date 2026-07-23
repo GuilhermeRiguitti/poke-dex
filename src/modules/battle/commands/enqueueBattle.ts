@@ -1,7 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { DECK_LIMIT, readDeckSlots } from "@/src/modules/deck";
-import { computeInitiative } from "../domain/duelInitiative";
 import type { BattlePokemonState } from "../domain/types";
 import { buildDuelSnapshot } from "./buildDuelSnapshot";
 import { tryResolveTurn } from "./resolveTurn";
@@ -14,6 +13,7 @@ function toPokemonCreateInput(
 ): Prisma.BattlePokemonCreateWithoutParticipantInput {
   return {
     slot: state.slot,
+    userPokemonId: state.userPokemonId ?? null,
     pokemonId: state.pokemonId,
     name: state.name,
     spriteUrl,
@@ -102,17 +102,12 @@ export async function enqueueBattle(userId: string, deckId: string) {
     return { error: "snapshot_failed" as const };
   }
 
-  // Iniciativa da rodada 1: quem tem Speed efetivo maior começa (desempate
-  // determinístico por userId). É quem entra como activeUserId. Ver §3.1.
-  const order = computeInitiative(
-    { userId, active: teamA[0].state },
-    { userId: opponent.userId, active: teamB[0].state }
-  );
-
+  // Nada de "quem começa": no simultâneo os dois já estão em turno a partir da
+  // rodada 1, e a ordem de execução é decidida DENTRO de cada turno, pela carta
+  // escolhida + Speed (domain/turnOrder.ts).
   const battle = await prisma.battle.create({
     data: {
       round: 1,
-      activeUserId: order[0],
       participants: {
         create: [
           {

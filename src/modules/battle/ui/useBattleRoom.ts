@@ -11,20 +11,25 @@ import type { BattleDTO } from "./types";
 const POLL_INTERVAL_MS = 2000;
 const REALTIME_FALLBACK_POLL_MS = 20_000;
 
+// Eventos do canal battle:<id>. Os dois só dizem "algo mudou" — quem lê o
+// estado é sempre o GET que passa pelo DTO.
+//  - battle_updated:  o turno resolveu (o Battle mudou de round/status).
+//  - battle_action_submitted: alguém trancou a carta do round.
+// O segundo é o que o SIMULTÂNEO exigiu: quando o oponente escolhe, nenhuma
+// linha do Battle muda — sem esse trigger, o "oponente pronto" só apareceria
+// no próximo poll (até 20s depois, com o canal de pé).
+const CHANNEL_EVENTS = ["battle_updated", "battle_action_submitted"];
+
 // Toda a conversa com o servidor durante o duelo vive aqui: o push do
-// Realtime + polling que descobrem quando a vez virou (ou a partida acabou),
+// Realtime + polling que descobrem quando o round virou (ou a partida acabou),
 // e o envio da carta.
 //
 // Começa de `initialBattle`, que a page já buscou no servidor — sem estado de
 // "carregando partida".
 //
-// Realtime é SINAL, não DADO: o trigger no Battle empurra um payload mínimo
-// e o cliente refaz o GET que passa pelo DTO. Por isso o handler do broadcast
-// nem lê o payload — qualquer sinal no canal = refetch (idempotente).
-//
-// Detalhe do alternado: a vez pode virar SEM o round mudar (na 1ª ação de uma
-// rodada, o round segue e só o activeUserId muda). Por isso o tick compara
-// activeUserId TAMBÉM — comparar só o round perderia a virada pro meu turno.
+// Realtime é SINAL, não DADO: o trigger empurra um payload mínimo e o cliente
+// refaz o GET que passa pelo DTO. Por isso o handler nem lê o payload —
+// qualquer sinal no canal = refetch (idempotente).
 export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
   const [battle, setBattle] = useState(initialBattle);
   const [error, setError] = useState("");
@@ -33,12 +38,16 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
   const latest = useRef({
     round: battle.round,
     status: battle.status,
-    activeUserId: battle.activeUserId,
+    submittedCount: battle.submittedUserIds.length,
   });
 
   const applyBattle = useCallback((next: BattleDTO) => {
     setBattle(next);
-    latest.current = { round: next.round, status: next.status, activeUserId: next.activeUserId };
+    latest.current = {
+      round: next.round,
+      status: next.status,
+      submittedCount: next.submittedUserIds.length,
+    };
   }, []);
 
   const loadFullState = useCallback(async () => {
@@ -53,12 +62,17 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
   // partida está em progresso — acabou, o canal cai e o polling para.
   const live = useRealtimeChannel(
     `battle:${battleId}`,
-    "battle_updated",
+    CHANNEL_EVENTS,
     loadFullState,
     battle.status === "IN_PROGRESS"
   );
 
   // ── Polling: motor sem Realtime, rede de segurança com ele ──────────────
+  //
+  // O tick compara round + status + QUANTOS já submeteram. O terceiro não é
+  // enfeite: no simultâneo o oponente trancar a carta não muda o round nem o
+  // status, e sem isso a tela ficaria mentindo "oponente escolhendo" até o
+  // turno inteiro resolver.
   useEffect(() => {
     const intervalMs = live ? REALTIME_FALLBACK_POLL_MS : POLL_INTERVAL_MS;
     const timer = setInterval(async () => {
@@ -73,11 +87,13 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
       const next = (await res.json()) as {
         round: number;
         status: BattleDTO["status"];
-        activeUserId: string | null;
+        iSubmitted: boolean;
+        opponentSubmitted: boolean;
       };
 
       const prev = latest.current;
-      if (prev.round !== next.round || prev.status !== next.status || prev.activeUserId !== next.activeUserId) {
+      const submittedCount = (next.iSubmitted ? 1 : 0) + (next.opponentSubmitted ? 1 : 0);
+      if (prev.round !== next.round || prev.status !== next.status || prev.submittedCount !== submittedCount) {
         await loadFullState();
       }
     }, intervalMs);

@@ -37,6 +37,7 @@ function toPokemonState(slot: DeckLoadoutSlot, index: number): BattlePokemonStat
   const derived = deriveStats(pokemon.baseStats, slot.userPokemon.level);
   return {
     slot: index + 1, // posição no time (1×1 usa o slot 1)
+    userPokemonId: slot.userPokemon.id,
     pokemonId: pokemon.pokemonApiId,
     name: pokemon.name,
     types: pokemon.types,

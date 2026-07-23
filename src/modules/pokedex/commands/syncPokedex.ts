@@ -7,6 +7,7 @@ import {
   type NormalizedPokemon,
 } from "@/src/lib/pokeapi";
 import type { BaseStats } from "../domain/leveling";
+import { pickLearnEntry, pickVersionGroup, type LearnsetEntry } from "../domain/learnset";
 
 // Sincroniza o espelho da PokéAPI (Pokemon/Move/PokemonMove) — o motor único
 // da seed inicial (Fase 0) E do cron de refresh (PLANO_JOGO.md §7). Escreve →
@@ -52,6 +53,13 @@ async function mapLimit<T, R>(items: T[], limit: number, task: (item: T) => Prom
   return results;
 }
 
+/** O que sobra de uma espécie sincronizada: a linha e o learnset já decidido. */
+interface SyncedSpecies {
+  pokemonId: string;
+  /** moveApiId → nível/método/jogo em que ESTA espécie aprende o move. */
+  learnset: Map<number, LearnsetEntry>;
+}
+
 export interface SyncPokedexSummary {
   pokemonSynced: number;
   movesSynced: number;
@@ -67,8 +75,9 @@ export interface SyncPokedexOptions {
 
 /**
  * Sincroniza os `pokemonApiIds` dados: faz upsert de cada espécie, de todos os
- * moves do learnset (deduplicados entre espécies) e dos vínculos n:n.
- * Idempotente: re-rodar com os mesmos ids só atualiza `fetchedAt`.
+ * moves do learnset (deduplicados entre espécies) e dos vínculos n:n — estes
+ * já com o nível/método de aprendizado do version group escolhido pra espécie.
+ * Idempotente: re-rodar com os mesmos ids converge no mesmo estado.
  */
 export async function syncPokedex(
   pokemonApiIds: number[],
@@ -90,6 +99,7 @@ export async function syncPokedex(
       name: p.name,
       types: toTypeNames(p) as Prisma.InputJsonValue,
       baseStats: toBaseStats(p) as unknown as Prisma.InputJsonObject,
+      baseExperience: p.baseExperience,
       spriteUrl: p.sprites.artwork ?? p.sprites.front_default,
     };
     const row = await prisma.pokemon.upsert({
@@ -97,14 +107,30 @@ export async function syncPokedex(
       create: { pokemonApiId: p.id, ...data },
       update: { ...data, fetchedAt: new Date() },
     });
-    const moveApiIds = p.moves.map((m) => extractIdFromUrl(m.move.url)).filter((n) => Number.isFinite(n));
-    return { pokemonId: row.id, moveApiIds };
+
+    // Learnset FIEL: a espécie aprende cada move num nível e por um método, e
+    // isso varia por jogo. Escolhemos UM version group pra ela (o mais recente
+    // que tiver level-up) e guardamos a entrada daquele jogo. Ver domain/learnset.
+    const allDetails = p.moves.flatMap((m) => m.learnDetails);
+    const versionGroup = pickVersionGroup(allDetails);
+
+    const learnset = new Map<number, LearnsetEntry>();
+    if (versionGroup) {
+      for (const m of p.moves) {
+        const moveApiId = extractIdFromUrl(m.move.url);
+        if (!Number.isFinite(moveApiId)) continue;
+        const entry = pickLearnEntry(m.learnDetails, versionGroup);
+        if (entry) learnset.set(moveApiId, entry);
+      }
+    }
+
+    return { pokemonId: row.id, learnset };
   });
 
-  const synced = fetched.filter((x): x is { pokemonId: string; moveApiIds: number[] } => x !== null);
+  const synced = fetched.filter((x): x is SyncedSpecies => x !== null);
 
   // 2) moves: união deduplicada de todos os learnsets, fetch + upsert.
-  const uniqueMoveApiIds = [...new Set(synced.flatMap((s) => s.moveApiIds))];
+  const uniqueMoveApiIds = [...new Set(synced.flatMap((s) => [...s.learnset.keys()]))];
   const moveIdByApiId = new Map<number, string>();
   await mapLimit(uniqueMoveApiIds, concurrency, async (apiId) => {
     const m = await fetchMove(apiId);
@@ -126,21 +152,34 @@ export async function syncPokedex(
     moveIdByApiId.set(m.id, row.id);
   });
 
-  // 3) learnset n:n: um vínculo por par (só pros moves que resolveram).
-  // createMany + skipDuplicates (ON CONFLICT DO NOTHING na PK composta) em vez
-  // de upsert por linha: são milhares de vínculos, e um round-trip por linha
-  // estouraria o timeout da lambda no cron de refresh (§7). Idempotente igual.
+  // 3) learnset n:n: um vínculo por par, agora CARREGANDO nível/método/jogo.
+  //
+  // deleteMany + createMany (e não createMany + skipDuplicates como antes): o
+  // vínculo deixou de ser um booleano "sabe/não sabe" e passou a ter DADO
+  // (levelLearnedAt/learnMethod/versionGroup). skipDuplicates ignoraria a linha
+  // já existente e o refresh nunca corrigiria um nível errado — o espelho
+  // congelaria na primeira versão semeada. Como é por espécie e re-rodável, uma
+  // passada interrompida no meio se conserta na próxima (não há invariante
+  // multi-passo aqui; ver o bloco sobre $transaction no topo).
   let linksSynced = 0;
-  for (const { pokemonId, moveApiIds } of synced) {
-    const moveIds = [...new Set(moveApiIds.map((apiId) => moveIdByApiId.get(apiId)))].filter(
-      (moveId): moveId is string => Boolean(moveId),
-    );
-    if (moveIds.length === 0) continue;
+  for (const { pokemonId, learnset } of synced) {
+    const rows = [...learnset.entries()]
+      .map(([apiId, entry]) => ({ moveId: moveIdByApiId.get(apiId), entry }))
+      .filter((r): r is { moveId: string; entry: LearnsetEntry } => Boolean(r.moveId));
+    if (rows.length === 0) continue;
+
+    await prisma.pokemonMove.deleteMany({ where: { pokemonId } });
     await prisma.pokemonMove.createMany({
-      data: moveIds.map((moveId) => ({ pokemonId, moveId })),
+      data: rows.map(({ moveId, entry }) => ({
+        pokemonId,
+        moveId,
+        levelLearnedAt: entry.levelLearnedAt,
+        learnMethod: entry.learnMethod,
+        versionGroup: entry.versionGroup,
+      })),
       skipDuplicates: true,
     });
-    linksSynced += moveIds.length;
+    linksSynced += rows.length;
   }
 
   return {

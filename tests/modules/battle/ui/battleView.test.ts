@@ -27,8 +27,8 @@ function battle(over: Partial<BattleDTO> = {}): BattleDTO {
     id: "b1",
     status: "IN_PROGRESS",
     round: 3,
-    activeUserId: "me",
     winnerId: null,
+    submittedUserIds: [],
     participants: [
       { id: "pm", userId: "me", activeSlot: 1, pokemons: [mon()] },
       { id: "po", userId: "opp", activeSlot: 1, pokemons: [mon({ currentHp: 10, name: "bulbasaur" })] },
@@ -42,9 +42,10 @@ function battle(over: Partial<BattleDTO> = {}): BattleDTO {
 }
 
 describe("selectDuelView", () => {
-  it("monta a visão do MEU ponto de vista: minha vez, HP%, cartas", () => {
+  it("monta a visão do MEU ponto de vista: posso jogar, HP%, cartas", () => {
     const v = selectDuelView(battle(), "me")!;
-    expect(v.isMyTurn).toBe(true);
+    expect(v.canPlay).toBe(true);
+    expect(v.waitingOpponent).toBe(false);
     expect(v.me.name).toBe("pikachu");
     expect(v.opp.name).toBe("bulbasaur");
     expect(v.me.hpPct).toBe(50); // 40/80
@@ -54,8 +55,17 @@ describe("selectDuelView", () => {
     expect(v.cards[0].disabled).toBe(false);
   });
 
-  it("não é minha vez quando activeUserId é o oponente", () => {
-    expect(selectDuelView(battle({ activeUserId: "opp" }), "me")!.isMyTurn).toBe(false);
+  it("já escolhi => a mão trava e eu espero o oponente (não é 'vez dele')", () => {
+    const v = selectDuelView(battle({ submittedUserIds: ["me"] }), "me")!;
+    expect(v.canPlay).toBe(false);
+    expect(v.waitingOpponent).toBe(true);
+    expect(v.opponentReady).toBe(false);
+  });
+
+  it("o oponente já escolheu, eu não => continuo podendo jogar, e vejo que ele está pronto", () => {
+    const v = selectDuelView(battle({ submittedUserIds: ["opp"] }), "me")!;
+    expect(v.canPlay).toBe(true);
+    expect(v.opponentReady).toBe(true);
   });
 
   it("log em ordem cronológica (asc por turno) e chaveado por 'Você'/'Oponente'", () => {
@@ -68,10 +78,11 @@ describe("selectDuelView", () => {
   });
 
   it("fim de jogo: isOver + iWon pelo winnerId", () => {
-    const v = selectDuelView(battle({ status: "FINISHED", winnerId: "me", activeUserId: "me" }), "me")!;
+    const v = selectDuelView(battle({ status: "FINISHED", winnerId: "me" }), "me")!;
     expect(v.isOver).toBe(true);
     expect(v.iWon).toBe(true);
-    expect(v.isMyTurn).toBe(false); // acabou → não é vez de ninguém
+    expect(v.canPlay).toBe(false); // acabou → não há mais carta a jogar
+    expect(v.waitingOpponent).toBe(false);
   });
 
   it("devolve null se eu não estou na partida", () => {

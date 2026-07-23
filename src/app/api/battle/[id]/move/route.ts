@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import { auth } from "@/src/lib/auth";
 import { submitAction, type SubmitActionInput } from "@/src/modules/battle";
 
-// POST /api/battle/[id]/move — registra a carta do jogador da vez e resolve o turno
+// POST /api/battle/[id]/move — registra a carta do jogador no round e resolve o
+// turno se o oponente também já jogou (simultâneo: quem chega por último resolve)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,8 +21,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: "Essa partida já terminou" }, { status: 400 });
       case "forbidden":
         return NextResponse.json({ error: "Not a participant" }, { status: 403 });
-      case "not_your_turn":
-        return NextResponse.json({ error: "Não é a sua vez", activeUserId: result.activeUserId }, { status: 409 });
       case "stale_turn":
         return NextResponse.json({ error: "Turno desatualizado", round: result.round }, { status: 409 });
       case "validation":

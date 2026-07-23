@@ -10,19 +10,24 @@ import type {
 
 // Fronteira de serialização: linha do Prisma -> o que o jogador pode ver.
 //
-// NÃO é boilerplate. A linha que resolveIfDue devolve pode vir com `actions` (a
-// carta pendente do jogador da vez) e com os `stats` de cada pokémon. Mandar a
-// linha crua pro browser entrega a jogada do oponente antes do turno resolver.
-// Aqui só passa o que está escrito abaixo — whitelist explícita fecha o vazamento.
+// NÃO é boilerplate, e no turno SIMULTÂNEO é mais crítico que antes: a linha
+// que resolveIfDue lê traz `actions` com o `cardSlot` — a carta que o oponente
+// escolheu para ESTE round, antes de ele resolver. Mandar a linha crua pro
+// browser entrega a jogada do adversário justamente na janela em que a escolha
+// deveria ser às cegas: dava pra abrir o devtools e responder à carta dele.
+//
+// O que sai daqui sobre as ações é só QUEM já escolheu (`submittedUserIds`) —
+// nunca O QUÊ. Isso é informação legítima ("oponente pronto") e é o que a tela
+// usa; o cardSlot não tem caminho pro cliente.
 
 // Estrutural de propósito: aceita qualquer linha que tenha ao menos isto —
-// inclusive as que trazem `actions` junto, que é justamente o ponto.
+// inclusive as que trazem `actions` com cardSlot junto, que é justamente o ponto.
 interface BattleRow {
   id: string;
   status: string;
   round: number;
-  activeUserId: string | null;
   winnerId: string | null;
+  actions?: { userId: string; round: number }[];
   participants: {
     id: string;
     userId: string;
@@ -92,13 +97,13 @@ export function toBattleDTO(row: BattleRow): BattleDTO {
     id: row.id,
     status: row.status as BattleStatusDTO,
     round: row.round,
-    activeUserId: row.activeUserId,
     winnerId: row.winnerId,
+    // QUEM já escolheu neste round — nunca O QUÊ. Ver o comentário no topo.
+    submittedUserIds: (row.actions ?? []).filter((a) => a.round === row.round).map((a) => a.userId),
     participants: row.participants.map(toParticipantDTO),
     turnLogs: row.turnLogs.map((log) => ({
       turnNumber: log.turnNumber,
       events: (log.events as BattleEventDTO[]) ?? [],
     })),
-    // `actions` (a carta pendente do ativo) NÃO entra. Ver o comentário no topo.
   };
 }

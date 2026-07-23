@@ -78,5 +78,38 @@ Detalhar melhor as skills em formato de cartas, verificar todas e melhorar UI e 
 `scripts\generate-rarity.mjs`
 
 
+# MIGRATIONS / REPRODUZIR O BANCO DO ZERO
+
+Nenhum dos dois quebra o deploy de hoje. Os dois quebram **subir um ambiente novo**
+(ou um banco local limpo). Analisar depois.
+
+- [ ] **Os jobs do pg_cron não estão em migration nenhuma.** No prod rodam dois,
+  ativos: `resolve-battle-turns` (30s, o backstop que resolve turno de partida que
+  ninguém está pollando) e `refresh-pokedex` (diário). A migration
+  `supabase/migrations/20260715022134_enable_pg_cron_pg_net.sql` cria só as
+  **extensões** — o `cron.schedule` está lá como comentário, pra rodar na mão.
+  Resultado: ambiente novo sobe sem o backstop, e ninguém percebe até uma partida
+  travar. O motivo de não versionar é real (o comando embute a URL do deploy, que
+  muda por ambiente — versionar a de prod faria um staging bater no prod). Saída
+  possível: a migration lê a URL e o secret de um GUC do banco
+  (`current_setting('app.deploy_url')`) ou do Vault do Supabase, em vez de
+  hardcode. Aí o `cron.schedule` vira versionável e o valor fica por ambiente.
+  Já documentado como gap em `DEPLOY.md` e no cabeçalho da própria migration.
+
+- [ ] **O fluxo de dev documentado está na ordem errada e quebra num banco limpo.**
+  `DEPLOY.md` § "Rodar migrations localmente (dev)" manda `supabase db push` e
+  **depois** `prisma migrate deploy`. Num banco local recém-criado isso falha: as
+  migrations de realtime dependem de tabelas que o Prisma ainda não criou —
+  `create function ... language sql` valida o corpo contra `public."BattleParticipant"`
+  (check_function_bodies) e o `create trigger` precisa de `public."Battle"`. O
+  `.github/workflows/deploy.yml` faz na ordem certa (Prisma → Supabase); só a doc
+  de dev diverge. Mesma pegadinha vale pro `supabase db reset`, que roda só
+  `supabase/migrations/` e por isso nunca funciona sozinho aqui.
+  Duas coisas a fazer: **(a)** inverter a ordem no `DEPLOY.md`; **(b)** avaliar um
+  script `"db:reset"` no `package.json` encadeando
+  `supabase db reset && prisma migrate deploy && supabase db push`, pra ninguém
+  depender de lembrar a ordem.
+
+
 # SEGURANÇA EM DEPLOY (VER SOBRE)
 Como você optou por repository secrets (sem o gate de aprovação do environment), a trava é disciplina, não o pipeline: toda migration nova que for pra main precisa ser lida antes procurando DROP/DELETE/ALTER ... DROP. Se um dia isso te preocupar, o environment: Production com "required reviewer" é a rede — mas isso é decisão sua, e por ora está do jeito que você quis.

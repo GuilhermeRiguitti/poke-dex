@@ -4,10 +4,9 @@
 // campos é que vêm do espelho local (Pokemon/Move) ou são calculados por nós
 // (stats por nível via pokedex/domain/leveling, regras de turno).
 //
-// O modelo simultâneo antigo (BattleState/BattleSideState/BattleEvent + o
-// engine.ts que casava duas jogadas) foi REMOVIDO na Fase A: o duelo é
-// alternado (ver duelTypes.ts). Só sobrevive daqui o que o snapshot de um
-// pokémon precisa — stats, cartas e HP.
+// Aqui mora só o que o SNAPSHOT de um pokémon precisa (stats, cartas, HP). O
+// modelo do turno em si — que voltou a ser simultâneo, como na série — está em
+// duelTypes.ts.
 
 // Os 6 stats de batalha já convertidos pra valores de jogo. Os base stats crus
 // vêm do espelho (Pokemon.baseStats); a conversão por nível é deriveStats
@@ -43,8 +42,12 @@ export interface BattleMoveDef {
 // stats/maxHp = base stats derivados por nível (deriveStats). moves = as cartas
 // do loadout (DeckSlotCard → Move), até 6.
 //  - slot: posição no time (1×1 usa o ativo); o schema fica pronto pra time.
+//  - userPokemonId: de qual pokémon da coleção este snapshot saiu — é o caminho
+//    de volta pra creditar XP no fim (awardBattleXp). Opcional porque partidas
+//    criadas antes da fatia de XP não têm o vínculo.
 export interface BattlePokemonState {
   slot: number;
+  userPokemonId?: string | null;
   pokemonId: number;
   name: string;
   types: string[]; // 1-2 tipos

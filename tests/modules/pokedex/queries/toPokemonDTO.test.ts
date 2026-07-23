@@ -31,6 +31,7 @@ function normalized(overrides: Partial<NormalizedPokemon> = {}): NormalizedPokem
     // 120 moves, como um pokémon real tem
     moves: Array.from({ length: 120 }, (_, i) => ({
       move: { name: `move-${i}`, url: `https://pokeapi.co/api/v2/move/${i}/` },
+      learnDetails: [{ levelLearnedAt: i, learnMethod: "level-up", versionGroup: "x-y" }],
     })),
     ...overrides,
   };

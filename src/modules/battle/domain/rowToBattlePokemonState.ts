@@ -2,6 +2,7 @@ import type { BattleMoveDef, BattlePokemonState, BattleStats } from "./types";
 
 interface BattlePokemonRow {
   slot: number;
+  userPokemonId?: string | null;
   pokemonId: number;
   name: string;
   types: unknown;
@@ -18,6 +19,7 @@ interface BattlePokemonRow {
 export function rowToBattlePokemonState(row: BattlePokemonRow): BattlePokemonState {
   return {
     slot: row.slot,
+    userPokemonId: row.userPokemonId ?? null,
     pokemonId: row.pokemonId,
     name: row.name,
     types: row.types as string[],

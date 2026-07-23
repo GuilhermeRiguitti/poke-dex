@@ -1,5 +1,32 @@
 @AGENTS.md
 
+# ⛔ Migration só entra por arquivo versionado. NUNCA pelo MCP nem por conexão direta.
+
+Vale pra **todo agente, em toda tarefa**, sem exceção e sem pedir confirmação
+antes de decidir: **não aplique DDL no banco de prod por fora do git.**
+
+Proibido: `mcp__supabase__apply_migration`, DDL via `mcp__supabase__execute_sql`,
+SQL Editor do dashboard, `psql` na `DATABASE_URL`/`DIRECT_URL`, `prisma db push`,
+`prisma migrate dev` apontado pro prod. **Isso inclui "só um `alter table`
+rapidinho" e desfazer um erro.**
+
+**Por quê:** os dois ledgers (`_prisma_migrations` e
+`supabase_migrations.schema_migrations`) são a fonte da verdade do CI. Aplicar por
+fora grava uma versão no ledger **sem arquivo correspondente no repo** — e o
+`supabase db push` do próximo deploy aborta com *"remote migration versions not
+found in local migrations directory"*. **O deploy inteiro para**, e destravar exige
+`migration repair` na mão, no prod. O mesmo vale pro Prisma: schema alterado por
+fora faz o `migrate deploy` seguinte falhar por drift.
+
+**O caminho certo, sempre:** escrever o arquivo (`prisma/migrations/` para schema
+do app, `supabase/migrations/` para RLS/extensão/realtime — ver `DEPLOY.md`),
+commitar, e deixar o CI aplicar. Se precisar validar antes, rode contra o **stack
+local** do Supabase CLI (`:54322`), nunca contra o projeto remoto.
+
+**O MCP do Supabase deste ambiente aponta pro PROD.** Ele é ferramenta de
+**leitura**: `list_tables`, `list_migrations`, `get_advisors`, `get_logs` e
+`execute_sql` com `SELECT`. Aí para.
+
 # Arquitetura
 
 Sistema organizado em **módulos** com **separação command/query (CQRS "lite")**.
@@ -81,13 +108,18 @@ Linha do Prisma **nunca** vai crua pro browser — nem por `NextResponse.json()`
 nem por prop de Server Component.
 
 Escreva um mapper explícito (`queries/toXxxDTO.ts`), campo a campo. Não é
-boilerplate: no battle, a linha crua carregava `pendingMoves` — a jogada do
-oponente **antes do turno resolver**. Dava pra ler no devtools e trapacear.
-Whitelist explícita fecha isso por construção, e um teste trava o buraco:
+boilerplate: no battle, a linha crua carrega `actions` — a carta que o oponente
+escolheu **antes do turno resolver**. Como o turno é **simultâneo** (os dois
+escolhem às cegas no mesmo round), isso não é um detalhe: dava pra ler no
+devtools e responder à jogada dele. Whitelist explícita fecha isso por
+construção, e um teste trava o buraco:
 
 ```ts
-expect(JSON.stringify(dto)).not.toContain("pendingMoves");
+expect(JSON.stringify(dto)).not.toContain("cardSlot");
 ```
+
+O DTO diz **quem** já escolheu (`submittedUserIds`, pro "oponente pronto" da
+tela), nunca **o quê**.
 
 Os DTOs ficam em `ui/types.ts` — são o contrato entre servidor e UI, e como são
 `interface`, não pesam no bundle.
@@ -138,11 +170,19 @@ jogo**. Sem ele a partida congela.
 
 Duas peças **de fora da Vercel** complementam (não substituem) o polling:
 
-- **Supabase Realtime = SINAL, não computação.** O trigger no `Battle` empurra
-  `{battleId, round, status}` pro canal `battle:<id>`; o cliente reage refazendo
-  o `GET` que passa pelo DTO. Com o canal assinado, o polling **relaxa de 2s pra
-  20s** (rede de segurança); qualquer erro no canal devolve os 2s. O push nunca
-  executa `resolveTurn` — quem resolve continua sendo o request.
+- **Supabase Realtime = SINAL, não computação.** São **dois** triggers, os dois
+  com payload mínimo, no canal `battle:<id>`:
+  - `battle_updated` (UPDATE no `Battle`): o turno resolveu.
+  - `battle_action_submitted` (INSERT em `BattleAction`): o oponente trancou a
+    carta. Existe porque no turno **simultâneo** isso não mexe no `Battle` —
+    sem ele o "oponente pronto" só apareceria no próximo poll. O payload leva
+    `userId`/`round` e **jamais** o `cardSlot` (seria o mesmo vazamento que a
+    regra 3 fecha, só que pelo WebSocket).
+
+  O cliente reage refazendo o `GET` que passa pelo DTO (nem lê o payload). Com o
+  canal assinado, o polling **relaxa de 2s pra 20s** (rede de segurança);
+  qualquer erro no canal devolve os 2s. O push nunca executa `resolveTurn` —
+  quem resolve continua sendo o request.
 - **`pg_cron` no Supabase = o relógio de backstop** (`resolve-battle-turns`,
   30s): resolve turno vencido de partida que ninguém está olhando. Roda no
   Supabase, não na Vercel — o "worker que não existe no Hobby" mora lá.

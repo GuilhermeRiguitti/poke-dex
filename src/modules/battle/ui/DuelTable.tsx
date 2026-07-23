@@ -217,7 +217,7 @@ export default function DuelTable({
   submitting: boolean;
   onPlayCard: (cardSlot: number) => void;
 }) {
-  const locked = submitting || !view.isMyTurn || view.isOver;
+  const locked = submitting || !view.canPlay;
 
   // FX da última ação: dispara UMA vez quando o turnNumber muda. O primeiro
   // mount só registra (não re-anima o histórico ao (re)abrir a sala).
@@ -254,11 +254,14 @@ export default function DuelTable({
 
   const shakeScreen = fx && !fx.missed && (fx.isCrit || fx.fainted) ? "screen-shake" : "";
 
+  // Turno simultâneo: nunca é "a vez de alguém". O que a faixa comunica é o
+  // estado da MINHA escolha — e, quando já escolhi, que o oponente ainda está
+  // decidindo. Nada aqui revela QUAL carta ele escolheu (o DTO nem carrega).
   const banner = view.isOver
     ? null
-    : view.isMyTurn
-      ? { text: "Sua vez", cls: "text-flare" }
-      : { text: "Vez do oponente...", cls: "text-ink-dim animate-pulse" };
+    : view.waitingOpponent
+      ? { text: "Aguardando oponente...", cls: "text-ink-dim animate-pulse" }
+      : { text: "Escolha sua carta", cls: "text-flare" };
 
   // leque: cada carta gira/desloca em arco a partir do centro
   const n = view.cards.length;
@@ -274,6 +277,15 @@ export default function DuelTable({
           <span className="plate-inner font-title text-xs uppercase tracking-wider">Rodada {view.round}</span>
         </span>
         {banner && <span className={`font-title text-lg uppercase tracking-wider ${banner.cls}`}>{banner.text}</span>}
+        {/* "já escolheu" — a única coisa que o servidor conta sobre a jogada do
+            oponente antes do turno resolver. Qual carta, ninguém sabe. */}
+        <span
+          className={`font-title text-[10px] uppercase tracking-widest ${
+            view.opponentReady ? "text-ok" : "text-ink-dim"
+          }`}
+        >
+          {view.isOver ? "" : view.opponentReady ? "● oponente pronto" : "○ oponente escolhendo"}
+        </span>
       </div>
 
       {/* Campo */}

@@ -40,4 +40,8 @@ export interface LearnsetMoveDTO {
   type: string;
   power: number | null;
   damageClass: "physical" | "special" | "status";
+  /** nível em que a espécie aprende esta carta (dado real da PokéAPI) */
+  levelLearnedAt: number;
+  /** já destravada pro nível ATUAL deste pokémon? Travadas aparecem, mas não são selecionáveis. */
+  unlocked: boolean;
 }

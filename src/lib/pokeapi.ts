@@ -27,6 +27,21 @@ export function extractIdFromUrl(url: string): number {
 // cache a menos que opte por ele — era esse o caso aqui.
 const CACHE_FOREVER = { cache: "force-cache" } as const;
 
+/**
+ * Como a espécie aprende um move, EM UM version group (= um par de jogos).
+ * É o dado que torna o learnset fiel à série: o mesmo move é aprendido em
+ * níveis diferentes conforme o jogo, e por métodos diferentes (subir de nível,
+ * TM, ovo, tutor). Quem escolhe qual entrada vale é pokedex/domain/learnset.ts.
+ */
+export interface MoveLearnDetail {
+  /** nível em que o move é aprendido. 0 quando o método não é level-up. */
+  levelLearnedAt: number;
+  /** "level-up" | "machine" | "egg" | "tutor" | ... (a API tem outros raros) */
+  learnMethod: string;
+  /** ex: "scarlet-violet", "red-blue" */
+  versionGroup: string;
+}
+
 export interface NormalizedPokemon {
   id: number;
   name: string;
@@ -40,7 +55,7 @@ export interface NormalizedPokemon {
   };
   stats: { base_stat: number; effort: number; stat: { name: string } }[];
   types: { slot: number; type: { name: string } }[];
-  moves: { move: { name: string; url: string } }[];
+  moves: { move: { name: string; url: string }; learnDetails: MoveLearnDetail[] }[];
 }
 
 export interface NormalizedMove {
@@ -103,9 +118,23 @@ export async function fetchPokemon(idOrName: number | string): Promise<Normalize
       slot: t.slot,
       type: { name: t.type.name },
     })),
-    moves: (data.moves ?? []).map((m: { move: { name: string; url: string } }) => ({
-      move: { name: m.move.name, url: m.move.url },
-    })),
+    moves: (data.moves ?? []).map(
+      (m: {
+        move: { name: string; url: string };
+        version_group_details?: {
+          level_learned_at: number;
+          move_learn_method: { name: string };
+          version_group: { name: string };
+        }[];
+      }) => ({
+        move: { name: m.move.name, url: m.move.url },
+        learnDetails: (m.version_group_details ?? []).map((d) => ({
+          levelLearnedAt: d.level_learned_at ?? 0,
+          learnMethod: d.move_learn_method?.name ?? "unknown",
+          versionGroup: d.version_group?.name ?? "unknown",
+        })),
+      })
+    ),
   };
 }
 

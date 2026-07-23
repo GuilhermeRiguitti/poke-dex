@@ -1,18 +1,16 @@
-// Modelo do DUELO tático 1×1 por turnos ALTERNADOS (PLANO_JOGO.md §3) — Fase A.
+// Modelo do DUELO tático 1×1 por turnos SIMULTÂNEOS — como a série.
 //
-// Contraste com o modelo antigo (domain/types.ts + engine.ts), que segue vivo
-// até a orquestração migrar: lá os DOIS lados submetem pro mesmo turno N e o
-// engine CASA as duas jogadas. Aqui o turno é de UM ator só (`activeUserId`);
-// cada ação é aplicada sozinha, e o outro reage no turno dele. A MATEMÁTICA de
-// dano (damage.ts) e a de tipo (typeChart.ts) são reaproveitadas inteiras — o
-// que muda é só a orquestração do turno.
+// Foi alternado por uma fatia (a Fase A1 tinha `activeUserId` + `actedThisRound`
+// e uma ação por vez), e voltou: no Pokémon de verdade os dois treinadores
+// escolhem o golpe do MESMO turno sem ver o do outro, e o Speed decide quem
+// bate primeiro DENTRO do turno. O alternado matava exatamente isso — o Speed
+// virava "quem começa a rodada" e a escolha deixava de ser às cegas.
 //
-// 1×1 puro (F1): cada lado tem UM pokémon ativo com uma barra de 6 cartas. Não
-// há troca no núcleo — a profundidade vem de ler o oponente e reagir, não de
-// trocar de pokémon (§1). O schema fica pronto pra time numa fase futura.
+// O que sobreviveu inteiro do alternado: a matemática de dano (damage.ts), a de
+// tipo (typeChart.ts) e o STRUGGLE. O que mudou é a orquestração do turno.
 //
-// Energia (§3.2) e reação (§3.3) NÃO entram aqui: são as fatias A2 e A3. Este
-// arquivo é a fatia A1 — só o loop alternado com iniciativa.
+// 1×1 puro (F1): cada lado tem UM pokémon ativo com uma barra de até 6 cartas.
+// Não há troca no núcleo; o schema fica pronto pra time numa fase futura.
 
 import type { BattlePokemonState } from "./types";
 
@@ -24,29 +22,26 @@ export interface DuelSide {
 }
 
 // Estado completo do duelo num instante. É o que entra e sai do engine puro.
-//  - `round`: rodada atual (1..). Uma rodada = os dois agem uma vez.
-//  - `order`: ordem de iniciativa DESTA rodada [primeiro, segundo] (por Speed,
-//    desempate determinístico por userId — §3.1). Reconstruível.
-//  - `activeUserId`: de quem é a vez agora.
-//  - `actedThisRound`: quantas ações já saíram nesta rodada (0, 1 ou 2).
+// Note o que NÃO existe mais: `activeUserId`, `order` e `actedThisRound`. No
+// simultâneo a rodada inteira é uma unidade — não há meio-turno pra guardar.
 export interface DuelState {
   round: number;
-  order: [string, string];
-  activeUserId: string;
-  actedThisRound: number;
   sideA: DuelSide;
   sideB: DuelSide;
 }
 
-// A ação de UM ator no seu turno: jogar uma das 6 cartas, ou nada (hesitação
-// por timeout — §4.4, o turno estoura e passa em branco).
+// A jogada de UM lado no round: uma das cartas da barra, ou nada (o tempo
+// estourou e o lado passou em branco — "hesitação").
 export type DuelAction =
   | { userId: string; type: "CARD"; cardSlot: number } // 0..5 na barra
   | { userId: string; type: "NONE" };
 
-// Log descritivo de um turno do duelo (renderização + BattleTurnLog). Chaveado
-// por userId, não por rótulo A/B — no alternado o "lado" perde sentido; o que
-// importa é quem agiu.
+// Log descritivo do turno (renderização + BattleTurnLog). Chaveado por userId,
+// não por rótulo A/B — o que importa pra tela é quem agiu.
+//
+// `roundStart.firstUserId` é quem ganhou a ordem NESTE turno (priority → Speed
+// → sorteio). É informação de jogo legítima e o que dá sentido ao Speed na
+// tela: "seu pokémon foi mais rápido".
 export type DuelEvent =
   | {
       type: "attack";
@@ -58,5 +53,5 @@ export type DuelEvent =
       missed: boolean;
       targetFainted: boolean;
     }
-  | { type: "hesitate"; userId: string } // timeout: turno passou em branco
+  | { type: "hesitate"; userId: string } // não escolheu a tempo
   | { type: "roundStart"; round: number; firstUserId: string };

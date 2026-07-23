@@ -1,4 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
+import { PLAYABLE_LEARN_METHOD } from "@/src/modules/pokedex";
 import { CARDS_PER_SLOT, DECK_LIMIT } from "../domain/rules";
 import { getOrCreateDeck } from "../queries/readDeck";
 import type { DeckSlotDTO } from "../ui/types";
@@ -33,14 +34,24 @@ export async function addToDeck(userId: string, input: AddToDeckInput): Promise<
   // vira oráculo de "esse id existe".)
   const userPokemon = await prisma.userPokemon.findUnique({
     where: { id: input.userPokemonId },
-    select: { id: true, userId: true, pokemonId: true },
+    select: { id: true, userId: true, pokemonId: true, level: true },
   });
   if (!userPokemon || userPokemon.userId !== userId) return { ok: false, error: "not_found" };
 
-  // Toda carta escolhida tem que estar no learnset DA ESPÉCIE (PokemonMove). Sem
-  // isso o jogador poderia montar qualquer Move em qualquer pokémon pela rota.
+  // Toda carta escolhida tem que estar no learnset DA ESPÉCIE **e já estar
+  // destravada pro nível deste pokémon**. É aqui que o gating por nível vale de
+  // verdade: o modal já esconde as travadas, mas o POST é público — sem esta
+  // checagem, um `curl` montaria hyper-beam num pokémon nível 5.
+  //
+  // O filtro é a MESMA condição de isUnlockedAt (level-up + levelLearnedAt <=
+  // nível), escrita como where do Prisma pra contar num round-trip só.
   const learnable = await prisma.pokemonMove.count({
-    where: { pokemonId: userPokemon.pokemonId, moveId: { in: moveIds } },
+    where: {
+      pokemonId: userPokemon.pokemonId,
+      moveId: { in: moveIds },
+      learnMethod: PLAYABLE_LEARN_METHOD,
+      levelLearnedAt: { lte: userPokemon.level },
+    },
   });
   if (learnable !== moveIds.length) return { ok: false, error: "invalid_cards" };
 

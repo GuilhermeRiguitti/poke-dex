@@ -1,9 +1,9 @@
 import type { BattleDTO, BattleEventDTO, BattlePokemonDTO, BattleStatusDTO } from "./types";
 
 // Mapear o BattleDTO -> o que a mesa do duelo desenha é função PURA, mora aqui e
-// tem teste (CLAUDE.md regra 4). Componente é costura. Contraste com o antigo
-// battleView (modelo simultâneo, time + troca, deletado): aqui é 1×1 alternado —
-// o meu pokémon, o do oponente, minha barra de 6 cartas, e de quem é a vez.
+// tem teste (CLAUDE.md regra 4). Componente é costura. É 1×1 SIMULTÂNEO: o meu
+// pokémon, o do oponente, minha barra de cartas — e o estado da escolha do
+// round (ainda escolho / já escolhi e espero / o turno resolveu).
 
 export interface DuelCardView {
   slot: number; // cardSlot 0..5
@@ -57,7 +57,12 @@ export interface DuelView {
   me: DuelMonView;
   opp: DuelMonView;
   cards: DuelCardView[];
-  isMyTurn: boolean;
+  /** eu ainda posso escolher a carta deste round? (não escolhi e a partida corre) */
+  canPlay: boolean;
+  /** já escolhi e o round não resolveu — estou esperando o oponente. */
+  waitingOpponent: boolean;
+  /** o oponente já escolheu (só QUEM, nunca O QUÊ — ver toBattleDTO). */
+  opponentReady: boolean;
   round: number;
   status: BattleStatusDTO;
   isOver: boolean;
@@ -172,6 +177,8 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
   }));
 
   const isOver = battle.status !== "IN_PROGRESS";
+  const iSubmitted = battle.submittedUserIds.includes(myUserId);
+  const opponentReady = battle.submittedUserIds.some((id) => id !== myUserId);
 
   // turnLogs vêm desc por turnNumber; achata em ordem cronológica pro log.
   const logLines: DuelLogLine[] = [];
@@ -186,7 +193,9 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
     me: toMonView(myMon),
     opp: toMonView(oppMon),
     cards,
-    isMyTurn: !isOver && battle.activeUserId === myUserId,
+    canPlay: !isOver && !iSubmitted,
+    waitingOpponent: !isOver && iSubmitted,
+    opponentReady: !isOver && opponentReady,
     round: battle.round,
     status: battle.status,
     isOver,

@@ -15,19 +15,26 @@ export async function getBattleStatus(battleId: string, userId: string) {
   const resolved = await resolveIfDue(battle);
   if (!resolved) return { error: "not_found" as const };
 
-  // De quem é a vez, do ponto de vista de quem perguntou. No alternado é isto
-  // que a UI precisa saber (mostrar "sua vez" / "vez do oponente"), não mais
-  // "quem falta submeter" do modelo simultâneo.
+  // Quem ainda falta escolher a carta do round, do ponto de vista de quem
+  // perguntou. No simultâneo os dois estão sempre em turno — o que a tela
+  // precisa saber é se ela ainda deve mostrar a mão ("you") ou o "aguardando
+  // oponente" ("opponent").
+  const submitted = new Set(
+    resolved.actions.filter((a) => a.round === resolved.round).map((a) => a.userId)
+  );
   let waitingOn: "you" | "opponent" | null = null;
-  if (resolved.status === "IN_PROGRESS" && resolved.activeUserId) {
-    waitingOn = resolved.activeUserId === userId ? "you" : "opponent";
+  if (resolved.status === "IN_PROGRESS") {
+    if (!submitted.has(userId)) waitingOn = "you";
+    else if (submitted.size < 2) waitingOn = "opponent";
   }
 
   return {
     status: resolved.status,
     round: resolved.round,
-    activeUserId: resolved.activeUserId,
     winnerId: resolved.winnerId,
+    // O tick do cliente compara isto pra saber se precisa refazer o GET pesado.
+    iSubmitted: submitted.has(userId),
+    opponentSubmitted: [...submitted].some((id) => id !== userId),
     waitingOn,
   };
 }

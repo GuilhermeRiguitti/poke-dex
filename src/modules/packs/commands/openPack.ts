@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import type { PokemonCardDTO } from "@/src/modules/pokedex";
+import { STARTING_LEVEL, xpForLevel, type PokemonCardDTO } from "@/src/modules/pokedex";
 import { canOpenFree, FREE_PACK_INTERVAL_MS } from "../domain/cooldown";
 import { drawPack } from "../domain/rarity";
 import { toPackStateDTO } from "../queries/readPackState";
@@ -15,7 +15,7 @@ type MirrorSpecies = { id: string; pokemonApiId: number; card: PokemonCardDTO };
 
 /**
  * Abre um pacote: sorteia PACK_SIZE cartas ponderadas por raridade e cria os
- * UserPokemon (nível 1) na coleção. É a ÚNICA forma de obter pokémon.
+ * UserPokemon (em STARTING_LEVEL) na coleção. É a ÚNICA forma de obter pokémon.
  *
  * O pool do sorteio é o ESPELHO LOCAL (Pokemon), não a dex inteira: só dá pra
  * ganhar espécie que existe no nosso banco (o UserPokemon tem FK pro Pokemon).
@@ -106,7 +106,10 @@ export async function openPack(userId: string, rng: () => number = Math.random):
         speciesIds.map((pokemonId) =>
           tx.userPokemon.upsert({
             where: { userId_pokemonId: { userId, pokemonId } },
-            create: { userId, pokemonId },
+            // Nível/XP explícitos (e não só o default do banco) porque os dois
+            // têm que casar: `level` é função de `xp` (levelFromXp). Escrever um
+            // sem o outro criaria o único estado inválido possível aqui.
+            create: { userId, pokemonId, level: STARTING_LEVEL, xp: xpForLevel(STARTING_LEVEL) },
             update: {},
           })
         )

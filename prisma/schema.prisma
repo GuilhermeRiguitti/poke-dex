@@ -146,13 +146,14 @@ model DeckSlotCard {
 // ──────────────────────────────────────────────
 
 model Pokemon {
-  id           String   @id @default(cuid())
-  pokemonApiId Int      @unique // National Dex id — chave de refetch/dedup
-  name         String
-  types        Json // string[], ex: ["electric"]
-  baseStats    Json // {hp,atk,def,spa,spd,spe} — base stats crus da API
-  spriteUrl    String?  @db.Text
-  fetchedAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  pokemonApiId   Int      @unique // National Dex id — chave de refetch/dedup
+  name           String
+  types          Json // string[], ex: ["electric"]
+  baseStats      Json // {hp,atk,def,spa,spd,spe} — base stats crus da API
+  baseExperience Int? // quanto vale DERROTAR esta espécie (xpFromDefeat, fórmula da série)
+  spriteUrl      String?  @db.Text
+  fetchedAt      DateTime @default(now())
 
   learnset     PokemonMove[]
   userPokemons UserPokemon[]
@@ -175,34 +176,51 @@ model Move {
   deckCards DeckSlotCard[]
 }
 
-// Learnset (n:n): todo Pokémon tem acesso ao learnset inteiro que a API
-// devolve (PLANO_JOGO.md §1). A PK composta é o próprio par, então o upsert
-// do sync é idempotente por (pokemonId, moveId).
+// Learnset (n:n) FIEL À SÉRIE: além do par, a linha carrega COMO a espécie
+// aprende o move — o dado que a PokéAPI já dá em `version_group_details` e que
+// o espelho jogava fora. É o que faz o nível LIBERAR cartas em vez de todo
+// pokémon nascer sabendo tudo (ver pokedex/domain/learnset.ts).
+//
+// `versionGroup` é o jogo de referência escolhido pra ESPÉCIE (o mais recente
+// em que ela aprende algo por level-up) — todas as linhas de um mesmo pokémon
+// têm o mesmo valor. Guardado porque sem ele não dá pra auditar de onde veio o
+// nível, nem trocar de geração depois sem re-seedar às cegas.
 model PokemonMove {
-  pokemonId String
-  moveId    String
+  pokemonId      String
+  moveId         String
+  levelLearnedAt Int    @default(0) // 0 quando o método não é level-up
+  learnMethod    String @default("level-up") // level-up | machine | egg | tutor
+  versionGroup   String @default("") // ex: "scarlet-violet"
 
   pokemon Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
   move    Move    @relation(fields: [moveId], references: [id], onDelete: Cascade)
 
   @@id([pokemonId, moveId])
+  // O seletor de loadout lê "moves de level-up desta espécie, por nível" a cada
+  // abertura do modal — é o filtro quente da montagem de deck.
+  @@index([pokemonId, learnMethod, levelLearnedAt])
 }
 
 // ──────────────────────────────────────────────
 // Coleção com nível incremental (PLANO_JOGO.md §5) — Fase 0.
-// Substitui, no jogo novo, o `UserCard` (que segue vivo pro jogo atual até a
-// Fase A migrar a batalha). Cada instância nasce nível 1 e sobe com XP; o
-// nível deriva TODO stat de batalha via a fórmula da série (domain/leveling).
+// Cada instância nasce em STARTING_LEVEL e sobe com XP ganho em batalha; o
+// nível deriva TODO stat de batalha (deriveStats) E libera quais moves do
+// learnset viram carta (domain/learnset.ts).
 // @@unique([userId, pokemonId]): 1 instância por espécie — fecha a corrida de
-// captura por construção (CLAUDE.md regra 6), como já faz UserCard.
+// captura por construção (CLAUDE.md regra 6).
+//
+// `xp` é o TOTAL ACUMULADO (curva medium-fast: total pro nível n = n³), não o
+// progresso dentro do nível. Assim `level` é uma FUNÇÃO de `xp`
+// (levelFromXp) — os dois não têm como divergir, e não existe estado
+// inconsistente pra reparar depois (não há worker pra reparar; CLAUDE.md §5).
 // ──────────────────────────────────────────────
 
 model UserPokemon {
   id         String   @id @default(cuid())
   userId     String
   pokemonId  String // espécie (Pokemon.id)
-  level      Int      @default(1)
-  xp         Int      @default(0)
+  level      Int      @default(5) // STARTING_LEVEL (pokedex/domain/leveling.ts)
+  xp         Int      @default(125) // = xpForLevel(5); mantém level == levelFromXp(xp)
   capturedAt DateTime @default(now())
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -224,7 +242,7 @@ model PokeApiCache {
 }
 
 // ──────────────────────────────────────────────
-// Duelo tático 1×1 por turnos ALTERNADOS (PLANO_JOGO.md §3) — Fase A.
+// Duelo tático 1×1 por turnos SIMULTÂNEOS (PLANO_JOGO.md §3) — Fase A.
 //
 // Resolução por polling (resolve-na-leitura — sem worker no Vercel Hobby, ver
 // CLAUDE.md regra 5). O estado de cada pokémon em partida é um snapshot
@@ -232,11 +250,12 @@ model PokeApiCache {
 // espelho local Pokemon/Move + o nível do UserPokemon) — depois disso a partida
 // roda inteiramente sobre o nosso banco.
 //
-// Alternado (contraste com o simultâneo antigo): a partida tem `activeUserId`
-// (de quem é a vez) e avança por `round`. Cada rodada = os dois agem uma vez; a
-// iniciativa (quem começa) é por Speed (ver domain/duelInitiative.ts). A ação
-// pendente do jogador da vez é uma `BattleAction` (substitui o par
-// BattlePendingMove do simultâneo).
+// SIMULTÂNEO, como a série: os dois jogadores escolhem a carta do mesmo `round`
+// sem ver a do outro; quando as duas estão na mesa (ou o tempo estoura), o
+// turno resolve e a ORDEM dentro dele é priority do move → Speed → sorteio
+// (domain/turnOrder.ts). Não existe "de quem é a vez" — por isso `activeUserId`
+// saiu do Battle. Cada jogador tem no máximo uma `BattleAction` por round
+// (@@unique[battleId, round, userId]), e ela é SEGREDO até o turno resolver.
 // ──────────────────────────────────────────────
 
 enum BattleStatus {
@@ -249,7 +268,6 @@ model Battle {
   id            String       @id @default(cuid())
   status        BattleStatus @default(IN_PROGRESS)
   round         Int          @default(1)
-  activeUserId  String? // de quem é a vez; setado no create e a cada ação resolvida
   turnStartedAt DateTime     @default(now())
   winnerId      String?
   createdAt     DateTime     @default(now())
@@ -277,6 +295,11 @@ model BattlePokemon {
   id            String  @id @default(cuid())
   participantId String
   slot          Int
+  // De onde este snapshot veio. NÃO é relação (o UserPokemon pode ser solto da
+  // coleção no meio da partida e o snapshot tem que sobreviver — ele é
+  // congelado de propósito). Serve pra creditar o XP no fim: sem isso não há
+  // caminho de volta do combatente pro pokémon do jogador.
+  userPokemonId String?
   pokemonId     Int
   name          String
   spriteUrl     String? @db.Text
@@ -293,10 +316,11 @@ model BattlePokemon {
   @@unique([participantId, slot])
 }
 
-// A carta pendente do jogador da vez (substitui BattlePendingMove do
-// simultâneo). No alternado só o `activeUserId` age por turno; esta linha é a
-// carta que ele escolheu, consumida e apagada quando o turno resolve. O `round`
-// + `userId` a ancoram (uma ação por jogador por rodada).
+// A carta que um jogador jogou no round atual — SEGREDO até o turno resolver.
+// No simultâneo os DOIS têm uma linha por round (@@unique[battleId, round,
+// userId]); quando as duas existem o turno resolve e ambas são apagadas. É por
+// causa desta tabela que a linha crua do Battle nunca pode ir pro browser: ela
+// entrega a jogada do oponente antes da resolução (CLAUDE.md regra 3).
 model BattleAction {
   id        String   @id @default(cuid())
   battleId  String

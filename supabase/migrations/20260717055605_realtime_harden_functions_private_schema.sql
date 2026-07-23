@@ -2,8 +2,14 @@
 -- pelo PostgREST) e põe num schema `private` que a API pública não enxerga.
 -- Fecha os 3 WARN do advisor (anon/authenticated podendo chamar via /rest/v1/rpc).
 --
--- Espelha o que rodou no prod (ledger supabase_migrations, v20260717055605).
--- Irmã de 20260717055314 (versão inicial em `public`). Estado final = private.
+-- Espelha o que rodou no prod (ledger supabase_migrations, v20260717055605): foi
+-- ela que, lá, moveu as funções de `public` pra `private`. NÃO APAGUE — a versão
+-- está no ledger remoto, e arquivo faltando faz o `supabase db push` abortar.
+--
+-- Em ambiente NOVO ela virou reforço: a irmã 20260717055314 já cria tudo direto
+-- em `private` (ver o header dela), então aqui todo comando é no-op idempotente —
+-- o `create or replace` reescreve igual e os `drop ... if exists public.*` não
+-- acham nada. O estado final é o mesmo pelos dois caminhos.
 
 create schema if not exists private;
 grant usage on schema private to authenticated;
