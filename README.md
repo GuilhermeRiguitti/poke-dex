@@ -1,4 +1,4 @@
-# PokéDuel
+# PokeDex
 
 Jogo de duelo 1×1 de Pokémon, jogado no navegador. Você coleciona Pokémon, monta
 um deck e batalha contra outro jogador em turnos.
@@ -19,6 +19,60 @@ um deck e batalha contra outro jogador em turnos.
 
 Todos os atributos e golpes vêm da [PokéAPI](https://pokeapi.co/) — nada é
 inventado à mão.
+
+## Tudo vem da PokéAPI
+
+A [PokéAPI](https://pokeapi.co/) é a **fonte da verdade** do jogo. Não inventamos
+número nenhum: atributos, tipos, golpes, efetividade de tipo, learnset e evolução
+saem todos de lá. O que buscamos, e de qual endpoint:
+
+- **A espécie** (`/pokemon/{id}`): os **atributos base** (HP, ataque, defesa,
+  etc.), os **tipos**, a arte/sprite e a lista de golpes que ela aprende.
+- **Cada golpe** (`/move/{id}`): poder, precisão, PP, prioridade e a classe
+  (físico, especial ou status).
+- **A efetividade de tipo** (`/type/{id}`): quem é super eficaz, pouco eficaz ou
+  não tem efeito contra quem. É isso que decide o multiplicador de dano na
+  batalha — não uma tabela nossa.
+- **A evolução** (`/pokemon-species/{id}` → `/evolution-chain/{id}`): a cadeia de
+  evolução da espécie (explicado abaixo).
+
+Como a PokéAPI é pública e gratuita, a política de uso justo dela pede que a gente
+guarde o que busca em vez de bater na API a todo momento. Por isso **copiamos os
+dados para o nosso próprio banco** (o comando `npm run seed`) e trabalhamos em
+cima dessa cópia — isso também deixa filtrar e ordenar Pokémon por atributo, coisa
+que a API crua não faz. Começamos pela 1ª geração (151 Pokémon) para não puxar os
+mais de mil de uma vez, e uma rotina diária mantém a cópia atualizada.
+
+### Golpes liberados por nível (learnset)
+
+A PokéAPI descreve, para cada golpe de uma espécie, **em que nível** e **por qual
+método** ela aprende (subindo de nível, por TM, por ovo, por tutor) — e isso muda
+de um jogo para outro. A gente aproveita exatamente esse dado: escolhe **um jogo**
+como referência para cada espécie e guarda, golpe a golpe, o nível de aprendizado.
+
+No jogo, só entram como carta os golpes aprendidos **subindo de nível**, e só
+quando o Pokémon já alcançou aquele nível. É por isso que um Pokémon recém-pego
+tem poucas cartas: subir de nível é o que **libera** golpes novos, como na série.
+
+### Evolução (usamos a modelagem da própria PokéAPI)
+
+A PokéAPI modela a evolução como uma **árvore**: cada espécie aponta para aquilo
+em que ela evolui, e cada passo vem com a **condição** (o gatilho) para acontecer
+— subir de nível, usar uma pedra, trocar, amizade, e por aí vai. Quando o gatilho
+é por nível, a API informa o **nível mínimo**.
+
+A gente usa **só as evoluções por nível** (gatilho "subir de nível" com um nível
+mínimo). Evolução por pedra, troca, amizade ou horário fica de fora, porque não é
+"chegar num nível" e o jogo não modela essas condições. Na prática:
+
+- **Charmander → Charmeleon** (nível 16) **entra** — é por nível.
+- **Eevee** (evolui por pedra/amizade) **não evolui** aqui.
+
+Para cada espécie a gente guarda a evolução por nível como uma seta simples: **em
+qual Pokémon ela vira** e **em que nível**. Quando o seu Pokémon ganha experiência
+e chega nesse nível, ele **evolui de verdade** — vira a espécie nova, e passa a
+usar os atributos e o learnset dela. As cartas que a espécie nova não aprende saem
+do deck; as que ela também conhece continuam.
 
 ## Como a batalha avança por dentro
 
