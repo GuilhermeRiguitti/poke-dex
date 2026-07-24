@@ -86,7 +86,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="deploy-${{ github.run_number }}"
+          TAG="development-test-${{ github.run_number }}"
           gh release create "$TAG" \
             --target "${{ github.sha }}" \
             --title "$TAG" \
