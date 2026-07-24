@@ -10,8 +10,9 @@ export type { RarityTier } from "./domain/rarity";
 export { PACK_SIZE } from "./domain/rarity";
 export { FREE_PACK_INTERVAL_MS } from "./domain/cooldown";
 
-// Query SÓ LEITURA — pode ser chamada do render de uma page.
+// Queries SÓ LEITURA — podem ser chamadas do render de uma page.
 export { readPackState } from "./queries/readPackState";
+export { readTmTokens } from "./queries/readTmTokens";
 
 // Commands — ESCREVEM. Só rota de API ou Server Action.
 export { openPack } from "./commands/openPack";

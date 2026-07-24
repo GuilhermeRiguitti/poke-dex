@@ -127,10 +127,30 @@ export function pickLearnEntry(details: LearnDetail[], versionGroup: string): Le
 /**
  * A carta já está destravada pra um pokémon deste nível?
  *
- * Só level-up entra em jogo hoje (TM/ovo/tutor ficam gravados no espelho, mas
- * não viram carta — no jogo real elas não pedem nível, e liberá-las apagaria a
- * progressão que o nível acabou de ganhar).
+ * Só level-up entra em jogo POR NÍVEL (TM/ovo/tutor ficam gravados no espelho,
+ * mas não viram carta só por subir de nível — no jogo real elas não pedem
+ * nível). Elas passam a valer quando o jogador as CONCEDE (training/*), via a
+ * regra combinada abaixo (mergePlayableMoveIds).
  */
 export function isUnlockedAt(entry: { learnMethod: string; levelLearnedAt: number }, level: number): boolean {
   return entry.learnMethod === PLAYABLE_LEARN_METHOD && entry.levelLearnedAt <= level;
+}
+
+/**
+ * As cartas jogáveis de um Pokémon do jogador = as de LEVEL-UP já destravadas
+ * pelo nível ∪ as CONCEDIDAS por fora (TM/tutor/ovo — UserPokemonMove).
+ *
+ * Pura, e é a ÚNICA fonte da verdade dessa união: deck (addToDeck/readLearnset)
+ * e battle (poda pós-evolução) todos passam por aqui, cada um fazendo o próprio
+ * I/O e entregando os dois conjuntos de moveId. Sem isto, cada consumidor
+ * reimplementaria o "OU concedido" e um deles esqueceria — reabrindo o buraco
+ * de uma carta concedida sumir na evolução, ou o addToDeck recusar uma TM.
+ */
+export function mergePlayableMoveIds(
+  levelUpUnlockedIds: Iterable<string>,
+  grantedIds: Iterable<string>,
+): Set<string> {
+  const ids = new Set(levelUpUnlockedIds);
+  for (const id of grantedIds) ids.add(id);
+  return ids;
 }

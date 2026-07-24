@@ -12,7 +12,9 @@ const tx = {
 
 const prismaMock = {
   userPokemon: { findUnique: vi.fn() },
-  pokemonMove: { count: vi.fn() },
+  // getUnlockedMoveIds (pokedex) lê estas duas: level-up destravado ∪ concedidas.
+  pokemonMove: { findMany: vi.fn() },
+  userPokemonMove: { findMany: vi.fn() },
   deck: { findFirst: vi.fn(), create: vi.fn() },
   $transaction: vi.fn(),
 };
@@ -34,7 +36,9 @@ beforeEach(() => {
     pokemonId: "species-1",
     level: 12,
   });
-  prismaMock.pokemonMove.count.mockResolvedValue(MOVES.length); // todas no learnset
+  // todas destravadas por level-up; nenhuma concedida por fora
+  prismaMock.pokemonMove.findMany.mockResolvedValue(MOVES.map((moveId) => ({ moveId })));
+  prismaMock.userPokemonMove.findMany.mockResolvedValue([]);
   prismaMock.deck.findFirst.mockResolvedValue({ id: "deck-1" });
   prismaMock.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) => fn(tx));
 
@@ -105,8 +109,10 @@ describe("addToDeck", () => {
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
-  it("recusa cartas fora do learnset da espécie", async () => {
-    prismaMock.pokemonMove.count.mockResolvedValue(MOVES.length - 1); // uma não é aprendível
+  it("recusa carta que NÃO está desbloqueada (nem level-up, nem concedida)", async () => {
+    // uma das 6 não aparece em nenhuma das fontes
+    prismaMock.pokemonMove.findMany.mockResolvedValue(MOVES.slice(0, 5).map((moveId) => ({ moveId })));
+    prismaMock.userPokemonMove.findMany.mockResolvedValue([]);
 
     const result = await addToDeck("alpha", input);
 
@@ -114,18 +120,29 @@ describe("addToDeck", () => {
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
+  // A abertura desta fatia: carta de TM (não vem por nível) ensinada pelo jogador
+  // já pode ir pro deck. Aqui o level-up cobre 5 e a concedida cobre a 6ª.
+  it("aceita carta concedida por TM (fora do level-up)", async () => {
+    prismaMock.pokemonMove.findMany.mockResolvedValue(MOVES.slice(0, 5).map((moveId) => ({ moveId })));
+    prismaMock.userPokemonMove.findMany.mockResolvedValue([{ moveId: MOVES[5] }]);
+
+    const result = await addToDeck("alpha", input);
+
+    expect(result.ok).toBe(true);
+  });
+
   // O modal já esconde as travadas, mas o POST é público: sem este filtro, um
   // `curl` montaria hyper-beam num pokémon nível 5.
-  it("só conta como aprendível o que o NÍVEL já destravou (level-up <= nível)", async () => {
+  it("só conta como aprendível por nível o que o NÍVEL já destravou (level-up <= nível)", async () => {
     await addToDeck("alpha", input);
 
-    expect(prismaMock.pokemonMove.count).toHaveBeenCalledWith({
+    expect(prismaMock.pokemonMove.findMany).toHaveBeenCalledWith({
       where: {
         pokemonId: "species-1",
-        moveId: { in: MOVES },
         learnMethod: "level-up",
         levelLearnedAt: { lte: 12 },
       },
+      select: { moveId: true },
     });
   });
 

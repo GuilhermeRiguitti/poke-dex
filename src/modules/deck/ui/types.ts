@@ -40,8 +40,10 @@ export interface LearnsetMoveDTO {
   type: string;
   power: number | null;
   damageClass: "physical" | "special" | "status";
-  /** nível em que a espécie aprende esta carta (dado real da PokéAPI) */
+  /** nível em que a espécie aprende esta carta (dado real da PokéAPI); 0 para as de TM (não são por nível) */
   levelLearnedAt: number;
-  /** já destravada pro nível ATUAL deste pokémon? Travadas aparecem, mas não são selecionáveis. */
+  /** já destravada pra este pokémon? (level-up pelo nível OU concedida). Travadas aparecem, mas não são selecionáveis. */
   unlocked: boolean;
+  /** carta de MÁQUINA (TM): não vem por nível, é ensinada gastando 1 token de TM. */
+  teachableViaTm: boolean;
 }

@@ -43,6 +43,7 @@ export {
   pickVersionGroup,
   pickLearnEntry,
   isUnlockedAt,
+  mergePlayableMoveIds,
 } from "./domain/learnset";
 export type { LearnDetail, LearnsetEntry } from "./domain/learnset";
 
@@ -68,6 +69,9 @@ export type { RefreshPokedexSummary, RefreshPokedexOptions } from "./commands/re
 // A escrita (inclusive a do cache da PokéAPI) mora nos commands.
 export { listPokedexPage } from "./queries/listPokedexPage";
 export { getCollection } from "./queries/getCollection";
+// Conjunto de moveId jogáveis de um UserPokemon (level-up destravado ∪ concedidos).
+// Consumido por deck (addToDeck) e battle (poda pós-evolução).
+export { getUnlockedMoveIds } from "./queries/getUnlockedMoveIds";
 export { getPokemonDetail } from "./queries/getPokemonDetail";
 // Mapper puro NormalizedPokemon → card. Exposto pro módulo packs montar a DTO
 // das cartas sorteadas sem duplicar a whitelist de campos.
