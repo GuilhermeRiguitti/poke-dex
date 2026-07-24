@@ -174,7 +174,18 @@ model UserPokemon {
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   pokemon    Pokemon @relation(fields: [pokemonId], references: [id])
   deckSlots  DeckSlot[]
-  @@unique([userId, pokemonId])   // 1 instância por espécie (relaxar se quiser duplicatas)
+  unlockedMoves UserPokemonMove[]  // golpes liberados por fora do nível (TM/tutor/ovo)
+  @@index([userId, pokemonId])     // NÃO é unique: DUPLICATAS PERMITIDAS (ver §7.2)
+}
+
+// Golpe desbloqueado por FORA do nível para ESTE Pokémon do jogador (ver §7.2).
+model UserPokemonMove {
+  id            String @id @default(cuid())
+  userPokemonId String
+  moveId        String
+  source        String            // "machine" (TM) | "tutor" | "egg"
+  grantedAt     DateTime @default(now())
+  @@unique([userPokemonId, moveId])
 }
 ```
 
@@ -274,15 +285,44 @@ Agora gravamos isso (`domain/learnset.ts` decide, `syncPokedex` grava):
   level-up (`VERSION_GROUP_PREFERENCE`). Misturar jogos daria "Pikachu que
   aprende tudo de todas as gerações" — o oposto de fiel. Exigir level-up evita
   cair num jogo em que a espécie só aparece com TMs (pokémon sem nada a destravar).
-- **Só `level-up` vira carta**, e só com `levelLearnedAt <= nível`. TM/ovo/tutor
-  ficam gravados (fidelidade do espelho) mas fora do jogo: no jogo real elas não
-  pedem nível, então liberá-las apagaria a progressão que o nível acabou de ganhar.
+- **`level-up` vira carta por NÍVEL**, com `levelLearnedAt <= nível`. `machine`
+  (TM), `ovo` e `tutor` **não** pedem nível — ficam gravados no espelho e viram
+  carta só quando o jogador as GANHA por fora (ver §7.2). No começo (antes do
+  §7.2) só o level-up estava ligado.
 - A trava é do **servidor** (`addToDeck`), não da UI: o `POST /api/deck` é
   público. O modal mostra as travadas com o nível exigido — ver o que vem é
   metade da progressão.
 
 **Consequência que muda o começo do jogo:** um pokémon novo tem ~3-4 cartas, não
 6. `CARDS_PER_SLOT` virou **teto**, não obrigação.
+
+### 7.2 Ganhar carta por fora do nível (TM/tutor/ovo) + duplicatas
+
+O nível libera o learnset base; **TM/tutor/ovo** são as formas de ganhar carta que
+**não** dependem de nível. A fundação é uma tabela por instância —
+`UserPokemonMove` (§5): "este Pokémon do jogador desbloqueou o golpe X", com
+`source` dizendo de onde veio. A regra combinada "jogável = level-up destravado ∪
+concedido" é pura (`pokedex/domain/learnset.mergePlayableMoveIds`) e lida por
+`pokedex/queries/getUnlockedMoveIds` — consumida por `addToDeck`, `readLearnset` e
+pela poda de evolução (uma carta concedida **sobrevive** à evolução).
+
+Estado:
+- **TM (Máquina Técnica): ✅ FEITO** (módulo `training`). Token genérico de TM
+  ensina qualquer golpe `machine` que a espécie conheça. **Ganha:** +1 token por
+  check-in diário (`packs/checkInLogin`, no mesmo claim idempotente-por-dia).
+  **Gasta:** `training/applyTM` (claim otimista do token + grant atômicos) via
+  `POST /api/training/tm`; UI no `LoadoutBuilder` ("Ensinar (1 TM)").
+- **Tutor** (quests/desafios diários → concede `tutor`): ⏳ pendente.
+- **Ovo/cruzamento** (cruzar dois Pokémon → nasce cópia com egg-move): ⏳ pendente.
+
+**Duplicatas permitidas ✅ FEITO:** `UserPokemon` deixou de ter
+`@@unique([userId, pokemonId])` (virou `@@index` composto não-único) — o jogador
+pode ter várias cópias da mesma espécie. **Pacote** deixou de tratar repetida como
+no-op: cada carta sorteada cria uma instância (`openPack` usa `createMany`; `isNew`
+= "primeira cópia da espécie", só pro selo). A corrida de abertura continua fechada
+pelo claim do `PackState`. É o alicerce de **troca** (⏳ pendente) e cruzamento.
+Efeito colateral bom: evoluir para uma espécie que você já tem parou de estourar a
+`@@unique` no meio da transação da batalha.
 
 ---
 
