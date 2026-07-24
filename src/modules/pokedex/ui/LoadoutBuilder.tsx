@@ -31,6 +31,8 @@ export default function LoadoutBuilder({
 }) {
   const [moves, setMoves] = useState<LearnsetMoveDTO[] | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [tmTokens, setTmTokens] = useState(0);
+  const [teaching, setTeaching] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -38,9 +40,10 @@ export default function LoadoutBuilder({
     let alive = true;
     fetch(`/api/deck/learnset/${userPokemonId}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { moves: LearnsetMoveDTO[] }) => {
+      .then((data: { moves: LearnsetMoveDTO[]; tmTokens: number }) => {
         if (!alive) return;
         setMoves(data.moves);
+        setTmTokens(data.tmTokens);
         // Pré-seleciona as mais fortes JÁ DESTRAVADAS — pré-selecionar uma
         // travada faria o Salvar cair no 400 do servidor sem o jogador
         // entender por quê.
@@ -73,6 +76,34 @@ export default function LoadoutBuilder({
       if (prev.length >= CARDS_PER_SLOT) return prev; // teto de 6
       return [...prev, moveId];
     });
+  };
+
+  // Ensina uma carta de TM gastando 1 token. A regra de verdade é do servidor
+  // (applyTM); aqui só disparamos e refletimos o resultado (carta destravada +
+  // saldo novo), sem refazer o fetch inteiro.
+  const teach = async (moveId: string) => {
+    setTeaching(moveId);
+    setError("");
+    try {
+      const res = await fetch("/api/training/tm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userPokemonId, moveId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(
+          data.error === "no_tokens"
+            ? "Você não tem tokens de TM."
+            : "Não foi possível ensinar essa carta."
+        );
+        return;
+      }
+      setTmTokens(data.tmTokens);
+      setMoves((prev) => prev?.map((m) => (m.moveId === moveId ? { ...m, unlocked: true } : m)) ?? prev);
+    } finally {
+      setTeaching(null);
+    }
   };
 
   const save = async () => {
@@ -112,13 +143,18 @@ export default function LoadoutBuilder({
           <h2 className="font-title text-lg uppercase tracking-wide">
             Montar <span className="text-flare">{name}</span>
           </h2>
-          <span
-            className={`font-title text-sm tracking-wide ${
-              selected.length === CARDS_PER_SLOT ? "text-ok" : "text-ink-dim"
-            }`}
-          >
-            {selected.length}/{CARDS_PER_SLOT} cartas
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="font-title text-sm tracking-wide text-ink-dim" title="Tokens de TM (ganhos no check-in diário)">
+              🔧 {tmTokens} TM
+            </span>
+            <span
+              className={`font-title text-sm tracking-wide ${
+                selected.length === CARDS_PER_SLOT ? "text-ok" : "text-ink-dim"
+              }`}
+            >
+              {selected.length}/{CARDS_PER_SLOT} cartas
+            </span>
+          </div>
         </div>
 
         {error && <p className="mb-3 text-sm font-semibold text-bad">{error}</p>}
@@ -138,12 +174,28 @@ export default function LoadoutBuilder({
                 const pos = selected.indexOf(m.moveId);
                 const on = pos !== -1;
                 const capped = !on && selected.length >= CARDS_PER_SLOT;
+                const teachable = m.teachableViaTm && !m.unlocked; // TM ainda não ensinada
+                // Rótulo da direita: já dá pra usar → poder/classe; TM travada →
+                // marca "TM"; level-up travada → o nível exigido.
+                const meta = m.unlocked
+                  ? m.power
+                    ? `${m.power}pw`
+                    : m.damageClass
+                  : teachable
+                    ? "🔧 TM"
+                    : `🔒 nv ${m.levelLearnedAt}`;
                 return (
                   <li key={m.moveId}>
                     <button
                       onClick={() => toggle(m.moveId)}
                       disabled={capped || !m.unlocked}
-                      title={m.unlocked ? undefined : `Aprende no nível ${m.levelLearnedAt}`}
+                      title={
+                        m.unlocked
+                          ? undefined
+                          : teachable
+                            ? "Ensine com um token de TM"
+                            : `Aprende no nível ${m.levelLearnedAt}`
+                      }
                       style={{ borderLeftColor: typeColor(m.type) }}
                       className={`clip-btn relative flex w-full cursor-pointer flex-col items-start gap-0.5 border-l-4 px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
                         on ? "bg-flare/15 hover:bg-flare/25" : "bg-panel-2 hover:bg-panel"
@@ -159,11 +211,19 @@ export default function LoadoutBuilder({
                       </span>
                       <span className="flex w-full items-center justify-between text-xs text-ink-dim">
                         <span className="uppercase" style={{ color: typeColor(m.type) }}>{m.type}</span>
-                        <span className="font-bold">
-                          {m.unlocked ? (m.power ? `${m.power}pw` : m.damageClass) : `🔒 nv ${m.levelLearnedAt}`}
-                        </span>
+                        <span className="font-bold">{meta}</span>
                       </span>
                     </button>
+                    {teachable && (
+                      <button
+                        onClick={() => teach(m.moveId)}
+                        disabled={tmTokens < 1 || teaching !== null}
+                        title={tmTokens < 1 ? "Sem tokens de TM" : undefined}
+                        className="clip-btn mt-1 w-full cursor-pointer border-0 bg-panel-2 py-1 text-[11px] font-bold uppercase tracking-wide text-flare hover:bg-panel disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {teaching === m.moveId ? "Ensinando..." : "Ensinar (1 TM)"}
+                      </button>
+                    )}
                   </li>
                 );
               })}

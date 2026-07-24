@@ -56,6 +56,10 @@ export async function checkInLogin(userId: string, now = new Date()): Promise<Ch
     data: {
       lastCheckIn: now,
       loginStreak: streak,
+      // +1 token de TM por check-in diário (a fonte de TM do MVP). Vai junto do
+      // MESMO claim idempotente-por-dia, então refresh não farma token; um dia,
+      // um token. Ver training/applyTM (o gasto).
+      tmTokens: { increment: 1 },
       ...(award ? { extraPacks: { increment: 1 } } : {}),
     },
   });

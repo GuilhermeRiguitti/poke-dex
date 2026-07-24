@@ -5,11 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 //     Dois cliques no "Abrir" / duas lambdas não podem dar dois pacotes.
 //  2. Pré-check de cooldown barato: em cooldown, NADA de ler pool nem sortear.
 //  3. A coleção nova é UserPokemon (não mais UserCard), sorteada do ESPELHO.
+//  4. DUPLICATA permitida: repetida deixou de ser no-op — cada carta CRIA uma
+//     instância (createMany), e o selo isNew só diz se era a 1ª cópia da espécie.
 
 const prismaMock = {
   packState: { upsert: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn() },
   pokemon: { findMany: vi.fn() },
-  userPokemon: { findMany: vi.fn(), upsert: vi.fn() },
+  userPokemon: { findMany: vi.fn(), createMany: vi.fn() },
   $transaction: vi.fn(),
 };
 
@@ -33,7 +35,7 @@ function mirrorSpecies() {
 function resetDefaults() {
   prismaMock.pokemon.findMany.mockResolvedValue(mirrorSpecies());
   prismaMock.userPokemon.findMany.mockResolvedValue([]);
-  prismaMock.userPokemon.upsert.mockResolvedValue({});
+  prismaMock.userPokemon.createMany.mockResolvedValue({ count: 6 });
   prismaMock.packState.findUniqueOrThrow.mockResolvedValue({ lastFreePackAt: new Date(), extraPacks: 0, loginStreak: 0 });
   prismaMock.$transaction.mockImplementation(async (fn: (t: unknown) => Promise<unknown>) => fn(prismaMock));
 }
@@ -63,7 +65,7 @@ describe("openPack — concorrência (perde o claim)", () => {
     const result = await openPack("u1");
 
     expect(result).toEqual({ ok: false, error: "on_cooldown" });
-    expect(prismaMock.userPokemon.upsert).not.toHaveBeenCalled(); // o buraco que o teste trava
+    expect(prismaMock.userPokemon.createMany).not.toHaveBeenCalled(); // o buraco que o teste trava
   });
 });
 
@@ -79,7 +81,9 @@ describe("openPack — caminho feliz", () => {
     expect(result.source).toBe("free");
     expect(result.cards).toHaveLength(6);
     expect(result.cards.every((c) => c.isNew)).toBe(true);
-    expect(prismaMock.userPokemon.upsert).toHaveBeenCalledTimes(6);
+    // 1 createMany com as 6 instâncias (não mais 6 upserts).
+    expect(prismaMock.userPokemon.createMany).toHaveBeenCalledOnce();
+    expect(prismaMock.userPokemon.createMany.mock.calls[0][0].data).toHaveLength(6);
   });
 
   it("diário indisponível mas há extra => gasta o extra", async () => {
@@ -102,7 +106,7 @@ describe("openPack — caminho feliz", () => {
     expect(prismaMock.packState.updateMany).toHaveBeenCalledTimes(1); // só o do extra
   });
 
-  it("carta repetida => isNew false para a espécie que o jogador já tinha", async () => {
+  it("carta repetida => isNew false, mas AINDA cria a instância (duplicata permitida)", async () => {
     prismaMock.packState.upsert.mockResolvedValue({ lastFreePackAt: null, extraPacks: 0 });
     prismaMock.packState.updateMany.mockResolvedValue({ count: 1 });
 
@@ -121,6 +125,10 @@ describe("openPack — caminho feliz", () => {
     if (!again.ok) return;
     const repeated = again.cards.find((c) => c.pokemonId === drawn[0]);
     expect(repeated?.isNew).toBe(false);
+    // A duplicata NÃO é mais no-op: a instância é criada mesmo assim.
+    expect(prismaMock.userPokemon.createMany).toHaveBeenCalledOnce();
+    const created = prismaMock.userPokemon.createMany.mock.calls[0][0].data as { pokemonId: string }[];
+    expect(created.some((r) => r.pokemonId === `sp-${drawn[0]}`)).toBe(true);
   });
 
   it("espelho vazio => empty_pokedex (não dá pra sortear do nada)", async () => {

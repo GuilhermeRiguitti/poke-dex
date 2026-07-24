@@ -4,6 +4,7 @@ import {
   applyXp,
   evolutionTargetFor,
   LOSER_XP_SHARE,
+  mergePlayableMoveIds,
   PLAYABLE_LEARN_METHOD,
   pruneLoadout,
   xpFromDefeat,
@@ -162,11 +163,18 @@ async function pruneLoadoutForSpecies(
   });
   if (slots.length === 0) return;
 
-  const valid = await tx.pokemonMove.findMany({
-    where: { pokemonId: newSpeciesId, learnMethod: PLAYABLE_LEARN_METHOD, levelLearnedAt: { lte: level } },
-    select: { moveId: true },
-  });
-  const validSet = new Set(valid.map((v) => v.moveId));
+  // Válidas = level-up da NOVA espécie já destravadas ∪ as CONCEDIDAS por fora
+  // (TM/tutor/ovo). As concedidas persistem na evolução (são do UserPokemon, não
+  // da espécie) — como na série, evoluir não apaga golpe já sabido. Sem juntá-las
+  // aqui, um egg/TM suado sumiria do loadout ao evoluir.
+  const [valid, granted] = await Promise.all([
+    tx.pokemonMove.findMany({
+      where: { pokemonId: newSpeciesId, learnMethod: PLAYABLE_LEARN_METHOD, levelLearnedAt: { lte: level } },
+      select: { moveId: true },
+    }),
+    tx.userPokemonMove.findMany({ where: { userPokemonId }, select: { moveId: true } }),
+  ]);
+  const validSet = mergePlayableMoveIds(valid.map((v) => v.moveId), granted.map((g) => g.moveId));
 
   for (const slot of slots) {
     const currentIds = slot.cards.map((c) => c.moveId);

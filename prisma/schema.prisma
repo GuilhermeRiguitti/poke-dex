@@ -178,8 +178,9 @@ model Move {
   effect      Json? // efeitos estruturados (status, stat stage, etc.) — nulo por ora
   fetchedAt   DateTime @default(now())
 
-  learnedBy PokemonMove[]
-  deckCards DeckSlotCard[]
+  learnedBy    PokemonMove[]
+  deckCards    DeckSlotCard[]
+  unlockedByUsers UserPokemonMove[]
 }
 
 // Learnset (n:n) FIEL À SÉRIE: além do par, a linha carrega COMO a espécie
@@ -212,8 +213,13 @@ model PokemonMove {
 // Cada instância nasce em STARTING_LEVEL e sobe com XP ganho em batalha; o
 // nível deriva TODO stat de batalha (deriveStats) E libera quais moves do
 // learnset viram carta (domain/learnset.ts).
-// @@unique([userId, pokemonId]): 1 instância por espécie — fecha a corrida de
-// captura por construção (CLAUDE.md regra 6).
+//
+// DUPLICATAS PERMITIDAS (decisão do dono): NÃO há mais `@@unique[userId,pokemonId]`.
+// `UserPokemon` é uma tabela de INSTÂNCIAS — o jogador pode ter várias cópias da
+// mesma espécie (pacote repetido cria uma nova; cruzamento faz nascer; troca
+// transfere). O `id` cuid já é único. A corrida de ABERTURA de pacote continua
+// fechada pelo claim do PackState (a unique daqui nunca guardou isso — só dava o
+// "repetida = no-op"; ver packs/commands/openPack).
 //
 // `xp` é o TOTAL ACUMULADO (curva medium-fast: total pro nível n = n³), não o
 // progresso dentro do nível. Assim `level` é uma FUNÇÃO de `xp`
@@ -232,8 +238,39 @@ model UserPokemon {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   pokemon   Pokemon    @relation(fields: [pokemonId], references: [id])
   deckSlots DeckSlot[]
+  unlockedMoves UserPokemonMove[]
 
-  @@unique([userId, pokemonId])
+  // Composto, mas NÃO único (duplicata permitida). É o mesmo índice do antigo
+  // @@unique menos a unicidade: cobre `where userId` (prefixo à esquerda, ex.
+  // getCollection) E `where userId+pokemonId` (o isNew do openPack, e o "já tem
+  // a espécie X?" que troca/cruzamento vão usar). Trocar por só [userId] jogaria
+  // fora a coluna pokemonId desses lookups.
+  @@index([userId, pokemonId])
+}
+
+// Golpes desbloqueados POR FORA do nível (PLANO_JOGO §7.1 — TM/tutor/ovo).
+// O learnset base (PokemonMove level-up) é da ESPÉCIE e derivado do nível; esta
+// tabela guarda o que ESTE Pokémon do jogador aprendeu além disso. `source` diz
+// como veio ("machine" = TM; "tutor"/"egg" nas próximas fatias). É o que faz o
+// golpe virar carta jogável mesmo sem depender de nível.
+//
+// A regra combinada (level-up ∪ concedidos) mora em pokedex/domain/learnset
+// (mergePlayableMoveIds) e é lida por pokedex/queries/getUnlockedMoveIds —
+// consumida por deck (addToDeck/readLearnset) e battle (poda pós-evolução).
+// @@unique([userPokemonId, moveId]): fecha o double-grant por construção (o
+// claim otimista do token de TM conta com isso — CLAUDE.md regra 6).
+model UserPokemonMove {
+  id            String   @id @default(cuid())
+  userPokemonId String
+  moveId        String
+  source        String // "machine" | "tutor" | "egg"
+  grantedAt     DateTime @default(now())
+
+  userPokemon UserPokemon @relation(fields: [userPokemonId], references: [id], onDelete: Cascade)
+  move        Move        @relation(fields: [moveId], references: [id], onDelete: Cascade)
+
+  @@unique([userPokemonId, moveId])
+  @@index([userPokemonId])
 }
 
 // ──────────────────────────────────────────────
@@ -373,6 +410,7 @@ model PackState {
   extraPacks     Int       @default(0) // pacotes-bônus prontos pra abrir (recompensa de login)
   loginStreak    Int       @default(0)
   lastCheckIn    DateTime?
+  tmTokens       Int       @default(0) // tokens de TM: gastos pra ensinar golpe `machine` (training/applyTM); ganhos no check-in diário
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

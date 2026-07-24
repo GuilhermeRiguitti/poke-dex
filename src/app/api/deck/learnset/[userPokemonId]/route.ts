@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/lib/auth";
 import { readLearnset } from "@/src/modules/deck";
+import { readTmTokens } from "@/src/modules/packs";
 
-// GET /api/deck/learnset/[userPokemonId] — as cartas que o loadout pode escolher.
+// GET /api/deck/learnset/[userPokemonId] — as cartas que o loadout pode escolher
+// + o saldo de tokens de TM (pra a UI liberar o botão "Ensinar (1 TM)").
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ userPokemonId: string }> }) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -12,5 +14,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ use
   const moves = await readLearnset(session.user.id, userPokemonId);
   if (!moves) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json({ moves });
+  const tmTokens = await readTmTokens(session.user.id);
+  return NextResponse.json({ moves, tmTokens });
 }

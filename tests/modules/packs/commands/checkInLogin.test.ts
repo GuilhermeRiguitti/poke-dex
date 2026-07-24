@@ -98,6 +98,21 @@ describe("checkInLogin — regra do streak", () => {
     const dataArg = prismaMock.packState.updateMany.mock.calls[0][0].data;
     expect(dataArg.extraPacks).toBeUndefined();
   });
+
+  // Todo check-in dá 1 token de TM, no MESMO claim idempotente-por-dia (refresh
+  // não farma). É a fonte de TM do MVP — ver training/applyTM (o gasto).
+  it("todo check-in credita 1 token de TM (mesmo em dia não-múltiplo de 7)", async () => {
+    prismaMock.packState.upsert.mockResolvedValue({
+      lastCheckIn: d("2026-07-13T20:00:00Z"),
+      loginStreak: 2,
+      extraPacks: 0,
+    });
+
+    await checkInLogin("u1", NOW);
+
+    const dataArg = prismaMock.packState.updateMany.mock.calls[0][0].data;
+    expect(dataArg.tmTokens).toEqual({ increment: 1 });
+  });
 });
 
 describe("checkInLogin — concorrência (perde o claim)", () => {

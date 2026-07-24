@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isUnlockedAt,
+  mergePlayableMoveIds,
   pickLearnEntry,
   pickVersionGroup,
   VERSION_GROUP_PREFERENCE,
@@ -72,9 +73,31 @@ describe("isUnlockedAt", () => {
     expect(isUnlockedAt(entry, 60)).toBe(true);
   });
 
-  it("NÃO libera TM/ovo/tutor — só level-up vira carta hoje", () => {
+  it("NÃO libera TM/ovo/tutor pelo nível — essas dependem de ser concedidas", () => {
     expect(isUnlockedAt({ learnMethod: "machine", levelLearnedAt: 0 }, 100)).toBe(false);
     expect(isUnlockedAt({ learnMethod: "egg", levelLearnedAt: 0 }, 100)).toBe(false);
     expect(isUnlockedAt({ learnMethod: "tutor", levelLearnedAt: 0 }, 100)).toBe(false);
+  });
+});
+
+describe("mergePlayableMoveIds", () => {
+  it("une as de level-up destravadas com as concedidas por fora (TM/tutor/ovo)", () => {
+    const merged = mergePlayableMoveIds(["a", "b"], ["c"]);
+    expect(merged).toEqual(new Set(["a", "b", "c"]));
+  });
+
+  it("não duplica quando a mesma carta está nas duas fontes", () => {
+    const merged = mergePlayableMoveIds(["a", "b"], ["b"]);
+    expect([...merged].sort()).toEqual(["a", "b"]);
+  });
+
+  it("com nada concedido, é só o conjunto de level-up", () => {
+    expect(mergePlayableMoveIds(["a"], [])).toEqual(new Set(["a"]));
+  });
+
+  // O que ESTA função protege: sem incluir as concedidas, uma carta de TM suada
+  // não contaria como jogável — addToDeck a recusaria e a evolução a podaria.
+  it("uma carta SÓ concedida (não está no level-up) entra mesmo assim", () => {
+    expect(mergePlayableMoveIds([], ["tm-card"]).has("tm-card")).toBe(true);
   });
 });
