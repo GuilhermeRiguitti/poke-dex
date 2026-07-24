@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import TypeBadge from "@/src/components/TypeBadge";
 import { typeColor } from "@/src/lib/typeColors";
-import type { DuelCardView, DuelMonView, DuelTurnFx, DuelView } from "./battleView";
+import type { DuelCardView, DuelMonView, DuelTurnFx, DuelView, PartyMemberView } from "./battleView";
 
 // A mesa do duelo, em HTML. Só desenho + os cliques de carta; a REGRA de
 // apresentação (quem lunga, quem treme, qual número flutua) é pura e mora em
@@ -207,17 +207,91 @@ function HandCard({
   );
 }
 
+// ── Time do oponente (pips: vivo / desmaiado) ───────────────────────────────
+// Só marcadores — não revela espécie nem cartas das reservas ainda não vistas.
+function OppPips({ party }: { party: PartyMemberView[] }) {
+  return (
+    <div className="flex gap-1">
+      {party.map((m) => (
+        <span
+          key={m.slot}
+          title={m.fainted ? "Nocauteado" : "Em jogo"}
+          className={`h-2.5 w-2.5 rounded-full border ${
+            m.fainted ? "border-edge bg-panel-2" : m.isActive ? "border-enemy bg-enemy" : "border-enemy/60 bg-enemy/40"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Meu time (barra de troca) ───────────────────────────────────────────────
+function PartyBar({
+  party,
+  disabled,
+  onSwitch,
+}: {
+  party: PartyMemberView[];
+  disabled: boolean;
+  onSwitch: (slot: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap justify-center gap-2">
+      {party.map((m) => {
+        const clickable = m.canSwitchTo && !disabled;
+        const tone = m.hpPct > 50 ? "bg-ok" : m.hpPct > 20 ? "bg-warn" : "bg-bad";
+        return (
+          <button
+            key={m.slot}
+            disabled={!clickable}
+            onClick={() => onSwitch(m.slot)}
+            title={m.name.replace(/-/g, " ")}
+            aria-label={`Trocar para ${m.name.replace(/-/g, " ")}`}
+            className={`relative flex w-14 flex-col items-center rounded-md border p-1 transition-colors ${
+              m.isActive
+                ? "border-energy bg-panel-2"
+                : clickable
+                  ? "cursor-pointer border-edge bg-panel hover:border-energy"
+                  : "border-edge bg-panel opacity-60"
+            }`}
+          >
+            {m.spriteUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- sprite da PokéAPI (host externo)
+              <img
+                src={m.spriteUrl}
+                alt={m.name}
+                className={`h-9 w-9 object-contain ${m.fainted ? "opacity-30 grayscale" : ""}`}
+              />
+            )}
+            <div className="h-1 w-full overflow-hidden rounded-full bg-panel-2">
+              <div className={`h-full ${tone}`} style={{ width: `${m.hpPct}%` }} />
+            </div>
+            {m.isActive && (
+              <span className="absolute -top-1 -right-1 rounded-full bg-energy px-1 text-[8px] font-bold text-bg">
+                ●
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Mesa ────────────────────────────────────────────────────────────────────
 export default function DuelTable({
   view,
   submitting,
   onPlayCard,
+  onSwitch,
 }: {
   view: DuelView;
   submitting: boolean;
   onPlayCard: (cardSlot: number) => void;
+  onSwitch: (targetSlot: number) => void;
 }) {
   const locked = submitting || !view.canPlay;
+  const forcedSwitch = view.mode === "forcedSwitch";
 
   // FX da última ação: dispara UMA vez quando o turnNumber muda. O primeiro
   // mount só registra (não re-anima o histórico ao (re)abrir a sala).
@@ -259,9 +333,11 @@ export default function DuelTable({
   // decidindo. Nada aqui revela QUAL carta ele escolheu (o DTO nem carrega).
   const banner = view.isOver
     ? null
-    : view.waitingOpponent
-      ? { text: "Aguardando oponente...", cls: "text-ink-dim animate-pulse" }
-      : { text: "Escolha sua carta", cls: "text-flare" };
+    : forcedSwitch
+      ? { text: "Escolha um substituto", cls: "text-flare animate-pulse" }
+      : view.waitingOpponent
+        ? { text: "Aguardando oponente...", cls: "text-ink-dim animate-pulse" }
+        : { text: "Escolha sua carta", cls: "text-flare" };
 
   // leque: cada carta gira/desloca em arco a partir do centro
   const n = view.cards.length;
@@ -298,6 +374,9 @@ export default function DuelTable({
               "radial-gradient(70% 45% at 78% 22%, rgba(255,92,92,.08), transparent 60%), radial-gradient(70% 45% at 22% 82%, rgba(35,201,255,.08), transparent 60%)",
           }}
         />
+        <div className="relative mb-1 flex justify-end">
+          <OppPips party={view.oppParty} />
+        </div>
         <div className="relative">
           <Fighter mon={view.opp} side="opp" fx={fx} nonce={nonce} />
         </div>
@@ -322,30 +401,50 @@ export default function DuelTable({
         )}
       </div>
 
-      {/* Mão de cartas (leque) */}
-      <div className={`flex justify-center pt-8 transition-opacity ${locked && casting === null ? "opacity-60" : ""}`}>
-        <div className="hand h-[172px]" style={{ width: `${GAP * (n - 1) + 130}px`, maxWidth: "96vw" }}>
-          {view.cards.map((c, i) => {
-            const off = i - mid;
-            const fan = {
-              tx: off * GAP,
-              ty: Math.pow(Math.abs(off), 1.35) * ARC,
-              rot: off * SPREAD,
-              z: 10 + i,
-            };
-            return (
-              <HandCard
-                key={c.slot}
-                card={c}
-                fan={fan}
-                locked={locked}
-                casting={casting === c.slot}
-                onPlay={() => handlePlay(c.slot)}
-              />
-            );
-          })}
+      {forcedSwitch ? (
+        // Troca forçada: sem cartas, o time vira o único caminho de ação.
+        <div className="flex flex-col items-center gap-3 pt-6">
+          <p className="font-title text-sm uppercase tracking-wider text-flare">
+            {view.me.name.replace(/-/g, " ")} desmaiou — escolha o próximo
+          </p>
+          <PartyBar party={view.myParty} disabled={submitting} onSwitch={onSwitch} />
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Mão de cartas (leque) */}
+          <div className={`flex justify-center pt-8 transition-opacity ${locked && casting === null ? "opacity-60" : ""}`}>
+            <div className="hand h-[172px]" style={{ width: `${GAP * (n - 1) + 130}px`, maxWidth: "96vw" }}>
+              {view.cards.map((c, i) => {
+                const off = i - mid;
+                const fan = {
+                  tx: off * GAP,
+                  ty: Math.pow(Math.abs(off), 1.35) * ARC,
+                  rot: off * SPREAD,
+                  z: 10 + i,
+                };
+                return (
+                  <HandCard
+                    key={c.slot}
+                    card={c}
+                    fan={fan}
+                    locked={locked}
+                    casting={casting === c.slot}
+                    onPlay={() => handlePlay(c.slot)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Meu time — troca voluntária (gasta o turno) */}
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <span className="font-title text-[10px] uppercase tracking-widest text-ink-dim">
+              {view.canSwitch ? "Trocar (gasta o turno)" : "Seu time"}
+            </span>
+            <PartyBar party={view.myParty} disabled={locked} onSwitch={onSwitch} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

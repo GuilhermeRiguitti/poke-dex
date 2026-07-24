@@ -1,8 +1,16 @@
-import { calculateDamage } from "./damage";
 import { orderForTurn, type OrderInput } from "./turnOrder";
+import { calculateDamage } from "./damage";
 import { effectivenessMultiplier, TypeEffectivenessMap } from "./typeChart";
 import type { BattleMoveDef, BattlePokemonState } from "./types";
-import type { DuelAction, DuelEvent, DuelSide, DuelState } from "./duelTypes";
+import {
+  activeOf,
+  hasLivingMon,
+  needsForcedSwitch,
+  type DuelAction,
+  type DuelEvent,
+  type DuelSide,
+  type DuelState,
+} from "./duelTypes";
 
 /**
  * Carta de último recurso, quando NENHUMA carta do ativo tem PP. Sem isso, um
@@ -24,15 +32,14 @@ export const STRUGGLE: BattleMoveDef = {
   currentPp: 0,
 };
 
-// Motor PURO do duelo SIMULTÂNEO. Recebe um DuelState + as DUAS jogadas do
-// round e devolve o novo estado. Sem banco, sem rede, sem Math.random direto
+// Motor PURO do duelo SIMULTÂNEO em TIME. Recebe um DuelState + as DUAS jogadas
+// do round e devolve o novo estado. Sem banco, sem rede, sem Math.random direto
 // (rng injetado): determinístico e testável. A orquestração (Prisma, trava
 // otimista, transação) fica na camada de command, como sempre.
 //
-// O turno é uma unidade indivisível: as duas cartas entram, a ordem é decidida
-// (turnOrder.ts), os dois golpes saem, e a rodada avança. Quem é nocauteado
-// pelo golpe que veio primeiro NÃO chega a agir — é a consequência de jogo do
-// Speed importar, e o que torna "bater primeiro" uma decisão real de build.
+// O turno é uma unidade indivisível. Diferença pro 1×1 puro: uma jogada pode ser
+// TROCA (SWITCH), que resolve ANTES dos ataques; e desmaiar NÃO acaba a partida
+// enquanto o lado tiver reserva viva — só zerar o time é derrota.
 
 /** true se o pokémon ainda tem ao menos uma carta com PP. */
 function hasUsableCard(mon: BattlePokemonState): boolean {
@@ -64,30 +71,21 @@ export function startDuel(sideA: DuelSide, sideB: DuelSide): DuelState {
   return { round: 1, sideA, sideB };
 }
 
-/** O slot escolhido por um lado neste round, ou null se ele não agiu. */
-function cardSlotOf(action: DuelAction): number | null {
-  return action.type === "CARD" ? action.cardSlot : null;
-}
-
 /**
  * Executa o golpe de um lado. Devolve true se o alvo desmaiou.
  *
  * Não age quem já foi nocauteado neste mesmo turno (o golpe que veio primeiro
- * matou), nem quem hesitou.
+ * matou). Quem trocou/hesitou nem chega aqui (não está na lista de atacantes).
  */
 function executeAttack(
   attacker: BattlePokemonState,
   defender: BattlePokemonState,
   attackerUserId: string,
-  cardSlot: number | null,
+  cardSlot: number,
   typeChart: TypeEffectivenessMap,
   rng: () => number,
   events: DuelEvent[]
 ): boolean {
-  if (cardSlot === null) {
-    events.push({ type: "hesitate", userId: attackerUserId });
-    return false;
-  }
   if (attacker.fainted) return false; // nocauteado antes de agir: perdeu o turno
 
   const chosen = attacker.moves[cardSlot];
@@ -128,23 +126,42 @@ function executeAttack(
 }
 
 /**
- * Resolve UM round inteiro: as duas jogadas, na ordem de priority → Speed →
- * sorteio. Se um lado desmaiar, o duelo acaba (1×1: desmaiar = perder) e o
- * round NÃO avança.
+ * Aplica uma TROCA voluntária de um lado: o ativo sai, o pokémon do slot alvo
+ * entra. Emite o evento. Troca inválida (alvo inexistente, desmaiado, ou é o
+ * próprio ativo) é ignorada — o command já valida; isto é a rede de baixo.
+ */
+function applyVoluntarySwitch(side: DuelSide, targetSlot: number, events: DuelEvent[]): void {
+  const from = activeOf(side);
+  const target = side.team.find((m) => m.slot === targetSlot);
+  if (!target || target.fainted || target.slot === side.activeSlot) return;
+  side.activeSlot = targetSlot;
+  events.push({ type: "switch", userId: side.userId, fromName: from.name, toName: target.name });
+}
+
+/** Desfecho da partida a partir das reservas vivas: quem zerou o time perdeu. */
+function outcome(state: DuelState): { finished: boolean; winnerId: string | null } {
+  const aLiving = hasLivingMon(state.sideA);
+  const bLiving = hasLivingMon(state.sideB);
+  if (aLiving && bLiving) return { finished: false, winnerId: null };
+  if (!aLiving && !bLiving) return { finished: true, winnerId: null }; // empate (duplo nocaute do último)
+  return { finished: true, winnerId: aLiving ? state.sideA.userId : state.sideB.userId };
+}
+
+/**
+ * Resolve UM round NORMAL inteiro (os dois lados com ativo vivo):
+ *  1. as TROCAS resolvem primeiro (quem trocou não ataca);
+ *  2. os ATAQUES saem na ordem priority → Speed → sorteio, contra o ativo ATUAL
+ *     de cada lado (pós-troca) — quem entrou por troca PODE tomar dano;
+ *  3. desmaiar NÃO encerra enquanto houver reserva viva; a partida só acaba
+ *     quando um lado zera o time.
  *
- * Idempotência/concorrência ficam na camada de command (trava otimista por
- * (round, status) + transação), como em resolveTurn.ts. Aqui é só a regra pura.
+ * Idempotência/concorrência ficam na camada de command (trava otimista + tx).
  */
 export function resolveRound(params: ResolveRoundParams): DuelResult {
   const { typeChart, rng } = params;
   const state = cloneState(params.state);
   const events: DuelEvent[] = [];
 
-  const byUser = (userId: string): DuelSide =>
-    state.sideA.userId === userId ? state.sideA : state.sideB;
-
-  // Casa cada ação com seu lado por userId — quem chamou não precisa saber
-  // qual é o "A" e qual é o "B".
   for (const action of [params.actionA, params.actionB]) {
     if (action.userId !== state.sideA.userId && action.userId !== state.sideB.userId) {
       throw new Error(`userId ${action.userId} não pertence a este duelo`);
@@ -154,44 +171,95 @@ export function resolveRound(params: ResolveRoundParams): DuelResult {
     throw new Error("as duas ações do round são do mesmo jogador");
   }
 
-  const inputs: [OrderInput, OrderInput] = [
-    {
-      userId: params.actionA.userId,
-      mon: byUser(params.actionA.userId).active,
-      cardSlot: cardSlotOf(params.actionA),
-    },
-    {
-      userId: params.actionB.userId,
-      mon: byUser(params.actionB.userId).active,
-      cardSlot: cardSlotOf(params.actionB),
-    },
-  ];
+  const actionOf: Record<string, DuelAction> = {
+    [params.actionA.userId]: params.actionA,
+    [params.actionB.userId]: params.actionB,
+  };
 
-  const [first, second] = orderForTurn(inputs[0], inputs[1], rng);
-  events.push({ type: "roundStart", round: state.round, firstUserId: first.userId });
-
-  let winnerId: string | null = null;
-
-  for (const actor of [first, second]) {
-    const defender = actor.userId === first.userId ? second : first;
-    const targetFainted = executeAttack(
-      actor.mon,
-      defender.mon,
-      actor.userId,
-      actor.cardSlot,
-      typeChart,
-      rng,
-      events
-    );
-    if (targetFainted) {
-      winnerId = actor.userId;
-      break; // 1×1: nocauteou, acabou — o segundo não chega a agir
-    }
+  // 1) TROCAS primeiro (fiel à série): mudam o ativo antes de qualquer ataque.
+  for (const side of [state.sideA, state.sideB]) {
+    const action = actionOf[side.userId];
+    if (action.type === "SWITCH") applyVoluntarySwitch(side, action.targetSlot, events);
   }
 
-  if (winnerId) {
-    return { state, events, winnerId, finished: true };
+  // Hesitação (NONE) vira evento; troca e golpe não hesitam.
+  for (const side of [state.sideA, state.sideB]) {
+    if (actionOf[side.userId].type === "NONE") events.push({ type: "hesitate", userId: side.userId });
   }
+
+  // 2) ATAQUES: só quem escolheu MOVE, na ordem do turno pelo ativo atual.
+  const attackers = [state.sideA, state.sideB].filter((s) => actionOf[s.userId].type === "MOVE");
+
+  const cardSlotOf = (side: DuelSide): number => {
+    const a = actionOf[side.userId];
+    return a.type === "MOVE" ? a.cardSlot : 0;
+  };
+
+  let ordered: DuelSide[] = attackers;
+  if (attackers.length === 2) {
+    const [x, y] = attackers;
+    const inX: OrderInput = { userId: x.userId, mon: activeOf(x), cardSlot: cardSlotOf(x) };
+    const inY: OrderInput = { userId: y.userId, mon: activeOf(y), cardSlot: cardSlotOf(y) };
+    const [first] = orderForTurn(inX, inY, rng);
+    ordered = first.userId === x.userId ? [x, y] : [y, x];
+  }
+
+  if (ordered.length > 0) {
+    events.push({ type: "roundStart", round: state.round, firstUserId: ordered[0].userId });
+  }
+
+  for (const side of ordered) {
+    const foe = side === state.sideA ? state.sideB : state.sideA;
+    executeAttack(activeOf(side), activeOf(foe), side.userId, cardSlotOf(side), typeChart, rng, events);
+  }
+
+  const { finished, winnerId } = outcome(state);
+  if (finished) return { state, events, winnerId, finished: true };
+
+  state.round += 1;
+  return { state, events, winnerId: null, finished: false };
+}
+
+export interface ForcedSwitchParams {
+  state: DuelState;
+  /** slot escolhido por cada lado; null/inválido → auto-promove o 1º vivo. */
+  choiceA: number | null;
+  choiceB: number | null;
+}
+
+/** Slot do substituto na troca forçada: a escolha (se válida) ou o 1º vivo. */
+function forcedTarget(side: DuelSide, choice: number | null): number | null {
+  if (choice != null) {
+    const picked = side.team.find((m) => m.slot === choice);
+    if (picked && !picked.fainted) return picked.slot;
+  }
+  const first = [...side.team].sort((a, b) => a.slot - b.slot).find((m) => !m.fainted);
+  return first ? first.slot : null;
+}
+
+/**
+ * Aplica a TROCA FORÇADA: para cada lado cujo ativo desmaiou (e ainda tem
+ * reserva viva), coloca em campo o substituto escolhido — ou o 1º vivo, se a
+ * escolha não veio (timeout) ou é inválida. Depois disso nenhum lado precisa
+ * mais trocar, e o próximo round é normal.
+ */
+export function applyForcedSwitch(params: ForcedSwitchParams): DuelResult {
+  const state = cloneState(params.state);
+  const events: DuelEvent[] = [];
+
+  for (const side of [state.sideA, state.sideB]) {
+    if (!needsForcedSwitch(side)) continue;
+    const choice = side.userId === state.sideA.userId ? params.choiceA : params.choiceB;
+    const target = forcedTarget(side, choice);
+    if (target == null) continue; // sem reserva viva (não deveria: needsForcedSwitch garante)
+    const from = activeOf(side);
+    side.activeSlot = target;
+    const to = side.team.find((m) => m.slot === target)!;
+    events.push({ type: "switch", userId: side.userId, fromName: from.name, toName: to.name });
+  }
+
+  const { finished, winnerId } = outcome(state);
+  if (finished) return { state, events, winnerId, finished: true };
 
   state.round += 1;
   return { state, events, winnerId: null, finished: false };

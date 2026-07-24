@@ -3,22 +3,37 @@ import type { BattleMoveDef } from "../domain/types";
 import { toBattleDTO } from "../queries/toBattleDTO";
 import { tryResolveTurn } from "./resolveTurn";
 
+// A jogada de um round: um GOLPE (MOVE) ou uma TROCA (SWITCH). `cardSlot` é o
+// índice do golpe (0..5); `targetSlot` é o slot do pokémon alvo da troca (1..6).
 export type SubmitActionInput = {
   round: number;
-  cardSlot: number; // 0..5 na barra
+  type?: "MOVE" | "SWITCH"; // ausente = MOVE (compat com o cliente antigo)
+  cardSlot?: number;
+  targetSlot?: number;
 };
 
-// Registra a carta de UM jogador no round (POST /api/battle/[id]/move).
+type ParticipantWithMons = {
+  userId: string;
+  activeSlot: number;
+  pokemons: { slot: number; fainted: boolean; moves: unknown }[];
+};
+
+/** true se o ativo do participante desmaiou mas ainda há reserva viva → precisa trocar. */
+function mustSwitch(p: ParticipantWithMons): boolean {
+  const active = p.pokemons.find((m) => m.slot === p.activeSlot);
+  return Boolean(active?.fainted) && p.pokemons.some((m) => !m.fainted);
+}
+
+// Registra a jogada de UM jogador no round (POST /api/battle/[id]/move).
 //
 // Simultâneo: não existe "é a sua vez" — os dois podem submeter a qualquer
-// momento do round, e a carta fica GUARDADA (segredo) até o outro submeter ou o
-// tempo estourar. Por isso `tryResolveTurn` é chamado aqui mesmo: quem submete
-// por ÚLTIMO é quem, no mesmo request, faz o turno resolver. Quem submeteu
-// primeiro descobre pelo push do Realtime (ou pelo polling).
+// momento do round, e a jogada fica GUARDADA (segredo) até o outro submeter ou o
+// tempo estourar. Por isso `tryResolveTurn` é chamado aqui: quem submete por
+// ÚLTIMO é quem, no mesmo request, faz o turno resolver.
 //
-// Trocar de ideia é permitido enquanto o round não resolveu (o upsert
-// sobrescreve o cardSlot) — e é seguro, porque a carta do oponente nunca sai do
-// servidor antes da resolução (toBattleDTO).
+// TROCA FORÇADA (o ativo de alguém desmaiou): o jogo pausa até o dono do desmaio
+// escolher o substituto. Nesse round só ELE joga (e só SWITCH); o oponente
+// espera. Trocar de ideia é permitido enquanto o round não resolveu (upsert).
 export async function submitAction(battleId: string, userId: string, body: SubmitActionInput) {
   const battle = await prisma.battle.findUnique({
     where: { id: battleId },
@@ -34,30 +49,81 @@ export async function submitAction(battleId: string, userId: string, body: Submi
     return { error: "stale_turn" as const, round: battle.round };
   }
 
+  const type = body.type ?? "MOVE";
+  const iMustSwitch = mustSwitch(me);
+  const someoneMustSwitch = battle.participants.some(mustSwitch);
+
+  // Round de troca forçada: só o dono do desmaio joga, e só SWITCH.
+  if (someoneMustSwitch) {
+    if (!iMustSwitch) {
+      return { error: "validation" as const, message: "Aguardando o oponente escolher um substituto" };
+    }
+    if (type !== "SWITCH") {
+      return { error: "validation" as const, message: "Seu pokémon desmaiou — escolha um substituto" };
+    }
+    const target = validSwitchTarget(me, body.targetSlot);
+    if (!target.ok) return { error: "validation" as const, message: target.message };
+    return persist(battleId, userId, battle.round, "SWITCH", target.slot);
+  }
+
+  // Round normal: MOVE (golpe) ou SWITCH (troca voluntária, gasta o turno).
+  if (type === "SWITCH") {
+    const target = validSwitchTarget(me, body.targetSlot);
+    if (!target.ok) return { error: "validation" as const, message: target.message };
+    return persist(battleId, userId, battle.round, "SWITCH", target.slot);
+  }
+
   const active = me.pokemons.find((p) => p.slot === me.activeSlot);
-  if (!active || active.fainted) return { error: "validation" as const, message: "Seu pokémon ativo desmaiou" };
+  if (!active || active.fainted) {
+    return { error: "validation" as const, message: "Seu pokémon ativo desmaiou" };
+  }
 
   const moves = (active.moves as unknown as BattleMoveDef[] | null) ?? [];
-  if (body.cardSlot == null || body.cardSlot < 0 || body.cardSlot >= moves.length) {
+  const cardSlot = body.cardSlot;
+  if (cardSlot == null || cardSlot < 0 || cardSlot >= moves.length) {
     return { error: "validation" as const, message: "Carta inválida" };
   }
-  const card = moves[body.cardSlot];
+  const card = moves[cardSlot];
   // PP zerado só é jogada válida quando NENHUMA carta tem PP (o engine usa
   // STRUGGLE). Enquanto sobrar outra com PP, o slot esgotado é recusado aqui.
   if (card.currentPp <= 0 && moves.some((m) => m.currentPp > 0)) {
     return { error: "validation" as const, message: "Essa carta está sem PP" };
   }
 
+  return persist(battleId, userId, battle.round, "MOVE", cardSlot);
+}
+
+/** Valida o alvo de uma troca: existe, está vivo e não é o próprio ativo. */
+function validSwitchTarget(
+  me: ParticipantWithMons,
+  targetSlot: number | undefined
+): { ok: true; slot: number } | { ok: false; message: string } {
+  if (targetSlot == null) return { ok: false, message: "Escolha um pokémon" };
+  const target = me.pokemons.find((p) => p.slot === targetSlot);
+  if (!target) return { ok: false, message: "Pokémon inválido" };
+  if (target.fainted) return { ok: false, message: "Esse pokémon está desmaiado" };
+  if (target.slot === me.activeSlot) return { ok: false, message: "Esse pokémon já está em campo" };
+  return { ok: true, slot: targetSlot };
+}
+
+/** Grava a jogada (upsert do segredo) e tenta resolver o turno. */
+async function persist(
+  battleId: string,
+  userId: string,
+  round: number,
+  type: "MOVE" | "SWITCH",
+  cardSlot: number
+) {
   await prisma.battleAction.upsert({
-    where: { battleId_round_userId: { battleId, round: battle.round, userId } },
-    update: { cardSlot: body.cardSlot },
-    create: { battleId, userId, round: battle.round, cardSlot: body.cardSlot },
+    where: { battleId_round_userId: { battleId, round, userId } },
+    update: { type, cardSlot },
+    create: { battleId, userId, round, type, cardSlot },
   });
 
   const resolved = await tryResolveTurn(battleId);
   if (!resolved) return { error: "not_found" as const };
 
   // Mesmo DTO que readBattleState devolve: a resposta do POST não pode vazar a
-  // carta que o oponente já escolheu neste round. Ver toBattleDTO.
+  // jogada que o oponente já escolheu neste round. Ver toBattleDTO.
   return { battle: toBattleDTO(resolved) };
 }

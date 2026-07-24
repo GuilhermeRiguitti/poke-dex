@@ -53,6 +53,7 @@ export type BattleEventDTO =
       missed: boolean;
       targetFainted: boolean;
     }
+  | { type: "switch"; userId: string; fromName: string; toName: string }
   | { type: "hesitate"; userId: string }
   | { type: "roundStart"; round: number; firstUserId: string };
 

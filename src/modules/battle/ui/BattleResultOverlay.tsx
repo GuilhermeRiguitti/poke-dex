@@ -7,41 +7,50 @@ import type { BattleStatusDTO } from "./types";
 export default function BattleResultOverlay({
   status,
   iWon,
+  isDraw = false,
 }: {
   status: BattleStatusDTO;
   iWon: boolean;
+  isDraw?: boolean;
 }) {
   const abandoned = status === "ABANDONED";
-  const headline = abandoned ? (iWon ? "W.O." : "Abandono") : iWon ? "Vitória" : "Derrota";
+  const headline = isDraw
+    ? "Empate"
+    : abandoned
+      ? iWon
+        ? "W.O."
+        : "Abandono"
+      : iWon
+        ? "Vitória"
+        : "Derrota";
+
+  // Empate é neutro (nem ouro nem vermelho); vitória em ouro, derrota em vermelho.
+  const positive = iWon && !isDraw;
+  const ring = isDraw ? "border-ink-dim" : positive ? "border-gold" : "border-bad";
+  const plateBg = isDraw ? "bg-panel-2" : positive ? "bg-gold" : "bg-bad";
+  const plateText = isDraw ? "text-ink" : positive ? "text-[#241a05]" : "text-white";
+  const glow = positive
+    ? "drop-shadow(0 0 24px rgba(242,193,78,.5))"
+    : isDraw
+      ? "none"
+      : "drop-shadow(0 0 24px rgba(255,92,92,.4))";
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-bg/80 backdrop-blur-sm">
-      <span
-        className={`animate-ring-burst absolute h-48 w-48 rounded-full border-4 ${
-          iWon ? "border-gold" : "border-bad"
-        }`}
-      />
-      <div
-        className={`plate animate-slam px-12 py-4 ${iWon ? "bg-gold" : "bg-bad"}`}
-        style={{
-          filter: iWon
-            ? "drop-shadow(0 0 24px rgba(242,193,78,.5))"
-            : "drop-shadow(0 0 24px rgba(255,92,92,.4))",
-        }}
-      >
-        <span
-          className={`plate-inner font-title text-6xl uppercase tracking-widest ${
-            iWon ? "text-[#241a05]" : "text-white"
-          }`}
-        >
+      <span className={`animate-ring-burst absolute h-48 w-48 rounded-full border-4 ${ring}`} />
+      <div className={`plate animate-slam px-12 py-4 ${plateBg}`} style={{ filter: glow }}>
+        <span className={`plate-inner font-title text-6xl uppercase tracking-widest ${plateText}`}>
           {headline}
         </span>
       </div>
 
-      {abandoned && (
+      {abandoned && !isDraw && (
         <p className="text-sm font-semibold text-ink-dim">
           {iWon ? "O oponente abandonou a partida." : "Você abandonou a partida."}
         </p>
+      )}
+      {isDraw && (
+        <p className="text-sm font-semibold text-ink-dim">Os dois times foram nocauteados.</p>
       )}
 
       <Link
