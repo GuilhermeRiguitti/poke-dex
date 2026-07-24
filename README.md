@@ -50,9 +50,14 @@ método** ela aprende (subindo de nível, por TM, por ovo, por tutor) — e isso
 de um jogo para outro. A gente aproveita exatamente esse dado: escolhe **um jogo**
 como referência para cada espécie e guarda, golpe a golpe, o nível de aprendizado.
 
-No jogo, só entram como carta os golpes aprendidos **subindo de nível**, e só
-quando o Pokémon já alcançou aquele nível. É por isso que um Pokémon recém-pego
-tem poucas cartas: subir de nível é o que **libera** golpes novos, como na série.
+No jogo, os golpes aprendidos **subindo de nível** entram como carta assim que o
+Pokémon alcança aquele nível. É por isso que um Pokémon recém-pego tem poucas
+cartas: subir de nível é o que **libera** golpes novos, como na série.
+
+Os golpes que na série viriam por **TM (Máquina Técnica)** você ganha à parte: a
+cada dia que entra no jogo, recebe um **token de TM**, e gasta um token pra
+ensinar um golpe de máquina a um Pokémon que o conhece. (As outras vias da série —
+ovo e tutor — ainda não estão no jogo.)
 
 ### Evolução (usamos a modelagem da própria PokéAPI)
 
