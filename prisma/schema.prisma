@@ -213,8 +213,13 @@ model PokemonMove {
 // Cada instância nasce em STARTING_LEVEL e sobe com XP ganho em batalha; o
 // nível deriva TODO stat de batalha (deriveStats) E libera quais moves do
 // learnset viram carta (domain/learnset.ts).
-// @@unique([userId, pokemonId]): 1 instância por espécie — fecha a corrida de
-// captura por construção (CLAUDE.md regra 6).
+//
+// DUPLICATAS PERMITIDAS (decisão do dono): NÃO há mais `@@unique[userId,pokemonId]`.
+// `UserPokemon` é uma tabela de INSTÂNCIAS — o jogador pode ter várias cópias da
+// mesma espécie (pacote repetido cria uma nova; cruzamento faz nascer; troca
+// transfere). O `id` cuid já é único. A corrida de ABERTURA de pacote continua
+// fechada pelo claim do PackState (a unique daqui nunca guardou isso — só dava o
+// "repetida = no-op"; ver packs/commands/openPack).
 //
 // `xp` é o TOTAL ACUMULADO (curva medium-fast: total pro nível n = n³), não o
 // progresso dentro do nível. Assim `level` é uma FUNÇÃO de `xp`
@@ -235,7 +240,12 @@ model UserPokemon {
   deckSlots DeckSlot[]
   unlockedMoves UserPokemonMove[]
 
-  @@unique([userId, pokemonId])
+  // Composto, mas NÃO único (duplicata permitida). É o mesmo índice do antigo
+  // @@unique menos a unicidade: cobre `where userId` (prefixo à esquerda, ex.
+  // getCollection) E `where userId+pokemonId` (o isNew do openPack, e o "já tem
+  // a espécie X?" que troca/cruzamento vão usar). Trocar por só [userId] jogaria
+  // fora a coluna pokemonId desses lookups.
+  @@index([userId, pokemonId])
 }
 
 // Golpes desbloqueados POR FORA do nível (PLANO_JOGO §7.1 — TM/tutor/ovo).

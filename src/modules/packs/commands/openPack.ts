@@ -93,27 +93,29 @@ export async function openPack(userId: string, rng: () => number = Math.random):
 
       const speciesIds = drawnIds.map((apiId) => byApiId.get(apiId)!.id);
 
-      // isNew: quais espécies o jogador AINDA NÃO tinha antes deste upsert.
+      // isNew: quais espécies o jogador AINDA NÃO tinha antes deste pacote — só
+      // pro selo "NEW" na tela. Lido ANTES de criar (senão o próprio create já
+      // teria "populado" a espécie).
       const owned = await tx.userPokemon.findMany({
         where: { userId, pokemonId: { in: speciesIds } },
         select: { pokemonId: true },
       });
       const ownedSet = new Set(owned.map((c) => c.pokemonId));
 
-      // upsert na @@unique([userId, pokemonId]): repetida é no-op (não reseta
-      // nível/XP), mas a carta "sai" no pacote igual (marcada isNew:false).
-      await Promise.all(
-        speciesIds.map((pokemonId) =>
-          tx.userPokemon.upsert({
-            where: { userId_pokemonId: { userId, pokemonId } },
-            // Nível/XP explícitos (e não só o default do banco) porque os dois
-            // têm que casar: `level` é função de `xp` (levelFromXp). Escrever um
-            // sem o outro criaria o único estado inválido possível aqui.
-            create: { userId, pokemonId, level: STARTING_LEVEL, xp: xpForLevel(STARTING_LEVEL) },
-            update: {},
-          })
-        )
-      );
+      // Duplicata é PERMITIDA (não há mais @@unique[userId,pokemonId]): cada
+      // carta sorteada CRIA uma instância nova — repetida deixou de ser no-op,
+      // porque a troca entre jogadores dá uso a ela. Nível/XP explícitos (e não
+      // só o default) porque os dois têm que casar: `level` é função de `xp`
+      // (levelFromXp); escrever um sem o outro criaria o único estado inválido
+      // possível aqui.
+      await tx.userPokemon.createMany({
+        data: speciesIds.map((pokemonId) => ({
+          userId,
+          pokemonId,
+          level: STARTING_LEVEL,
+          xp: xpForLevel(STARTING_LEVEL),
+        })),
+      });
 
       const updated = await tx.packState.findUniqueOrThrow({
         where: { userId },

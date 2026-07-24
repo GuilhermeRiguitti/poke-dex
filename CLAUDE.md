@@ -18,14 +18,47 @@ found in local migrations directory"*. **O deploy inteiro para**, e destravar ex
 `migration repair` na mão, no prod. O mesmo vale pro Prisma: schema alterado por
 fora faz o `migrate deploy` seguinte falhar por drift.
 
-**O caminho certo, sempre:** escrever o arquivo (`prisma/migrations/` para schema
-do app, `supabase/migrations/` para RLS/extensão/realtime — ver `DEPLOY.md`),
-commitar, e deixar o CI aplicar. Se precisar validar antes, rode contra o **stack
-local** do Supabase CLI (`:54322`), nunca contra o projeto remoto.
+**O caminho certo, sempre:** gerar/escrever o arquivo (`prisma/migrations/` para
+schema do app, `supabase/migrations/` para RLS/extensão/realtime — ver `DEPLOY.md`),
+commitar, e deixar o CI aplicar. Nunca aplicar no prod por fora do git.
+
+## Como gerar uma migration do schema do app (dev)
+
+A migration do schema é **GERADA pelo Prisma a partir do `schema.prisma`**, rodando
+contra o **stack LOCAL** do Supabase CLI (`:54322`) — não se escreve o SQL à mão, e
+NUNCA se roda `migrate dev` apontado pro prod (o `.env` de dev tem que apontar pro
+local; confira antes: `DATABASE_URL`/`DIRECT_URL` em `127.0.0.1:54322`).
+
+Fluxo, na ordem:
+
+1. **Suba o stack local** se não estiver de pé: `npx supabase status` (ou
+   `npx supabase start`). O banco fica em `127.0.0.1:54322`.
+2. **Deixe o local em dia** com as migrations já commitadas: `npx prisma migrate deploy`.
+3. **Edite o `schema.prisma`** (a mudança que você quer).
+4. **Gere + aplique a migration**: `npx prisma migrate dev --name=<nome_curto>`.
+   O Prisma faz o diff `schema.prisma` × histórico, escreve o SQL em
+   `prisma/migrations/<timestamp>_<nome>/` e aplica no local. Confira o SQL gerado
+   (procure `DROP`/`ALTER ... DROP` — a trava do deploy é ler isso antes da `main`).
+5. Migrations do `migrate dev` são **imutáveis** depois de aplicadas — não edite o
+   `.sql` (quebra o checksum). O "porquê" mora no comentário do `schema.prisma`.
+6. Rode a verificação (`tsc`·`vitest`·`eslint`·`next build`) e **commite** o
+   `schema.prisma` + a pasta da migration juntos. O CI aplica no prod.
+
+Migration hand-written só pra `supabase/migrations/` (RLS/realtime) — o schema
+`realtime` não existe no Prisma. As de schema do app são sempre geradas.
 
 **O MCP do Supabase deste ambiente aponta pro PROD.** Ele é ferramenta de
 **leitura**: `list_tables`, `list_migrations`, `get_advisors`, `get_logs` e
 `execute_sql` com `SELECT`. Aí para.
+
+# Terminou a tarefa? Atualize os docs dela.
+
+Antes de dar uma tarefa por pronta, procure os documentos, TODOs e planos que
+falam dela (README, `DEPLOY.md`, `PLANO_JOGO.md`, `TODO.md`, `CLAUDE.md`,
+`AGENTS.md`) e **atualize cada um pra refletir o que foi feito**: marque o TODO
+como concluído, corrija o que mudou de comportamento, registre a decisão nova.
+Isso faz parte da tarefa, não é passo extra — um doc que descreve o mundo antigo
+manda o próximo agente pro caminho errado.
 
 # Arquitetura
 
