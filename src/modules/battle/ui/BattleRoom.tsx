@@ -19,7 +19,7 @@ export default function BattleRoom({
   myUserId: string;
   initialBattle: BattleDTO;
 }) {
-  const { battle, error, submitting, playCard } = useBattleRoom(battleId, initialBattle);
+  const { battle, error, submitting, playCard, playSwitch } = useBattleRoom(battleId, initialBattle);
 
   const view = useMemo(() => selectDuelView(battle, myUserId), [battle, myUserId]);
 
@@ -29,11 +29,13 @@ export default function BattleRoom({
 
   return (
     <div className="relative h-full">
-      <DuelTable view={view} submitting={submitting} onPlayCard={playCard} />
+      <DuelTable view={view} submitting={submitting} onPlayCard={playCard} onSwitch={playSwitch} />
 
       {error && <BattleErrorToast message={error} />}
 
-      {view.isOver && <BattleResultOverlay status={battle.status} iWon={view.iWon} />}
+      {view.isOver && (
+        <BattleResultOverlay status={battle.status} iWon={view.iWon} isDraw={view.isDraw} />
+      )}
     </div>
   );
 }

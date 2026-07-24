@@ -359,18 +359,27 @@ model BattlePokemon {
   @@unique([participantId, slot])
 }
 
-// A carta que um jogador jogou no round atual — SEGREDO até o turno resolver.
-// No simultâneo os DOIS têm uma linha por round (@@unique[battleId, round,
+// O tipo de jogada de um round: usar um GOLPE ou TROCAR de pokémon (time de 6).
+// Os dois são escolhas do MESMO round simultâneo — a troca voluntária resolve
+// ANTES dos ataques (duelEngine.ts).
+enum BattleActionType {
+  MOVE
+  SWITCH
+}
+
+// A jogada de um jogador no round atual — SEGREDO até o turno resolver. No
+// simultâneo os DOIS têm uma linha por round (@@unique[battleId, round,
 // userId]); quando as duas existem o turno resolve e ambas são apagadas. É por
 // causa desta tabela que a linha crua do Battle nunca pode ir pro browser: ela
 // entrega a jogada do oponente antes da resolução (CLAUDE.md regra 3).
 model BattleAction {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   battleId  String
   userId    String
   round     Int
-  cardSlot  Int // 0..5 na barra de golpes
-  createdAt DateTime @default(now())
+  type      BattleActionType @default(MOVE)
+  cardSlot  Int // MOVE: índice do golpe 0..5 | SWITCH: slot do pokémon alvo 1..6
+  createdAt DateTime         @default(now())
 
   battle Battle @relation(fields: [battleId], references: [id], onDelete: Cascade)
 

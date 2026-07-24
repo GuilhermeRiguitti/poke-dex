@@ -101,15 +101,17 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
     return () => clearInterval(timer);
   }, [battleId, loadFullState, live]);
 
-  const playCard = useCallback(
-    async (cardSlot: number) => {
+  // Envio da jogada — golpe (MOVE) ou troca (SWITCH). O servidor guarda o
+  // segredo e resolve o turno se o outro lado também já jogou.
+  const submit = useCallback(
+    async (body: { type: "MOVE"; cardSlot: number } | { type: "SWITCH"; targetSlot: number }) => {
       setSubmitting(true);
       setError("");
       try {
         const res = await fetch(`/api/battle/${battleId}/move`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ round: battle.round, cardSlot }),
+          body: JSON.stringify({ round: battle.round, ...body }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -124,5 +126,8 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
     [battleId, battle.round, applyBattle]
   );
 
-  return { battle, error, submitting, playCard, live };
+  const playCard = useCallback((cardSlot: number) => submit({ type: "MOVE", cardSlot }), [submit]);
+  const playSwitch = useCallback((targetSlot: number) => submit({ type: "SWITCH", targetSlot }), [submit]);
+
+  return { battle, error, submitting, playCard, playSwitch, live };
 }
