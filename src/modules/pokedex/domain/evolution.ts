@@ -77,3 +77,26 @@ export function evolutionTargetFor(
 export function pruneLoadout(currentMoveIds: string[], validMoveIds: ReadonlySet<string>): string[] {
   return currentMoveIds.filter((id) => validMoveIds.has(id));
 }
+
+/**
+ * O nível em que uma espécie É ALCANÇADA por evolução — pra a forma evoluída
+ * NASCER num nível condizente (ex.: um Charizard sorteado num pacote não sai
+ * nível 1). É o `evolvesToLevel` da PRÉ-evolução que aponta pra esta espécie.
+ *
+ * Como os níveis de evolução crescem ao longo da cadeia (Charmander→16→Charmeleon
+ * →36→Charizard), o da pré-evolução IMEDIATA já é o piso certo — não precisa somar
+ * a cadeia inteira. Espécie base (ninguém evolui nela por nível), ou forma que só
+ * vem por pedra/troca (sem aresta de nível no espelho), nasce em `startingLevel`.
+ *
+ * `edges` é o conjunto de arestas de evolução por nível do espelho
+ * (`{evolvesToApiId, evolvesToLevel}` de cada espécie). Puro: quem lê o espelho é
+ * quem chama (packs/openPack).
+ */
+export function birthLevelForSpecies(
+  edges: readonly { evolvesToApiId: number | null; evolvesToLevel: number | null }[],
+  speciesApiId: number,
+  startingLevel: number,
+): number {
+  const preEvo = edges.find((e) => e.evolvesToApiId === speciesApiId && e.evolvesToLevel != null);
+  return Math.max(startingLevel, preEvo?.evolvesToLevel ?? startingLevel);
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  birthLevelForSpecies,
   evolutionTargetFor,
   parseLevelUpEvolutions,
   pruneLoadout,
@@ -75,5 +76,38 @@ describe("pruneLoadout", () => {
 
   it("pode zerar o loadout se nenhuma carta sobrevive", () => {
     expect(pruneLoadout(["x", "y"], new Set<string>())).toEqual([]);
+  });
+});
+
+describe("birthLevelForSpecies", () => {
+  // Linha do Charmander: 4 →(16)→ 5 →(36)→ 6. As arestas do espelho.
+  const edges = [
+    { evolvesToApiId: 5, evolvesToLevel: 16 }, // Charmander → Charmeleon
+    { evolvesToApiId: 6, evolvesToLevel: 36 }, // Charmeleon → Charizard
+    { evolvesToApiId: null, evolvesToLevel: null }, // Charizard (não evolui)
+  ];
+  const START = 1;
+
+  it("forma-base nasce em STARTING_LEVEL", () => {
+    expect(birthLevelForSpecies(edges, 4, START)).toBe(1);
+  });
+
+  it("estágio do meio nasce no nível da sua pré-evolução (Charmeleon = 16)", () => {
+    expect(birthLevelForSpecies(edges, 5, START)).toBe(16);
+  });
+
+  // O caso do dono: um Charizard de pacote não pode sair nível 1.
+  it("forma final nasce no nível da pré-evolução IMEDIATA (Charizard = 36, não soma a cadeia)", () => {
+    expect(birthLevelForSpecies(edges, 6, START)).toBe(36);
+  });
+
+  it("espécie sem aresta de nível (pedra/troca, ou desconhecida) cai em STARTING_LEVEL", () => {
+    expect(birthLevelForSpecies(edges, 999, START)).toBe(1);
+    // Vulpix→Ninetales é por pedra: sem aresta de nível apontando pra Ninetales.
+    expect(birthLevelForSpecies([{ evolvesToApiId: null, evolvesToLevel: null }], 38, START)).toBe(1);
+  });
+
+  it("nunca devolve abaixo de STARTING_LEVEL", () => {
+    expect(birthLevelForSpecies([{ evolvesToApiId: 7, evolvesToLevel: 1 }], 7, 5)).toBe(5);
   });
 });
