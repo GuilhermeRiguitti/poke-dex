@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { STARTING_LEVEL, xpForLevel, type PokemonCardDTO } from "@/src/modules/pokedex";
+import { birthLevelForSpecies, STARTING_LEVEL, xpForLevel, type PokemonCardDTO } from "@/src/modules/pokedex";
 import { canOpenFree, FREE_PACK_INTERVAL_MS } from "../domain/cooldown";
 import { drawPack } from "../domain/rarity";
 import { toPackStateDTO } from "../queries/readPackState";
@@ -45,10 +45,27 @@ export async function openPack(userId: string, rng: () => number = Math.random):
   }
 
   // Pool do espelho + sorteio FORA da transação. O card já sai daqui montado.
+  // `evolvesTo*` vem junto pra calcular o nível de NASCIMENTO da forma evoluída
+  // (birthLevelForSpecies) sem uma query extra — o pool inteiro já está na mão.
   const species = await prisma.pokemon.findMany({
-    select: { id: true, pokemonApiId: true, name: true, spriteUrl: true, types: true },
+    select: {
+      id: true,
+      pokemonApiId: true,
+      name: true,
+      spriteUrl: true,
+      types: true,
+      evolvesToApiId: true,
+      evolvesToLevel: true,
+    },
   });
   if (species.length === 0) return { ok: false, error: "empty_pokedex" };
+
+  // Arestas de evolução por nível de TODO o espelho — a forma evoluída nasce no
+  // nível em que seria alcançada (Charizard não sai nível 1).
+  const evolutionEdges = species.map((s) => ({
+    evolvesToApiId: s.evolvesToApiId,
+    evolvesToLevel: s.evolvesToLevel,
+  }));
 
   const byApiId = new Map<number, MirrorSpecies>();
   for (const s of species) {
@@ -104,17 +121,23 @@ export async function openPack(userId: string, rng: () => number = Math.random):
 
       // Duplicata é PERMITIDA (não há mais @@unique[userId,pokemonId]): cada
       // carta sorteada CRIA uma instância nova — repetida deixou de ser no-op,
-      // porque a troca entre jogadores dá uso a ela. Nível/XP explícitos (e não
-      // só o default) porque os dois têm que casar: `level` é função de `xp`
+      // porque a troca entre jogadores dá uso a ela.
+      //
+      // Nível de NASCIMENTO: forma evoluída nasce no nível em que seria alcançada
+      // (Charizard não sai nível 1); forma-base sai em STARTING_LEVEL. Nível/XP
+      // explícitos porque os dois têm que casar: `level` é função de `xp`
       // (levelFromXp); escrever um sem o outro criaria o único estado inválido
       // possível aqui.
       await tx.userPokemon.createMany({
-        data: speciesIds.map((pokemonId) => ({
-          userId,
-          pokemonId,
-          level: STARTING_LEVEL,
-          xp: xpForLevel(STARTING_LEVEL),
-        })),
+        data: drawnIds.map((apiId) => {
+          const level = birthLevelForSpecies(evolutionEdges, apiId, STARTING_LEVEL);
+          return {
+            userId,
+            pokemonId: byApiId.get(apiId)!.id,
+            level,
+            xp: xpForLevel(level),
+          };
+        }),
       });
 
       const updated = await tx.packState.findUniqueOrThrow({

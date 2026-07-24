@@ -21,7 +21,9 @@ const { openPack } = await import("@/src/modules/packs/commands/openPack");
 
 const DAY = 24 * 60 * 60 * 1000;
 
-// Espelho fake: 8 espécies (apiId 1..8), id "sp-<apiId>". Pool suficiente pras 6 cartas.
+// Espelho fake: 8 espécies (apiId 1..8), id "sp-<apiId>". Pool suficiente pras 6
+// cartas. Sem evolução por default (birthLevel = STARTING_LEVEL) — os testes que
+// exercitam o nível de nascimento montam o próprio espelho com aresta.
 function mirrorSpecies() {
   return Array.from({ length: 8 }, (_, i) => ({
     id: `sp-${i + 1}`,
@@ -29,6 +31,8 @@ function mirrorSpecies() {
     name: `mon-${i + 1}`,
     spriteUrl: null,
     types: ["normal"],
+    evolvesToApiId: null,
+    evolvesToLevel: null,
   }));
 }
 
@@ -129,6 +133,36 @@ describe("openPack — caminho feliz", () => {
     expect(prismaMock.userPokemon.createMany).toHaveBeenCalledOnce();
     const created = prismaMock.userPokemon.createMany.mock.calls[0][0].data as { pokemonId: string }[];
     expect(created.some((r) => r.pokemonId === `sp-${drawn[0]}`)).toBe(true);
+  });
+
+  // O caso do dono: forma evoluída não pode sair nível 1. Espelho de 6 espécies
+  // (pool == PACK_SIZE => todas sorteadas); sp-2 evolui de sp-1 no nv.10.
+  it("forma evoluída nasce no nível condizente; forma-base em STARTING_LEVEL", async () => {
+    const mirror = Array.from({ length: 6 }, (_, i) => ({
+      id: `sp-${i + 1}`,
+      pokemonApiId: i + 1,
+      name: `mon-${i + 1}`,
+      spriteUrl: null,
+      types: ["normal"],
+      evolvesToApiId: i === 0 ? 2 : null, // sp-1 → sp-2
+      evolvesToLevel: i === 0 ? 10 : null,
+    }));
+    prismaMock.pokemon.findMany.mockResolvedValue(mirror);
+    prismaMock.packState.upsert.mockResolvedValue({ lastFreePackAt: null, extraPacks: 0 });
+    prismaMock.packState.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await openPack("u1");
+    expect(result.ok).toBe(true);
+
+    const data = prismaMock.userPokemon.createMany.mock.calls[0][0].data as {
+      pokemonId: string;
+      level: number;
+      xp: number;
+    }[];
+    const evolved = data.find((r) => r.pokemonId === "sp-2");
+    const base = data.find((r) => r.pokemonId === "sp-1");
+    expect(evolved?.level).toBe(10); // nasce no nível da pré-evolução, não 1
+    expect(base?.level).toBe(1); // forma-base em STARTING_LEVEL
   });
 
   it("espelho vazio => empty_pokedex (não dá pra sortear do nada)", async () => {
