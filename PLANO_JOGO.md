@@ -324,6 +324,36 @@ pelo claim do `PackState`. É o alicerce de **troca** (⏳ pendente) e cruzament
 Efeito colateral bom: evoluir para uma espécie que você já tem parou de estourar a
 `@@unique` no meio da transação da batalha.
 
+**Forma evoluída nasce no nível condizente ✅ FEITO:** carta evoluída sorteada no
+pacote nasce no nível em que seria alcançada (`birthLevelForSpecies` = o
+`evolvesToLevel` da pré-evolução imediata: Charizard nasce 36, não 1); forma-base
+segue em `STARTING_LEVEL`. Sem query extra — o `openPack` usa as arestas de
+evolução do pool que já leu.
+
+### 7.3 Desenho das próximas fatias (tutor · ovo · troca) — ⏳ pendentes
+
+Todas se apoiam na mesma fundação: **tutor** e **ovo** só mudam o `source` da
+`UserPokemonMove` e o "como se ganha"; a **troca** move instâncias (habilitada
+pelas duplicatas). Decisões travadas com o dono:
+
+- **Cruzamento (ovo) = NASCE uma carta nova.** Cruzar dois `UserPokemon` do
+  jogador: se um "pai" conhece um golpe que a espécie do outro aprende por `egg`,
+  nasce uma **instância nova** (nível 1) já com esse egg-move concedido
+  (`UserPokemonMove source:"egg"`). **Sem choco** — o serverless não tem worker
+  pra temporizar. A trava 1-por-espécie já saiu, então a cópia nova cabe.
+- **Troca = trocar POKÉMON entre players** (o clássico), não cartas. Módulo
+  `trade`: oferta/aceite entre dois users, transferindo a instância de
+  `UserPokemon`. Sem restrição de espécie repetida (duplicata permitida). É o que
+  dá o "pai" pro cruzamento.
+- **Tutor = quests/desafios diários** com um Pokémon específico. Nova tabela de
+  progresso de quest (dia UTC via `packs/domain/streak.ts`), incrementada no fim
+  da batalha (`awardBattleXp`, dentro do claim que garante pagamento único); ao
+  completar, concede um golpe `tutor` (`UserPokemonMove source:"tutor"`).
+
+Ordem sugerida: **troca** (dá uso às duplicatas e destrava conseguir o "pai") →
+**cruzamento** → **tutor** (independente das outras). Balanceamento (raridade de
+token/quest, custo) só se acerta jogando.
+
 ---
 
 ## 8. Infra de transporte, tempo e segurança (Realtime + cron)
