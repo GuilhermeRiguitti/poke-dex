@@ -1,6 +1,6 @@
 import { fetchAndCacheType } from "@/src/lib/pokeapiCache";
 import { DECK_LIMIT, readDeckSlots, type DeckLoadoutSlot } from "@/src/modules/deck";
-import { deriveStats } from "@/src/modules/pokedex";
+import { deriveStats } from "@/src/modules/progression";
 import type { BattleMoveDef, BattlePokemonState } from "../domain/types";
 import type { TypeEffectivenessMap } from "../domain/typeChart";
 

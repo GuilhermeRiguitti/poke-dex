@@ -302,7 +302,7 @@ O nível libera o learnset base; **TM/tutor/ovo** são as formas de ganhar carta
 **não** dependem de nível. A fundação é uma tabela por instância —
 `UserPokemonMove` (§5): "este Pokémon do jogador desbloqueou o golpe X", com
 `source` dizendo de onde veio. A regra combinada "jogável = level-up destravado ∪
-concedido" é pura (`pokedex/domain/learnset.mergePlayableMoveIds`) e lida por
+concedido" é pura (`progression/domain/learnset.mergePlayableMoveIds`) e lida por
 `pokedex/queries/getUnlockedMoveIds` — consumida por `addToDeck`, `readLearnset` e
 pela poda de evolução (uma carta concedida **sobrevive** à evolução).
 
@@ -546,7 +546,7 @@ select cron.unschedule('resolve-battle-turns');
   `Move`, `PokemonMove` (learnset n:n), `UserPokemon` (nível/XP, `@@unique
   [userId,pokemonId]`). RLS ligada nas 4 tabelas na mesma migration (AGENTS.md).
   **Aditiva** — `UserCard`/`DeckCard`/battle seguem intactos até a Fase A migrar.
-- **`pokedex/domain/leveling.ts`**: `deriveStats` (fórmula §6, sem nível 50
+- **`progression/domain/leveling.ts`**: `deriveStats` (fórmula §6, sem nível 50
   fixo) + curva de XP. *(Reescrito em 2026-07-21: a curva virou a da série e o
   `skillPowerMult` foi removido — ver §6.)*
 - **`pokedex/commands/syncPokedex.ts`**: motor único (seed + refresh), upsert
@@ -620,7 +620,7 @@ Supabase CLI local.
   as duas cartas na mesa (ou timeout), claim por `(round, status)`, faltas
   simétricas, **um log por rodada**. `submitAction` não tem mais "é a sua vez".
 - **Learnset por nível** (§7.1): `version_group_details` normalizado em
-  `lib/pokeapi`, decidido em `pokedex/domain/learnset.ts`, gravado em
+  `lib/pokeapi`, decidido em `progression/domain/learnset.ts`, gravado em
   `PokemonMove` (nível/método/jogo). `readLearnset` devolve travadas com o nível
   exigido; **`addToDeck` recusa carta não destravada** (o POST é público).
 - **XP** (§6): `awardBattleXp` credita dentro da transação do claim (o claim é o
@@ -649,7 +649,7 @@ no ledger do Supabase. O `.env` aponta pro Supabase de PROD.
    `20260722130000_pokemon_level_evolution`, aditiva). Só `level-up` COM
    `min_level` vira aresta — pedra/troca/amizade ficam null (não é progressão por
    nível). O `growth_rate` (F4) fica pra depois — não é lido ainda.
-2. **Regra**: `pokedex/domain/evolution.ts` (puro, testado) decide
+2. **Regra**: `progression/domain/evolution.ts` (puro, testado) decide
    `evolutionTargetFor` e `pruneLoadout`; `awardBattleXp` troca `pokemonId` ao
    subir de nível — **em cadeia** (um XP grande pode cruzar dois estágios). Stats
    vêm de graça (derivam da espécie nova).

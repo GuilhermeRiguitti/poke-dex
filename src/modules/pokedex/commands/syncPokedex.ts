@@ -8,9 +8,14 @@ import {
   fetchSpeciesEvolutionChainId,
   type NormalizedPokemon,
 } from "@/src/lib/pokeapi";
-import type { BaseStats } from "../domain/leveling";
-import { pickLearnEntry, pickVersionGroup, type LearnsetEntry } from "../domain/learnset";
-import { parseLevelUpEvolutions, type EvolutionEdge } from "../domain/evolution";
+import {
+  parseLevelUpEvolutions,
+  pickLearnEntry,
+  pickVersionGroup,
+  type BaseStats,
+  type EvolutionEdge,
+  type LearnsetEntry,
+} from "@/src/modules/progression";
 
 // Sincroniza o espelho da PokéAPI (Pokemon/Move/PokemonMove) — o motor único
 // da seed inicial (Fase 0) E do cron de refresh (PLANO_JOGO.md §7). Escreve →

@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { PLAYABLE_LEARN_METHOD, mergePlayableMoveIds } from "../domain/learnset";
+import { PLAYABLE_LEARN_METHOD, mergePlayableMoveIds } from "@/src/modules/progression";
 
 /**
  * O conjunto de `moveId` que um Pokémon do jogador PODE usar: os de level-up já
