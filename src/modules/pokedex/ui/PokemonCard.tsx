@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HoloCard from "@/src/components/HoloCard";
 import TypeBadge from "@/src/components/TypeBadge";
 import { typeColor } from "@/src/lib/typeColors";
 
@@ -8,8 +9,9 @@ import { typeColor } from "@/src/lib/typeColors";
 // "Capturar" de um lado, "+ Deck / Soltar" do outro. Então o rodapé é
 // `children`, e é a única coisa que os dois lados escrevem.
 //
-// É Server Component. O rodapé que o chamador passa pode ser "use client" (e é,
-// na coleção) — a fronteira do cliente fica NELE, não no card.
+// É Server Component. Ele renderiza o HoloCard (esse sim "use client", o
+// envelope 3D holográfico) passando a moldura como children server-rendered —
+// a fronteira do cliente fica no HoloCard e no rodapé, nunca neste arquivo.
 
 export default function PokemonCard({
   pokemonId,
@@ -39,47 +41,49 @@ export default function PokemonCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div
-      data-highlighted={highlighted || undefined}
-      className="card-frame clip-card animate-rise flex flex-col p-3 data-highlighted:border-flare/60"
-      style={
-        {
-          "--type-c": typeColor(accentType),
-          animationDelay: `${index * 25}ms`,
-        } as React.CSSProperties
-      }
-    >
-      <div className="flex items-start justify-between">
-        <span className="font-title text-xs tracking-wider text-ink-dim">{dexNumber}</span>
-        <div className="flex flex-col items-end gap-1">
-          {types.map((type) => (
-            <TypeBadge key={type} type={type} small />
-          ))}
-        </div>
-      </div>
-
-      <Link
-        href={`/pokemon/${pokemonId}`}
-        className="flex flex-1 flex-col items-center justify-center py-1"
+    <HoloCard>
+      <div
+        data-highlighted={highlighted || undefined}
+        className="card-frame clip-card animate-rise flex flex-col p-3 data-highlighted:border-flare/60"
+        style={
+          {
+            "--type-c": typeColor(accentType),
+            animationDelay: `${index * 25}ms`,
+          } as React.CSSProperties
+        }
       >
-        {artworkUrl && (
-          // eslint-disable-next-line @next/next/no-img-element -- sprites vêm da PokéAPI (host externo dinâmico)
-          <img
-            src={artworkUrl}
-            alt={name}
-            loading="lazy"
-            className="h-24 w-24 object-contain drop-shadow-[0_6px_8px_rgba(0,0,0,.45)]"
-          />
-        )}
-        <span className="mt-1 font-title uppercase tracking-wide">{name}</span>
-        {level != null && (
-          <span className="lv-badge mt-1">
-            <span>Lv {level}</span>
-          </span>
-        )}
-      </Link>
+        <div className="flex items-start justify-between">
+          <span className="font-title text-xs tracking-wider text-ink-dim">{dexNumber}</span>
+          <div className="flex flex-col items-end gap-1">
+            {types.map((type) => (
+              <TypeBadge key={type} type={type} small />
+            ))}
+          </div>
+        </div>
 
-      {children && <div className="mt-2">{children}</div>}
-    </div>
+        <Link
+          href={`/pokemon/${pokemonId}`}
+          className="flex flex-1 flex-col items-center justify-center py-1"
+        >
+          {artworkUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- sprites vêm da PokéAPI (host externo dinâmico)
+            <img
+              src={artworkUrl}
+              alt={name}
+              loading="lazy"
+              className="h-24 w-24 object-contain drop-shadow-[0_6px_8px_rgba(0,0,0,.45)]"
+            />
+          )}
+          <span className="mt-1 font-title uppercase tracking-wide">{name}</span>
+          {level != null && (
+            <span className="lv-badge mt-1">
+              <span>Lv {level}</span>
+            </span>
+          )}
+        </Link>
+
+        {children && <div className="mt-2">{children}</div>}
+      </div>
+    </HoloCard>
   );
 }

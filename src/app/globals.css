@@ -151,6 +151,70 @@ a { color: inherit; text-decoration: none; }
 }
 .card-frame:hover::after { animation: scan-sweep 0.7s ease-out; }
 
+/* ── carta holográfica 3D (coleção = montar deck · abertura de pacote) ──
+   O wrapper dá a perspectiva; a carta inclina seguindo o ponteiro (custom
+   props escritas pelo HoloCard, regra pura em holoTilt.ts) e ganha duas
+   camadas de brilho recortadas na mesma silhueta chanfrada. Some sozinho em
+   touch / reduced-motion (o data-active nunca liga → carta reta). */
+.holo-scene {
+  height: 100%;
+  perspective: 900px;
+}
+.holo-card {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--holo-ry, 0deg)) rotateY(var(--holo-rx, 0deg));
+  transition: transform 0.3s var(--ease-snap);
+  will-change: transform;
+}
+/* enquanto o ponteiro corre, a carta acompanha rápido; ao sair, volta suave */
+.holo-card[data-active="true"] { transition: transform 0.07s linear; }
+/* a inclinação já dá o movimento — desliga o "sobe 3px" do card-frame aqui */
+.holo-card .card-frame { height: 100%; }
+.holo-card .card-frame:hover { transform: none; }
+
+.holo-foil,
+.holo-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+/* foil: arco-íris que desliza conforme o ponteiro, revelado só no impacto de luz */
+.holo-foil {
+  background: repeating-linear-gradient(
+    110deg,
+    rgba(255, 119, 115, 0.45) 0%,
+    rgba(255, 237, 143, 0.45) 12%,
+    rgba(150, 255, 143, 0.45) 24%,
+    rgba(143, 247, 255, 0.45) 36%,
+    rgba(143, 166, 255, 0.45) 48%,
+    rgba(214, 143, 255, 0.45) 60%,
+    rgba(255, 119, 115, 0.45) 72%
+  );
+  background-size: 300% 300%;
+  background-position: var(--holo-mx, 50%) var(--holo-my, 50%);
+  mix-blend-mode: color-dodge;
+  filter: brightness(0.85) contrast(1.1) saturate(1.5);
+}
+/* glare: brilho especular branco que segue o ponteiro */
+.holo-glare {
+  background: radial-gradient(
+    circle at var(--holo-mx, 50%) var(--holo-my, 50%),
+    rgba(255, 255, 255, 0.7),
+    rgba(255, 255, 255, 0.12) 22%,
+    transparent 52%
+  );
+  mix-blend-mode: overlay;
+}
+.holo-card[data-active="true"] .holo-foil { opacity: 0.45; }
+.holo-card[data-active="true"] .holo-glare { opacity: 0.8; }
+/* raridade alta (pacote): foil mais saturado e mais presente */
+.holo-card--intense .holo-foil { filter: brightness(1) contrast(1.2) saturate(1.85); }
+.holo-card--intense[data-active="true"] .holo-foil { opacity: 0.62; }
+
 /* ── barra de HP/stat segmentada (barra de EXP de MMORPG) ──── */
 .bar-track {
   position: relative;
