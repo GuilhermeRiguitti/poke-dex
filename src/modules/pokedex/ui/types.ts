@@ -6,6 +6,8 @@
 // centenas de KB de RSC payload por navegação, pra desenhar um sprite e dois
 // badges. O DTO do card tem 5 campos de propósito.
 
+import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+
 /** Um pokémon como um CARD precisa dele. Nada além do que a moldura desenha. */
 export interface PokemonCardDTO {
   id: number;
@@ -24,6 +26,10 @@ export interface CollectionCardDTO {
   pokemonId: number; // id público da PokéAPI (National Dex)
   level: number;
   xp: number;
+  /** soma dos base stats — a "fortitude" que define raridade e força do holo */
+  bst: number;
+  /** faixa de raridade (mesma regra do pacote), pra moldura + intensidade do holo */
+  rarity: RarityTier;
   /** null se a espécie não estiver no espelho (não deveria ocorrer — FK garante). */
   pokemon: PokemonCardDTO | null;
 }

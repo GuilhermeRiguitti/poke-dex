@@ -36,6 +36,21 @@ export function isTopRarity(tier: RarityTier): boolean {
   return tier === "legendary";
 }
 
+// Força do holográfico (0..1) pela MESMA fortitude que define a raridade: quanto
+// mais forte o pokémon, mais metálico/vivo o brilho. É o que liga "raridade da
+// carta" ao efeito 3D, tanto no pacote quanto na coleção.
+const RARITY_HOLO: Record<RarityTier, number> = {
+  common: 0.32,
+  uncommon: 0.55,
+  rare: 0.78,
+  legendary: 1,
+};
+
+/** Intensidade do holo (0..1) pra passar ao HoloCard. */
+export function holoIntensity(tier: RarityTier): number {
+  return RARITY_HOLO[tier];
+}
+
 /**
  * Milissegundos até o próximo pacote -> "23h 59m" / "45m 12s" / "08s".
  * Abaixo de 1h mostra minutos+segundos (contagem viva); acima, horas+minutos.

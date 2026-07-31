@@ -4,31 +4,36 @@ import { useRef } from "react";
 import { computeHoloTilt } from "./holoTilt";
 
 // Envelope holográfico 3D pra qualquer carta. Inclina seguindo o ponteiro e
-// passa um brilho/foil por cima — a "carta = Pokémon" da coleção e do pacote.
+// passa um brilho metálico por cima — a "carta = Pokémon" da coleção e do pacote.
 //
 // É a ÚNICA parte cliente: o conteúdo (children) vem renderizado do servidor
-// (a moldura card-frame com sprite/tipos/rodapé). Aqui só medimos o ponteiro e
+// (a moldura da carta com sprite/tipos/rodapé). Aqui só medimos o ponteiro e
 // escrevemos custom properties CSS; o visual mora no globals.css (.holo-*).
 //
 // A regra de inclinação é pura e testada (holoTilt.ts). Desliga sozinho em
 // touch (sem hover fino) e em prefers-reduced-motion — aí a carta fica reta.
+//
+// `intensity` (0..1) escala o brilho e a inclinação: vem da fortitude/raridade
+// (holoIntensity) — pokémon mais forte, carta mais metálica e viva.
 
-const MAX_DEG = 10;
-const MAX_DEG_INTENSE = 14;
+const MAX_DEG_MIN = 8;
+const MAX_DEG_MAX = 15;
 
 export default function HoloCard({
   className = "",
-  intense = false,
+  intensity = 0.55,
   children,
 }: {
   /** classes extras no wrapper (ex.: a coluna do grid) */
   className?: string;
-  /** brilho mais forte + inclinação maior (raridade alta no pacote) */
-  intense?: boolean;
+  /** 0..1 — força do holo/inclinação (raridade). Default meio-termo. */
+  intensity?: number;
   children: React.ReactNode;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const raf = useRef<number | null>(null);
+  const strength = Math.min(1, Math.max(0, intensity));
+  const maxDeg = MAX_DEG_MIN + (MAX_DEG_MAX - MAX_DEG_MIN) * strength;
 
   function tiltEnabled(): boolean {
     if (typeof window === "undefined" || !window.matchMedia) return false;
@@ -46,7 +51,7 @@ export default function HoloCard({
     const py = (e.clientY - rect.top) / rect.height;
     if (raf.current !== null) cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
-      const t = computeHoloTilt(px, py, intense ? MAX_DEG_INTENSE : MAX_DEG);
+      const t = computeHoloTilt(px, py, maxDeg);
       el.style.setProperty("--holo-rx", `${t.rotateY}deg`);
       el.style.setProperty("--holo-ry", `${t.rotateX}deg`);
       el.style.setProperty("--holo-mx", `${t.glareX}%`);
@@ -68,7 +73,11 @@ export default function HoloCard({
 
   return (
     <div className={`holo-scene ${className}`} onPointerMove={handleMove} onPointerLeave={reset}>
-      <div ref={cardRef} className={`holo-card ${intense ? "holo-card--intense" : ""}`}>
+      <div
+        ref={cardRef}
+        className="holo-card"
+        style={{ ["--holo-strength" as string]: strength }}
+      >
         {children}
         <div className="holo-foil clip-card" aria-hidden />
         <div className="holo-glare clip-card" aria-hidden />

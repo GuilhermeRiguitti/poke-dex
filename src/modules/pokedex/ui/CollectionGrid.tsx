@@ -16,6 +16,7 @@ export default function CollectionGrid({ cards }: { cards: CollectionCardView[] 
           artworkUrl={card.artworkUrl}
           types={card.types}
           accentType={card.accentType}
+          rarity={card.rarity}
           index={i}
           highlighted={card.inDeck}
           level={card.level}
