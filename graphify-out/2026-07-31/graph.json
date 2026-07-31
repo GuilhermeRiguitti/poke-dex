@@ -863,8 +863,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_game_layout",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "(game)/layout.tsx"
     },
     {
@@ -874,8 +874,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_app_game_layout_gamelayout",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "gamelayout()"
     },
     {
@@ -885,8 +885,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_game_packs_page",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "packs/page.tsx"
     },
     {
@@ -896,8 +896,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_app_game_packs_page_packspage",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "packspage()"
     },
     {
@@ -929,8 +929,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_game_pokedex_page",
-      "community": 12,
-      "community_name": "pokedex/index.ts",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "pokedex/page.tsx"
     },
     {
@@ -940,8 +940,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_app_game_pokedex_page_collectionpage",
-      "community": 12,
-      "community_name": "pokedex/index.ts",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "collectionpage()"
     },
     {
@@ -1248,8 +1248,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_api_packs_checkin_route",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "checkin/route.ts"
     },
     {
@@ -1259,8 +1259,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_app_api_packs_checkin_route_post",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "post()"
     },
     {
@@ -1407,6 +1407,61 @@
       "norm_label": "motiondemo()"
     },
     {
+      "label": "holo-preview/page.tsx",
+      "file_type": "code",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_app_holo_preview_page",
+      "community": 2,
+      "community_name": "packs/index.ts",
+      "norm_label": "holo-preview/page.tsx"
+    },
+    {
+      "label": "art()",
+      "file_type": "code",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "src_app_holo_preview_page_art",
+      "community": 2,
+      "community_name": "packs/index.ts",
+      "norm_label": "art()"
+    },
+    {
+      "label": "collection",
+      "file_type": "code",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "src_app_holo_preview_page_collection",
+      "community": 2,
+      "community_name": "packs/index.ts",
+      "norm_label": "collection"
+    },
+    {
+      "label": "pack",
+      "file_type": "code",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "src_app_holo_preview_page_pack",
+      "community": 2,
+      "community_name": "packs/index.ts",
+      "norm_label": "pack"
+    },
+    {
+      "label": "HoloPreviewPage()",
+      "file_type": "code",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L43",
+      "_origin": "ast",
+      "id": "src_app_holo_preview_page_holopreviewpage",
+      "community": 2,
+      "community_name": "packs/index.ts",
+      "norm_label": "holopreviewpage()"
+    },
+    {
       "label": "app/layout.tsx",
       "file_type": "code",
       "source_file": "src/app/layout.tsx",
@@ -1468,8 +1523,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_login_page",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "login/page.tsx"
     },
     {
@@ -1479,8 +1534,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_app_login_page_loginpage",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "loginpage()"
     },
     {
@@ -1504,6 +1559,28 @@
       "community": 59,
       "community_name": "not-found.tsx",
       "norm_label": "notfound()"
+    },
+    {
+      "label": "HoloCard.tsx",
+      "file_type": "code",
+      "source_file": "src/components/HoloCard.tsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_components_holocard",
+      "community": 6,
+      "community_name": "battleView.ts",
+      "norm_label": "holocard.tsx"
+    },
+    {
+      "label": "HoloCard()",
+      "file_type": "code",
+      "source_file": "src/components/HoloCard.tsx",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "src_components_holocard_holocard",
+      "community": 6,
+      "community_name": "battleView.ts",
+      "norm_label": "holocard()"
     },
     {
       "label": "HpBar.tsx",
@@ -1578,8 +1655,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_components_navbar_navbar",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "navbar()"
     },
     {
@@ -1622,8 +1699,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_typebadge",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "typebadge.tsx"
     },
     {
@@ -1633,9 +1710,64 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_components_typebadge_typebadge",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "typebadge()"
+    },
+    {
+      "label": "holoTilt.ts",
+      "file_type": "code",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_components_holotilt",
+      "community": 6,
+      "community_name": "battleView.ts",
+      "norm_label": "holotilt.ts"
+    },
+    {
+      "label": "HoloTilt",
+      "file_type": "code",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "src_components_holotilt_holotilt",
+      "community": 6,
+      "community_name": "battleView.ts",
+      "norm_label": "holotilt"
+    },
+    {
+      "label": "HOLO_REST",
+      "file_type": "code",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L18",
+      "_origin": "ast",
+      "id": "src_components_holotilt_holo_rest",
+      "community": 6,
+      "community_name": "battleView.ts",
+      "norm_label": "holo_rest"
+    },
+    {
+      "label": "clamp01()",
+      "file_type": "code",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "src_components_holotilt_clamp01",
+      "community": 6,
+      "community_name": "battleView.ts",
+      "norm_label": "clamp01()"
+    },
+    {
+      "label": "computeHoloTilt()",
+      "file_type": "code",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "src_components_holotilt_computeholotilt",
+      "community": 6,
+      "community_name": "battleView.ts",
+      "norm_label": "computeholotilt()"
     },
     {
       "label": "icons.tsx",
@@ -1842,8 +1974,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_lib_pokeapi_normalizedpokemon",
-      "community": 10,
-      "community_name": "pokeapi.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "normalizedpokemon"
     },
     {
@@ -1897,8 +2029,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "src_lib_pokeapi_fetchpokemon",
-      "community": 10,
-      "community_name": "pokeapi.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "fetchpokemon()"
     },
     {
@@ -2117,8 +2249,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_typecolors",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "typecolors.ts"
     },
     {
@@ -2139,8 +2271,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_lib_typecolors_typecolor",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "typecolor()"
     },
     {
@@ -2293,8 +2425,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "src_modules_battle_commands_buildduelsnapshot_buildduelsnapshot",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 1,
+      "community_name": "resolveTurn.ts",
       "norm_label": "buildduelsnapshot()"
     },
     {
@@ -2315,8 +2447,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_battle_commands_enqueuebattle",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 1,
+      "community_name": "resolveTurn.ts",
       "norm_label": "enqueuebattle.ts"
     },
     {
@@ -2326,8 +2458,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_modules_battle_commands_enqueuebattle_topokemoncreateinput",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 1,
+      "community_name": "resolveTurn.ts",
       "norm_label": "topokemoncreateinput()"
     },
     {
@@ -2337,8 +2469,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_modules_battle_commands_enqueuebattle_enqueuebattle",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 1,
+      "community_name": "resolveTurn.ts",
       "norm_label": "enqueuebattle()"
     },
     {
@@ -3437,8 +3569,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_battle_ui_battleresultoverlay",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "battleresultoverlay.tsx"
     },
     {
@@ -3448,8 +3580,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_modules_battle_ui_battleresultoverlay_battleresultoverlay",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "battleresultoverlay()"
     },
     {
@@ -3866,8 +3998,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_modules_battle_ui_types_battleeventdto",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "battleeventdto"
     },
     {
@@ -3888,8 +4020,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "src_modules_battle_ui_types_battlestatusdto",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "battlestatusdto"
     },
     {
@@ -3899,8 +4031,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "src_modules_battle_ui_types_battledto",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "battledto"
     },
     {
@@ -4185,8 +4317,8 @@
       "source_location": "L95",
       "_origin": "ast",
       "id": "src_modules_deck_queries_readdeck_readdeckslots",
-      "community": 0,
-      "community_name": "battle/index.ts",
+      "community": 1,
+      "community_name": "resolveTurn.ts",
       "norm_label": "readdeckslots()"
     },
     {
@@ -4350,8 +4482,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_commands_checkinlogin",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "checkinlogin.ts"
     },
     {
@@ -4361,8 +4493,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_modules_packs_commands_checkinlogin_checkinresult",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "checkinresult"
     },
     {
@@ -4372,8 +4504,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_modules_packs_commands_checkinlogin_checkinlogin",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "checkinlogin()"
     },
     {
@@ -4548,8 +4680,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_domain_streak",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "streak.ts"
     },
     {
@@ -4559,8 +4691,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_modules_packs_domain_streak_utcdayindex",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "utcdayindex()"
     },
     {
@@ -4570,8 +4702,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_modules_packs_domain_streak_startofutcday",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "startofutcday()"
     },
     {
@@ -4581,8 +4713,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_modules_packs_domain_streak_alreadycheckedintoday",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "alreadycheckedintoday()"
     },
     {
@@ -4592,8 +4724,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "src_modules_packs_domain_streak_nextstreak",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "nextstreak()"
     },
     {
@@ -4603,8 +4735,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_modules_packs_domain_streak_earnsreward",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "earnsreward()"
     },
     {
@@ -4614,8 +4746,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "src_modules_packs_domain_streak_daysuntilreward",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "daysuntilreward()"
     },
     {
@@ -4713,8 +4845,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_ui_dailycheckin",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "dailycheckin.tsx"
     },
     {
@@ -4724,8 +4856,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_modules_packs_ui_dailycheckin_utcdaykey",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "utcdaykey()"
     },
     {
@@ -4735,8 +4867,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_modules_packs_ui_dailycheckin_dailycheckin",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "dailycheckin()"
     },
     {
@@ -4787,7 +4919,7 @@
       "label": "PackRevealCard()",
       "file_type": "code",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L12",
+      "source_location": "L14",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packrevealcard_packrevealcard",
       "community": 2,
@@ -4944,8 +5076,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_commands_refreshpokedex",
-      "community": 12,
-      "community_name": "pokedex/index.ts",
+      "community": 18,
+      "community_name": "syncPokedex.ts",
       "norm_label": "refreshpokedex.ts"
     },
     {
@@ -4955,8 +5087,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_modules_pokedex_commands_refreshpokedex_refreshpokedexsummary",
-      "community": 12,
-      "community_name": "pokedex/index.ts",
+      "community": 18,
+      "community_name": "syncPokedex.ts",
       "norm_label": "refreshpokedexsummary"
     },
     {
@@ -4966,8 +5098,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_modules_pokedex_commands_refreshpokedex_refreshpokedexoptions",
-      "community": 12,
-      "community_name": "pokedex/index.ts",
+      "community": 18,
+      "community_name": "syncPokedex.ts",
       "norm_label": "refreshpokedexoptions"
     },
     {
@@ -5076,8 +5208,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "src_modules_pokedex_commands_syncpokedex_syncedspecies",
-      "community": 18,
-      "community_name": "syncPokedex.ts",
+      "community": 4,
+      "community_name": "progression/index.ts",
       "norm_label": "syncedspecies"
     },
     {
@@ -5087,8 +5219,8 @@
       "source_location": "L95",
       "_origin": "ast",
       "id": "src_modules_pokedex_commands_syncpokedex_syncpokedexsummary",
-      "community": 12,
-      "community_name": "pokedex/index.ts",
+      "community": 18,
+      "community_name": "syncPokedex.ts",
       "norm_label": "syncpokedexsummary"
     },
     {
@@ -5186,8 +5318,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_modules_pokedex_queries_getcollection_getcollection",
-      "community": 12,
-      "community_name": "pokedex/index.ts",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "getcollection()"
     },
     {
@@ -5197,8 +5329,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_queries_getpokemondetail",
-      "community": 10,
-      "community_name": "pokeapi.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "getpokemondetail.ts"
     },
     {
@@ -5208,8 +5340,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_modules_pokedex_queries_getpokemondetail_getpokemondetail",
-      "community": 16,
-      "community_name": "pokedexView.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "getpokemondetail()"
     },
     {
@@ -5263,8 +5395,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_queries_topokemondto",
-      "community": 10,
-      "community_name": "pokeapi.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "topokemondto.ts"
     },
     {
@@ -5274,8 +5406,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_modules_pokedex_queries_topokemondto_topokemoncarddto",
-      "community": 20,
-      "community_name": "listPokedexPage.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "topokemoncarddto()"
     },
     {
@@ -5285,8 +5417,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "src_modules_pokedex_queries_topokemondto_topokemondetaildto",
-      "community": 10,
-      "community_name": "pokeapi.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "topokemondetaildto()"
     },
     {
@@ -5296,8 +5428,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_collectioncardactions",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "collectioncardactions.tsx"
     },
     {
@@ -5307,8 +5439,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_collectioncardactions_collectioncardactions",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "collectioncardactions()"
     },
     {
@@ -5318,8 +5450,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_collectiongrid",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "collectiongrid.tsx"
     },
     {
@@ -5329,8 +5461,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_collectiongrid_collectiongrid",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "collectiongrid()"
     },
     {
@@ -5384,8 +5516,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_loadoutbuilder",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "loadoutbuilder.tsx"
     },
     {
@@ -5395,8 +5527,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_loadoutbuilder_loadoutbuilder",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "loadoutbuilder()"
     },
     {
@@ -5439,8 +5571,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexgrid",
-      "community": 16,
-      "community_name": "pokedexView.ts",
+      "community": 12,
+      "community_name": "pokedex/index.ts",
       "norm_label": "pokedexgrid.tsx"
     },
     {
@@ -5450,8 +5582,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexgrid_pokedexgrid",
-      "community": 16,
-      "community_name": "pokedexView.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "pokedexgrid()"
     },
     {
@@ -5461,19 +5593,19 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokemoncard",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "pokemoncard.tsx"
     },
     {
       "label": "PokemonCard()",
       "file_type": "code",
       "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
-      "source_location": "L14",
+      "source_location": "L16",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokemoncard_pokemoncard",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "pokemoncard()"
     },
     {
@@ -5505,8 +5637,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokemonportrait",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "pokemonportrait.tsx"
     },
     {
@@ -5516,8 +5648,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokemonportrait_pokemonportrait",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 6,
+      "community_name": "battleView.ts",
       "norm_label": "pokemonportrait()"
     },
     {
@@ -5549,8 +5681,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexview",
-      "community": 16,
-      "community_name": "pokedexView.ts",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "pokedexview.ts"
     },
     {
@@ -5560,8 +5692,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexview_dexnumber",
-      "community": 16,
-      "community_name": "pokedexView.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "dexnumber()"
     },
     {
@@ -5571,8 +5703,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexview_collectioncardview",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "collectioncardview"
     },
     {
@@ -5582,8 +5714,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexview_deckslotview",
-      "community": 16,
-      "community_name": "pokedexView.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "deckslotview"
     },
     {
@@ -5593,8 +5725,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexview_collectionview",
-      "community": 12,
-      "community_name": "pokedex/index.ts",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "collectionview"
     },
     {
@@ -5604,8 +5736,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexview_stat_labels",
-      "community": 16,
-      "community_name": "pokedexView.ts",
+      "community": 13,
+      "community_name": "checkInLogin.ts",
       "norm_label": "stat_labels"
     },
     {
@@ -5648,8 +5780,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_types_pokemoncarddto",
-      "community": 2,
-      "community_name": "packs/index.ts",
+      "community": 12,
+      "community_name": "pokedex/index.ts",
       "norm_label": "pokemoncarddto"
     },
     {
@@ -5703,8 +5835,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_types_pokemondetaildto",
-      "community": 10,
-      "community_name": "pokeapi.ts",
+      "community": 12,
+      "community_name": "pokedex/index.ts",
       "norm_label": "pokemondetaildto"
     },
     {
@@ -5857,8 +5989,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "src_modules_progression_domain_learnset_learnsetentry",
-      "community": 18,
-      "community_name": "syncPokedex.ts",
+      "community": 4,
+      "community_name": "progression/index.ts",
       "norm_label": "learnsetentry"
     },
     {
@@ -6267,6 +6399,17 @@
       "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "teachtmresponsedto"
+    },
+    {
+      "label": "holoTilt.test.ts",
+      "file_type": "code",
+      "source_file": "tests/components/holoTilt.test.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "tests_components_holotilt_test",
+      "community": 6,
+      "community_name": "battleView.ts",
+      "norm_label": "holotilt.test.ts"
     },
     {
       "label": "enqueueBattle.test.ts",
@@ -6935,8 +7078,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_modules_packs_domain_streak_test",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "streak.test.ts"
     },
     {
@@ -6946,8 +7089,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "tests_modules_packs_domain_streak_test_d",
-      "community": 13,
-      "community_name": "checkInLogin.ts",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "d()"
     },
     {
@@ -6957,8 +7100,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_modules_packs_queries_topackdto_test",
-      "community": 2,
-      "community_name": "packs/index.ts",
+      "community": 12,
+      "community_name": "pokedex/index.ts",
       "norm_label": "topackdto.test.ts"
     },
     {
@@ -6968,8 +7111,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "tests_modules_packs_queries_topackdto_test_card",
-      "community": 2,
-      "community_name": "packs/index.ts",
+      "community": 12,
+      "community_name": "pokedex/index.ts",
       "norm_label": "card"
     },
     {
@@ -7023,8 +7166,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_modules_pokedex_queries_topokemondto_test",
-      "community": 10,
-      "community_name": "pokeapi.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "topokemondto.test.ts"
     },
     {
@@ -7034,8 +7177,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_modules_pokedex_queries_topokemondto_test_normalized",
-      "community": 10,
-      "community_name": "pokeapi.ts",
+      "community": 66,
+      "community_name": "toPokemonDTO.ts",
       "norm_label": "normalized()"
     },
     {
@@ -9154,7 +9297,7 @@
       "label": "SEGURANCA",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L5",
+      "source_location": "L12",
       "_origin": "ast",
       "id": "todo_seguranca",
       "community": 22,
@@ -9165,7 +9308,7 @@
       "label": "Auditado (ver resumo abaixo)",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L7",
+      "source_location": "L14",
       "_origin": "ast",
       "id": "todo_auditado_ver_resumo_abaixo",
       "community": 22,
@@ -9176,7 +9319,7 @@
       "label": "Aberto (achados da auditoria, ainda n\u00e3o corrigidos)",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L41",
+      "source_location": "L48",
       "_origin": "ast",
       "id": "todo_aberto_achados_da_auditoria_ainda_n\u00e3o_corrigidos",
       "community": 22,
@@ -9187,7 +9330,7 @@
       "label": "PRISMA CLIENT GLOBAL",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L59",
+      "source_location": "L66",
       "_origin": "ast",
       "id": "todo_prisma_client_global",
       "community": 22,
@@ -9198,7 +9341,7 @@
       "label": "VERIFICAR ISSO",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L61",
+      "source_location": "L68",
       "_origin": "ast",
       "id": "todo_verificar_isso",
       "community": 22,
@@ -9209,7 +9352,7 @@
       "label": "TELA POKDEMON DETALHE",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L74",
+      "source_location": "L81",
       "_origin": "ast",
       "id": "todo_tela_pokdemon_detalhe",
       "community": 22,
@@ -9220,7 +9363,7 @@
       "label": "VER ESSE SCRPT",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L77",
+      "source_location": "L84",
       "_origin": "ast",
       "id": "todo_ver_esse_scrpt",
       "community": 22,
@@ -9231,7 +9374,7 @@
       "label": "MIGRATIONS / REPRODUZIR O BANCO DO ZERO",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L84",
+      "source_location": "L91",
       "_origin": "ast",
       "id": "todo_migrations_reproduzir_o_banco_do_zero",
       "community": 22,
@@ -9242,7 +9385,7 @@
       "label": "SEGURAN\u00c7A EM DEPLOY (VER SOBRE)",
       "file_type": "document",
       "source_file": "TODO.md",
-      "source_location": "L117",
+      "source_location": "L124",
       "_origin": "ast",
       "id": "todo_seguran\u00e7a_em_deploy_ver_sobre",
       "community": 22,
@@ -9501,6 +9644,105 @@
       "community": 19,
       "community_name": "M\u00f3dulo `progression` \u2014 extra\u00e7\u00e3o do dom\u00ednio de progress\u00e3o",
       "norm_label": "decisoes (registro)"
+    },
+    {
+      "label": "2026-07-31-ui-3d-holo-card-design.md",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "2026-07-31-ui-3d-holo-card-design.md"
+    },
+    {
+      "label": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "ui 3d \u2014 carta holografica (colecao + pacote)"
+    },
+    {
+      "label": "Objetivo",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L6",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_objetivo",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "objetivo"
+    },
+    {
+      "label": "Decis\u00e3o-chave: CSS 3D, n\u00e3o three.js",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_decis\u00e3o_chave_css_3d_n\u00e3o_three_js",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "decisao-chave: css 3d, nao three.js"
+    },
+    {
+      "label": "O que foi feito",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L29",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_o_que_foi_feito",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "o que foi feito"
+    },
+    {
+      "label": "Degrada\u00e7\u00e3o (sem motion / touch)",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L47",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_degrada\u00e7\u00e3o_sem_motion_touch",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "degradacao (sem motion / touch)"
+    },
+    {
+      "label": "Verifica\u00e7\u00e3o",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L55",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_verifica\u00e7\u00e3o",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "verificacao"
+    },
+    {
+      "label": "Limpar antes de commitar",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_limpar_antes_de_commitar",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "limpar antes de commitar"
+    },
+    {
+      "label": "N\u00e3o feito (fora do escopo desta fatia)",
+      "file_type": "document",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L69",
+      "_origin": "ast",
+      "id": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_n\u00e3o_feito_fora_do_escopo_desta_fatia",
+      "community": 65,
+      "community_name": "UI 3D \u2014 carta hologr\u00e1fica (cole\u00e7\u00e3o + pacote)",
+      "norm_label": "nao feito (fora do escopo desta fatia)"
     },
     {
       "label": "PACK_SYSTEM.md",
@@ -12844,6 +13086,122 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_app_holo_preview_page_art",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_app_holo_preview_page_collection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L43",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_app_holo_preview_page_holopreviewpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_app_holo_preview_page_pack",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_modules_packs_ui_packrevealcard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_modules_packs_ui_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_modules_packs_ui_types_packcarddto",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_modules_pokedex_ui_pokemoncard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page",
+      "target": "src_modules_pokedex_ui_pokemoncard_pokemoncard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/app/holo-preview/page.tsx",
+      "source_location": "L60",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_app_holo_preview_page_holopreviewpage",
+      "target": "src_app_holo_preview_page_art",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/app/layout.tsx",
       "source_location": "L5",
       "weight": 1.0,
@@ -12965,6 +13323,89 @@
       "_origin": "ast",
       "source": "src_app_not_found",
       "target": "src_app_not_found_notfound",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/HoloCard.tsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_holocard",
+      "target": "src_components_holocard_holocard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/HoloCard.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_holocard",
+      "target": "src_components_holotilt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/HoloCard.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_holocard",
+      "target": "src_components_holotilt_computeholotilt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_modules_packs_ui_packrevealcard",
+      "target": "src_components_holocard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_modules_pokedex_ui_pokemoncard",
+      "target": "src_components_holocard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_modules_packs_ui_packrevealcard",
+      "target": "src_components_holocard_holocard",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_modules_pokedex_ui_pokemoncard",
+      "target": "src_components_holocard_holocard",
       "confidence_score": 1.0
     },
     {
@@ -13253,7 +13694,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L1",
+      "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -13265,7 +13706,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
-      "source_location": "L2",
+      "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_pokedex_ui_pokemoncard",
@@ -13313,7 +13754,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L1",
+      "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -13325,7 +13766,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
-      "source_location": "L2",
+      "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_pokedex_ui_pokemoncard",
@@ -13342,6 +13783,98 @@
       "_origin": "ast",
       "source": "src_modules_pokedex_ui_pokemonportrait",
       "target": "src_components_typebadge_typebadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_holotilt",
+      "target": "src_components_holotilt_clamp01",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_holotilt",
+      "target": "src_components_holotilt_computeholotilt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L18",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_holotilt",
+      "target": "src_components_holotilt_holo_rest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_holotilt",
+      "target": "src_components_holotilt_holotilt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/components/holoTilt.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_components_holotilt_test",
+      "target": "src_components_holotilt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/components/holoTilt.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_components_holotilt_test",
+      "target": "src_components_holotilt_holo_rest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/components/holoTilt.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_components_holotilt_computeholotilt",
+      "target": "src_components_holotilt_clamp01",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/components/holoTilt.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_components_holotilt_test",
+      "target": "src_components_holotilt_computeholotilt",
       "confidence_score": 1.0
     },
     {
@@ -14704,7 +15237,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
-      "source_location": "L3",
+      "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_pokedex_ui_pokemoncard",
@@ -14776,7 +15309,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
-      "source_location": "L3",
+      "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_pokedex_ui_pokemoncard",
@@ -14789,7 +15322,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
-      "source_location": "L47",
+      "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_pokedex_ui_pokemoncard_pokemoncard",
@@ -22858,7 +23391,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L12",
+      "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22870,7 +23403,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L3",
+      "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22882,7 +23415,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L3",
+      "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22894,7 +23427,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L3",
+      "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22906,7 +23439,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L3",
+      "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22918,7 +23451,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22930,7 +23463,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22942,7 +23475,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L2",
+      "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22954,7 +23487,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L2",
+      "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard",
@@ -22967,7 +23500,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L14",
+      "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard_packrevealcard",
@@ -22979,7 +23512,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L13",
+      "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard_packrevealcard",
@@ -22991,7 +23524,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L64",
+      "source_location": "L67",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard_packrevealcard",
@@ -23003,7 +23536,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/modules/packs/ui/PackRevealCard.tsx",
-      "source_location": "L15",
+      "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_packs_ui_packrevealcard_packrevealcard",
@@ -24832,7 +25365,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/pokedex/ui/PokemonCard.tsx",
-      "source_location": "L14",
+      "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_pokedex_ui_pokemoncard",
@@ -29156,7 +29689,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L84",
+      "source_location": "L91",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo",
@@ -29167,7 +29700,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L59",
+      "source_location": "L66",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo",
@@ -29178,7 +29711,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L5",
+      "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo",
@@ -29189,7 +29722,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L117",
+      "source_location": "L124",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo",
@@ -29200,7 +29733,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L74",
+      "source_location": "L81",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo",
@@ -29222,7 +29755,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L77",
+      "source_location": "L84",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo",
@@ -29233,7 +29766,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L61",
+      "source_location": "L68",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo",
@@ -29244,7 +29777,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L41",
+      "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo_seguranca",
@@ -29255,7 +29788,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "TODO.md",
-      "source_location": "L7",
+      "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
       "source": "todo_seguranca",
@@ -29496,6 +30029,94 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design",
+      "target": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L12",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "target": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_decis\u00e3o_chave_css_3d_n\u00e3o_three_js",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "target": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_degrada\u00e7\u00e3o_sem_motion_touch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "target": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_limpar_antes_de_commitar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L69",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "target": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_n\u00e3o_feito_fora_do_escopo_desta_fatia",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "target": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_o_que_foi_feito",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "target": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_objetivo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md",
+      "source_location": "L55",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_ui_3d_carta_hologr\u00e1fica_cole\u00e7\u00e3o_pacote",
+      "target": "docs_superpowers_specs_2026_07_31_ui_3d_holo_card_design_verifica\u00e7\u00e3o",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/modules/packs/PACK_SYSTEM.md",
       "source_location": "L1",
       "weight": 1.0,
@@ -29704,5 +30325,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "9c2b8f634ade2655679a2224c58c2d78bdb18f19"
+  "built_at_commit": "2afe3e9e5d59c0508e3c7cab7749ce4711e92ce0"
 }

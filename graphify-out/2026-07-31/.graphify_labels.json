@@ -63,5 +63,7 @@
   "61": "getUnlockedMoveIds.test.ts",
   "62": "prisma.config.ts",
   "63": "{ signIn, signUp, signOut, useSession }",
-  "64": "vitest.config.ts"
+  "64": "vitest.config.ts",
+  "65": "UI 3D — carta holográfica (coleção + pacote)",
+  "66": "toPokemonDTO.ts"
 }

@@ -295,7 +295,7 @@
     "semantic_hash": ""
   },
   "src/lib/pokeapi.ts": {
-    "mtime": 1785464647.0302355,
+    "mtime": 1785465509.467613,
     "ast_hash": "3e527e88cdc8e86fee1aaddbdccbeebb",
     "semantic_hash": ""
   },
@@ -320,12 +320,12 @@
     "semantic_hash": ""
   },
   "src/modules/battle/commands/awardBattleXp.ts": {
-    "mtime": 1785464526.7496088,
+    "mtime": 1785465509.4686127,
     "ast_hash": "2e53ddc19c7f7a1cb2e5c73a99699fb0",
     "semantic_hash": ""
   },
   "src/modules/battle/commands/buildDuelSnapshot.ts": {
-    "mtime": 1785464538.8053782,
+    "mtime": 1785465509.46911,
     "ast_hash": "1bffe5f84f991c2ab20c4610c72231ea",
     "semantic_hash": ""
   },
@@ -385,7 +385,7 @@
     "semantic_hash": ""
   },
   "src/modules/battle/domain/types.ts": {
-    "mtime": 1785464559.746061,
+    "mtime": 1785465509.470116,
     "ast_hash": "cf36db516eef4cd0a35b9a5c3f43cc67",
     "semantic_hash": ""
   },
@@ -510,12 +510,12 @@
     "semantic_hash": ""
   },
   "src/modules/deck/queries/readDeck.ts": {
-    "mtime": 1785464593.020527,
+    "mtime": 1785465509.4711235,
     "ast_hash": "684b98c1be8004b7ddbfdaf9477ceb7c",
     "semantic_hash": ""
   },
   "src/modules/deck/queries/readLearnset.ts": {
-    "mtime": 1785464591.831884,
+    "mtime": 1785465509.4716215,
     "ast_hash": "180f6a4d02c14f421042f5e16b14f05a",
     "semantic_hash": ""
   },
@@ -535,7 +535,7 @@
     "semantic_hash": ""
   },
   "src/modules/packs/commands/openPack.ts": {
-    "mtime": 1785464589.7703478,
+    "mtime": 1785465509.4731367,
     "ast_hash": "e0f1548293419d0f9adb522980d57048",
     "semantic_hash": ""
   },
@@ -590,8 +590,8 @@
     "semantic_hash": ""
   },
   "src/modules/packs/ui/PackRevealCard.tsx": {
-    "mtime": 1784077926.927312,
-    "ast_hash": "017111078d65c3709670f7f4af645bce",
+    "mtime": 1785468532.40215,
+    "ast_hash": "bf1edb34b7825138c0792eaa0aedcb98",
     "semantic_hash": ""
   },
   "src/modules/packs/ui/packView.ts": {
@@ -615,7 +615,7 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/commands/syncPokedex.ts": {
-    "mtime": 1785464457.9365783,
+    "mtime": 1785465509.4741366,
     "ast_hash": "8aea3a39ffdccaba5c06e8f568a40b13",
     "semantic_hash": ""
   },
@@ -625,7 +625,7 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/index.ts": {
-    "mtime": 1785464642.053137,
+    "mtime": 1785465509.475136,
     "ast_hash": "9ae6fac0048406487b6717e4946919e7",
     "semantic_hash": ""
   },
@@ -640,7 +640,7 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/queries/getUnlockedMoveIds.ts": {
-    "mtime": 1785464455.51134,
+    "mtime": 1785465509.4761357,
     "ast_hash": "088e0bc83f09a8be817a7ea5f9c5a1cb",
     "semantic_hash": ""
   },
@@ -690,8 +690,8 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/PokemonCard.tsx": {
-    "mtime": 1784265101.0382054,
-    "ast_hash": "74245b83e80ff2bbc4a8971d042a4fe0",
+    "mtime": 1785468497.7467217,
+    "ast_hash": "2dc8d2146f358aa89f1a3f9a6e575ed5",
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/PokemonMoves.tsx": {
@@ -720,23 +720,23 @@
     "semantic_hash": ""
   },
   "src/modules/progression/domain/evolution.ts": {
-    "mtime": 1784869536.869319,
-    "ast_hash": "0f9c417dc7529f2a71f47f573d60e28d",
+    "mtime": 1785465509.477636,
+    "ast_hash": "6f9113ed25214c2e25db48a24abf5b6e",
     "semantic_hash": ""
   },
   "src/modules/progression/domain/learnset.ts": {
-    "mtime": 1784861468.1023114,
+    "mtime": 1785465509.478134,
     "ast_hash": "0c1630eb0c0e1e3396d7d3227771886d",
     "semantic_hash": ""
   },
   "src/modules/progression/domain/leveling.ts": {
-    "mtime": 1784768817.4749825,
-    "ast_hash": "1b5c731e8e8deee502c773afc2ac9db3",
+    "mtime": 1785465509.4786382,
+    "ast_hash": "00c3869023ab9a12dd0d324d0acd4cda",
     "semantic_hash": ""
   },
   "src/modules/progression/index.ts": {
-    "mtime": 1785464445.3980267,
-    "ast_hash": "e8e4af896fb5fc1bc8c67dfc7ed9505b",
+    "mtime": 1785465509.4791358,
+    "ast_hash": "d8dd80c5ceeb24898012321de0725315",
     "semantic_hash": ""
   },
   "src/modules/realtime/domain/signRealtimeToken.ts": {
@@ -870,7 +870,7 @@
     "semantic_hash": ""
   },
   "tests/modules/packs/commands/openPack.test.ts": {
-    "mtime": 1784869659.6875122,
+    "mtime": 1785465509.480134,
     "ast_hash": "d63f42753e10c29f53efd2b24bab57af",
     "semantic_hash": ""
   },
@@ -915,18 +915,18 @@
     "semantic_hash": ""
   },
   "tests/modules/progression/domain/evolution.test.ts": {
-    "mtime": 1785464433.7304456,
-    "ast_hash": "0d02738782051bc4654a5f84c6e10a57",
+    "mtime": 1785465509.481134,
+    "ast_hash": "ffc0c1a681325e921e311acd52881d1e",
     "semantic_hash": ""
   },
   "tests/modules/progression/domain/learnset.test.ts": {
-    "mtime": 1785464434.7757778,
+    "mtime": 1785465509.482644,
     "ast_hash": "0f9901140a02daff62096ab87e8cbe51",
     "semantic_hash": ""
   },
   "tests/modules/progression/domain/leveling.test.ts": {
-    "mtime": 1785464432.2498507,
-    "ast_hash": "6bd7b8c1ded4daab87ea2b81fa09d4c5",
+    "mtime": 1785465509.4831438,
+    "ast_hash": "7a9fcdc1afa550aecba9005398ac43b9",
     "semantic_hash": ""
   },
   "tests/modules/realtime/domain/signRealtimeToken.test.ts": {
@@ -945,7 +945,7 @@
     "semantic_hash": ""
   },
   "tsconfig.json": {
-    "mtime": 1785464298.858286,
+    "mtime": 1785465509.4846437,
     "ast_hash": "0cfe79d5732bb4d07766e0f9602e4ae9",
     "semantic_hash": ""
   },
@@ -1025,7 +1025,7 @@
     "semantic_hash": ""
   },
   "PLANO_JOGO.md": {
-    "mtime": 1785464720.2293344,
+    "mtime": 1785465509.4315557,
     "ast_hash": "f9aaab7a2738a7f4d9876e703ab22633",
     "semantic_hash": ""
   },
@@ -1045,8 +1045,8 @@
     "semantic_hash": ""
   },
   "TODO.md": {
-    "mtime": 1784781700.9319117,
-    "ast_hash": "dfeac73543ab96e0dbccef0f88c608d1",
+    "mtime": 1785465509.4335675,
+    "ast_hash": "41e1c2ff4f492f56a23281550e40e66e",
     "semantic_hash": ""
   },
   "docker-compose.yml": {
@@ -1055,13 +1055,13 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-30-progression-module.md": {
-    "mtime": 1785464095.2168424,
-    "ast_hash": "a1d16d247cc701ec31546262ceae6738",
+    "mtime": 1785465509.4360695,
+    "ast_hash": "0c28c41462d4de5646c281062395f726",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-07-30-progression-module-design.md": {
-    "mtime": 1785463873.9337711,
-    "ast_hash": "8cf19d3a1a8867bb3d7c9be615234af1",
+    "mtime": 1785465509.4370666,
+    "ast_hash": "8b0e029d2e8e491133f62d5c2994dc56",
     "semantic_hash": ""
   },
   "public/robots.txt": {
@@ -1087,6 +1087,31 @@
   "public/moves/water.svg": {
     "mtime": 1783835870.084746,
     "ast_hash": "0e94937cf18f7727162cdacde799ef80",
+    "semantic_hash": ""
+  },
+  "src/app/holo-preview/page.tsx": {
+    "mtime": 1785468759.636379,
+    "ast_hash": "c4a9d4200323893a0e41709f2ca0bfeb",
+    "semantic_hash": ""
+  },
+  "src/components/HoloCard.tsx": {
+    "mtime": 1785468444.786338,
+    "ast_hash": "05bf6828e681812c56e2f665dbec516e",
+    "semantic_hash": ""
+  },
+  "src/components/holoTilt.ts": {
+    "mtime": 1785468355.13294,
+    "ast_hash": "60666938d8a1ca3fc7d09222cb2d79f2",
+    "semantic_hash": ""
+  },
+  "tests/components/holoTilt.test.ts": {
+    "mtime": 1785468365.8033004,
+    "ast_hash": "d4b320f161b1aa1c006003590a749bdf",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-07-31-ui-3d-holo-card-design.md": {
+    "mtime": 1785469112.5663924,
+    "ast_hash": "2f08446823f25ca48e79385cb61e2844",
     "semantic_hash": ""
   }
 }

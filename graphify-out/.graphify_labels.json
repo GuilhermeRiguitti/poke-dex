@@ -65,5 +65,6 @@
   "63": "{ signIn, signUp, signOut, useSession }",
   "64": "vitest.config.ts",
   "65": "UI 3D — carta holográfica (coleção + pacote)",
-  "66": "toPokemonDTO.ts"
+  "66": "toPokemonDTO.ts",
+  "67": "@tailwindcss/postcss"
 }

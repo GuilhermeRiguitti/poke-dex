@@ -107,14 +107,42 @@ O dono mandou uma referência (cartas "Prism Monsters" estilo Yu-Gi-Oh) e pedi:
 - ⚠️ Ainda sem print visual (pane do navegador não exibido do lado do agente) —
   o dono precisa olhar em `/holo-preview` e calibrar o gosto.
 
-## Não feito — próxima fatia: a BATALHA (three.js ENTRA aqui)
+## Batalha — three.js (2026-07-31, 4ª leva) — FEITO
 
-O dono confirmou que era **A + B juntos** (o "só coleção+pacote" foi engano de
-escrita). Falta a fatia da batalha, e o three.js é bem-vindo nela:
+Confirmado A + B juntos (o "só coleção+pacote" foi engano). A fatia da batalha
+entrou com three.js (React Three Fiber v9 + drei v10 + three 0.185 — compatíveis
+com React 19). As 3 partes:
 
-- **Palco de batalha 3D** (React Three Fiber + drei, `next/dynamic` ssr:false,
-  fallback pra `DuelTable` HTML): sprites billboard, câmera, luz, FX de impacto.
-- **Golpes na batalha** com info clara pra quem nunca jogou — sem exagerar no
-  texto (o jogador não é burro). Barra de comando (decidida na conversa).
-- **Relatório de combate mais interativo** — dano/animações, podendo usar
-  three.js. Reusar a lógica pura de `battle/ui/battleView.ts` (`DuelTurnFx`).
+- **Golpes com info clara** (`MoveCommandBar.tsx`): deixou de ser leque de cartas
+  (a carta virou o Pokémon). Botão de comando com acento do tipo, poder, **classe
+  físico/especial/status** (tag colorida FÍS/ESP/STA), PP (usos) e **precisão só
+  quando < 100**. O "porquê" vai no `title` (tooltip) — novato entende sem parede
+  de texto. Exigiu levar `damageClass`/`accuracy` ao `DuelCardView` (battleView.ts).
+- **Palco de batalha 3D** (`DuelStage3D.tsx`): arena com chão em grid (drei
+  `<Grid>`), luzes ciano (meu lado) × vermelho (oponente), os dois sprites 2D como
+  billboards em pé no palco (não há modelo 3D dos 1025 — é o jeito clássico). FX:
+  bob idle, investida do atacante, tremida/queda, camera shake no crítico/nocaute.
+  Consome o `DuelTurnFx` puro. **Lazy** (`next/dynamic` ssr:false) — só baixa na
+  batalha; **fallback** HTML (`StageFallbackSprites`) via error boundary se o
+  WebGL falhar.
+- **Relatório de combate interativo** (`DuelArena.tsx`): HP/dano em overlay HTML
+  sobre o canvas, números de dano flutuantes + selo de efetividade, e um feed de
+  combate com ícone/cor por evento (nocaute ☠, super eficaz ▲, etc.) e a linha
+  nova destacada.
+- `DuelArena.tsx` é o novo orquestrador (palco 3D + overlays + barra + feed);
+  `BattleRoom` passou a renderizá-lo no lugar de `DuelTable`.
+- Verificado: tsc·vitest 211·eslint·next build verdes; no browser o canvas monta,
+  WebGL inicia, zero erro. ⚠️ **A qualidade visual do 3D não pôde ser vista** (a
+  aba fica `hidden` do lado do agente → R3F pausa render/resize; o dono precisa
+  abrir `/battle-preview` pra julgar câmera/escala/luz).
+
+## Limpar / pendências
+
+- **APAGAR antes de commitar:** `src/app/holo-preview/page.tsx` e
+  `src/app/battle-preview/page.tsx` (páginas TEMP de verificação, públicas).
+- **`DuelTable.tsx` ficou órfão** (o `DuelArena` o substituiu, com fallback
+  próprio). Deletar depois que o dono confirmar que a arena está boa.
+- **6 vulnerabilidades `high` são do `sharp`/libvips (pré-existentes)**, não das
+  deps do three.js. Não mexidas (audit fix --force é arriscado).
+- `konva`/`react-konva` seguem no package.json (mortos desde que o canvas Konva
+  foi aposentado) — candidatos a remoção.

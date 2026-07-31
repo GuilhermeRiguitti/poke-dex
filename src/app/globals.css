@@ -499,6 +499,57 @@ a { color: inherit; text-decoration: none; }
 }
 .hand-card--cast { animation: card-launch 0.5s var(--ease-snap) forwards; z-index: 70 !important; }
 
+/* ── barra de comando de golpes (batalha) ─────────────────────────
+   Substitui o leque de cartas: os golpes não são mais "cartas" (a carta virou
+   o Pokémon). Botão de comando com acento do tipo, poder, classe e PP. */
+.move-btn {
+  position: relative;
+  flex: 0 0 auto;
+  width: 118px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-edge);
+  border-top: 3px solid var(--type-c, var(--color-edge));
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease-snap), border-color 0.15s, filter 0.15s, background 0.15s;
+}
+.move-btn:not(:disabled):hover,
+.move-btn:not(:disabled):focus-visible {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--type-c) 60%, var(--color-edge));
+  background: color-mix(in srgb, var(--type-c) 12%, var(--color-panel-2));
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--type-c) 45%, transparent))
+    drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+}
+.move-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+@keyframes move-cast {
+  0% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-12px) scale(1.06); filter: brightness(1.3); }
+  100% { transform: translateY(-4px) scale(1); }
+}
+.move-btn--cast {
+  animation: move-cast 0.5s var(--ease-snap);
+  z-index: 5;
+}
+
+/* relatório de combate: a linha mais recente entra com um flash da cor de ação */
+@keyframes combat-line-new {
+  0% { opacity: 0; transform: translateX(-6px); }
+  40% { background: color-mix(in srgb, var(--color-flare) 22%, transparent); }
+  100% { opacity: 1; transform: translateX(0); background: transparent; }
+}
+.combat-line-new {
+  animation: combat-line-new 0.55s ease-out;
+  border-radius: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

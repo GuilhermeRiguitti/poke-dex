@@ -3,12 +3,12 @@
 import { useMemo } from "react";
 import BattleErrorToast from "./BattleErrorToast";
 import BattleResultOverlay from "./BattleResultOverlay";
-import DuelTable from "./DuelTable";
+import DuelArena from "./DuelArena";
 import { selectDuelView } from "./battleView";
 import type { BattleDTO } from "./types";
 import { useBattleRoom } from "./useBattleRoom";
 
-// A sala é só a costura: hook (servidor) + view-model (puro) + mesa (HTML).
+// A sala é só a costura: hook (servidor) + view-model (puro) + arena (3D + HTML).
 // Nenhuma regra de apresentação mora aqui — ela está em battleView.ts.
 export default function BattleRoom({
   battleId,
@@ -29,7 +29,7 @@ export default function BattleRoom({
 
   return (
     <div className="relative h-full">
-      <DuelTable view={view} submitting={submitting} onPlayCard={playCard} onSwitch={playSwitch} />
+      <DuelArena view={view} submitting={submitting} onPlayCard={playCard} onSwitch={playSwitch} />
 
       {error && <BattleErrorToast message={error} />}
 
