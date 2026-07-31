@@ -12,7 +12,7 @@ import {
   xpFromDefeat,
   xpToNextLevel,
   type BaseStats,
-} from "@/src/modules/pokedex/domain/leveling";
+} from "@/src/modules/progression/domain/leveling";
 
 // Base stats do Charizard (a mesma referência do comentário em battle/stats).
 const charizard: BaseStats = { hp: 78, atk: 84, def: 78, spa: 109, spd: 85, spe: 100 };

@@ -1,5 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
-import { birthLevelForSpecies, STARTING_LEVEL, xpForLevel, type PokemonCardDTO } from "@/src/modules/pokedex";
+import { birthLevelForSpecies, STARTING_LEVEL, xpForLevel } from "@/src/modules/progression";
+import type { PokemonCardDTO } from "@/src/modules/pokedex";
 import { canOpenFree, FREE_PACK_INTERVAL_MS } from "../domain/cooldown";
 import { drawPack } from "../domain/rarity";
 import { toPackStateDTO } from "../queries/readPackState";

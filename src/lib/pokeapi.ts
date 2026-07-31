@@ -31,7 +31,7 @@ const CACHE_FOREVER = { cache: "force-cache" } as const;
  * Como a espécie aprende um move, EM UM version group (= um par de jogos).
  * É o dado que torna o learnset fiel à série: o mesmo move é aprendido em
  * níveis diferentes conforme o jogo, e por métodos diferentes (subir de nível,
- * TM, ovo, tutor). Quem escolhe qual entrada vale é pokedex/domain/learnset.ts.
+ * TM, ovo, tutor). Quem escolhe qual entrada vale é progression/domain/learnset.ts.
  */
 export interface MoveLearnDetail {
   /** nível em que o move é aprendido. 0 quando o método não é level-up. */

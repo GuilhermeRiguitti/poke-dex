@@ -5,7 +5,7 @@ import {
   parseLevelUpEvolutions,
   pruneLoadout,
   type EvolutionChainNode,
-} from "@/src/modules/pokedex/domain/evolution";
+} from "@/src/modules/progression/domain/evolution";
 
 // Imita a cadeia da PokéAPI já normalizada por lib/pokeapi: Bulbasaur(1) →
 // Ivysaur(2, nv.16) → Venusaur(3, nv.32). Uma linha level-up pura.

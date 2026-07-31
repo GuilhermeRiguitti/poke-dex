@@ -8,15 +8,15 @@ import {
   PLAYABLE_LEARN_METHOD,
   pruneLoadout,
   xpFromDefeat,
-} from "@/src/modules/pokedex";
+} from "@/src/modules/progression";
 
 // Crédito de XP no fim da partida — o que faz o nível SUBIR e, por
-// consequência, o learnset LIBERAR cartas novas (pokedex/domain/learnset.ts).
+// consequência, o learnset LIBERAR cartas novas (progression/domain/learnset.ts).
 // Sem isto o nível seria decorativo: todo pokémon ficaria pra sempre no nível
 // de captura, com o mesmo punhado de cartas.
 //
 // A fórmula é a da série (gen 5+): baseExperience do DERROTADO × nível dele / 7
-// (ver pokedex/domain/leveling.ts). O único desvio consciente é o perdedor
+// (ver progression/domain/leveling.ts). O único desvio consciente é o perdedor
 // levar LOSER_XP_SHARE do que levaria — sem isso, quem perde nunca destrava
 // nada e entra numa espiral.
 //
