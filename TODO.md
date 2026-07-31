@@ -1,5 +1,12 @@
 # TODO
 - Api client com react query tan stack 
+- [ ] **Split opcional do `progression/domain/leveling.ts`** em `stats.ts` (deriveStats/
+  calcHp/calcStat) × `xp.ts` (curva/applyXp/xpFromDefeat) × `levels.ts` (MIN/MAX/
+  STARTING + clampLevel compartilhados). São duas razões de mudar no mesmo arquivo
+  (SRP). Adiado no refactor do módulo `progression` (2026-07-30) — decisão de mover
+  inteiro primeiro. Desenho e "não-objetivos" em
+  `docs/superpowers/specs/2026-07-30-progression-module-design.md`. O DIP/repositório
+  sobre o Prisma foi avaliado no mesmo refactor e **descartado** (custo/benefício).
 
 
 # SEGURANCA
