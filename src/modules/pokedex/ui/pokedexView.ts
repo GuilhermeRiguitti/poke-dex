@@ -3,6 +3,7 @@
 // Isto aqui é ui/ — se importasse o barrel, o Prisma iria parar no bundle do
 // browser. domain/ é puro, e é a única coisa que ui/ pode puxar de outro módulo.
 import { DECK_LIMIT, canToggleIntoDeck } from "@/src/modules/deck/domain/rules";
+import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 import type { CollectionDTO, PokemonDetailDTO } from "./types";
 
 // Mapear DTO -> o que a tela desenha é função pura, mora aqui e tem teste.
@@ -24,6 +25,9 @@ export interface CollectionCardView {
   /** tipo que pinta a moldura (--type-c). "normal" quando não se sabe. */
   accentType: string;
   level: number;
+  /** fortitude (soma dos base stats) e a raridade derivada — moldura + holo */
+  bst: number;
+  rarity: RarityTier;
   inDeck: boolean;
   /** id do DeckSlot, pra remover do deck. null quando não está no deck. */
   deckSlotId: string | null;
@@ -69,6 +73,8 @@ export function collectionView(collection: CollectionDTO): CollectionView {
       types: card.pokemon?.types ?? [],
       accentType: card.pokemon?.types[0] ?? "normal",
       level: card.level,
+      bst: card.bst,
+      rarity: card.rarity,
       inDeck,
       deckSlotId,
       canToggle: canToggleIntoDeck(deckCount, inDeck),

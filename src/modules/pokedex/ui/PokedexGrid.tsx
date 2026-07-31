@@ -1,3 +1,4 @@
+import { bstOf, rarityTier } from "@/src/modules/packs/domain/rarity";
 import PokemonCard from "./PokemonCard";
 import { dexNumber } from "./pokedexView";
 import type { PokemonCardDTO } from "./types";
@@ -27,6 +28,7 @@ export default function PokedexGrid({
           artworkUrl={pokemon.artworkUrl}
           types={pokemon.types}
           accentType={pokemon.types[0] ?? "normal"}
+          rarity={rarityTier(bstOf(pokemon.id))}
           index={i}
         >
           {captured.has(pokemon.id) ? (

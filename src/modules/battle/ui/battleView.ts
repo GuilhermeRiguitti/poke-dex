@@ -11,6 +11,10 @@ export interface DuelCardView {
   name: string;
   type: string;
   power: number | null;
+  /** físico / especial / status — o ícone que explica o golpe sem texto */
+  damageClass: "physical" | "special" | "status";
+  /** precisão; null = nunca erra. A barra só mostra quando < 100. */
+  accuracy: number | null;
   currentPp: number;
   maxPp: number;
   /** sem PP enquanto ainda há outra carta com PP → não jogável */
@@ -244,6 +248,8 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
     name: mv.name,
     type: mv.type,
     power: mv.power,
+    damageClass: mv.damageClass,
+    accuracy: mv.accuracy,
     currentPp: mv.currentPp,
     maxPp: mv.maxPp,
     disabled: mv.currentPp <= 0 && someUsable,

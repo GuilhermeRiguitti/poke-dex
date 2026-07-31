@@ -1,5 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
 import { readDeck } from "@/src/modules/deck";
+import { bstOf, rarityTier } from "@/src/modules/packs/domain/rarity";
 import type { CollectionCardDTO, CollectionDTO, PokemonCardDTO } from "../ui/types";
 
 /**
@@ -32,11 +33,14 @@ export async function getCollection(userId: string): Promise<CollectionDTO> {
       iconUrl: up.pokemon.spriteUrl,
       types: up.pokemon.types as string[],
     };
+    const bst = bstOf(up.pokemon.pokemonApiId);
     return {
       userPokemonId: up.id,
       pokemonId: up.pokemon.pokemonApiId,
       level: up.level,
       xp: up.xp,
+      bst,
+      rarity: rarityTier(bst),
       pokemon: card,
     };
   });
