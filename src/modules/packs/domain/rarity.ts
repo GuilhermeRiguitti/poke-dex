@@ -6,6 +6,23 @@
 // capture_rate dá 255 pra Eternatus (lendário) igual a um Caterpie. BST vai de
 // ~180 (Sunkern) a 720 (Arceus) sem inversões, e é o MESMO número que a engine
 // de batalha usa pra calcular dano — raridade = poder de verdade em partida.
+//
+// ─── FRONTEIRA (leia antes de usar `bstOf`) ────────────────────────────────
+//
+// A partir da migration `pokemon_bst_rarity`, o BST e a raridade também vivem
+// no banco, como coluna de `Pokemon`. Os dois coexistem, e cada um tem seu
+// lugar:
+//
+//   • `bstOf(apiId)` / BST_BY_ID  — é do SORTEIO. `drawPack` pondera as 1025
+//     espécies da dex, e a maioria NÃO tem linha em `Pokemon`; não há coluna
+//     pra ler. Não use em nada que já tenha a linha na mão.
+//
+//   • `pokemon.bst` / `pokemon.rarity` — é de quem TEM a linha (coleção, deck,
+//     carta). Ler a coluna é o que garante que a raridade desenhada na carta é
+//     a MESMA que o filtro do banco usou pra achar ela.
+//
+// `rarityTier(bst)` continua sendo a única definição dos cortes — só que agora
+// roda na IMPORTAÇÃO (syncPokedex), não na leitura.
 
 import { BST_BY_ID } from "./rarity.generated";
 
