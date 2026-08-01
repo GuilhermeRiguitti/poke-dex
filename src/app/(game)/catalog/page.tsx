@@ -38,7 +38,7 @@ export default async function CatalogPage({
       </div>
 
       <PokedexGrid pokemons={pokemons} capturedIds={capturedIds} />
-      <Pagination page={page} totalPages={totalPages} />
+      <Pagination page={page} totalPages={totalPages} hrefFor={(p) => `/catalog?page=${p}`} />
     </div>
   );
 }
