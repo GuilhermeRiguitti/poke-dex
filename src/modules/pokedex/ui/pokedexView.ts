@@ -6,7 +6,7 @@ import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 import { DECK_LIMIT, canToggleIntoDeck } from "@/src/modules/deck/domain/rules";
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 
-import type { CollectionDTO, PokemonDetailDTO } from "./types";
+import type { CollectionPageDTO, PokemonDetailDTO } from "./types";
 
 // Mapear DTO -> o que a tela desenha é função pura, mora aqui e tem teste.
 // Componente é costura. (CLAUDE.md, regra 4 — ver battle/ui/battleView.ts.)
@@ -52,24 +52,34 @@ export interface DeckSlotView {
   baseStats: BaseStats | null;
 }
 
+export type CollectionEmptyState = "none" | "collection" | "filter";
+
 export interface CollectionView {
   cards: CollectionCardView[];
   /** sempre DECK_LIMIT vagas, na ordem — as vazias vêm com pokemonId null */
   deckSlots: DeckSlotView[];
   deckCount: number;
   deckLimit: number;
-  isEmpty: boolean;
+  page: number;
+  totalPages: number;
+  totalCards: number;
+  /**
+   * Qual vazio mostrar. "collection" = não tem carta nenhuma (manda capturar);
+   * "filter" = tem cartas, o filtro é que não achou (manda limpar). São telas
+   * diferentes, e sem os dois totais não dá pra distinguir.
+   */
+  emptyState: CollectionEmptyState;
 }
 
-export function collectionView(collection: CollectionDTO): CollectionView {
-  const slots = collection.deck?.slots ?? [];
+export function collectionView(page: CollectionPageDTO): CollectionView {
+  const slots = page.deck?.slots ?? [];
   const deckCount = slots.length;
 
   // userPokemonId -> id do DeckSlot. Diz se um pokémon está no deck e com que id
   // o loadout dele sai.
   const slotByUserPokemon = new Map(slots.map((s) => [s.userPokemonId, s.id]));
 
-  const cards: CollectionCardView[] = collection.cards.map((card) => {
+  const cards: CollectionCardView[] = page.cards.map((card) => {
     const deckSlotId = slotByUserPokemon.get(card.userPokemonId) ?? null;
     const inDeck = deckSlotId !== null;
 
@@ -94,7 +104,7 @@ export function collectionView(collection: CollectionDTO): CollectionView {
     };
   });
 
-  const cardByUserPokemonId = new Map(collection.cards.map((c) => [c.userPokemonId, c]));
+  const cardByUserPokemonId = new Map(page.cards.map((c) => [c.userPokemonId, c]));
 
   const deckSlots: DeckSlotView[] = Array.from({ length: DECK_LIMIT }, (_, i) => {
     const slot = slots[i];
@@ -125,12 +135,18 @@ export function collectionView(collection: CollectionDTO): CollectionView {
     };
   });
 
+  const emptyState: CollectionEmptyState =
+    page.cards.length > 0 ? "none" : page.totalInCollection === 0 ? "collection" : "filter";
+
   return {
     cards,
     deckSlots,
     deckCount,
     deckLimit: DECK_LIMIT,
-    isEmpty: collection.cards.length === 0,
+    page: page.page,
+    totalPages: page.totalPages,
+    totalCards: page.totalCards,
+    emptyState,
   };
 }
 
