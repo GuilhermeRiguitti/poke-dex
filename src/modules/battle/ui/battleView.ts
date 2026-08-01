@@ -1,3 +1,4 @@
+import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 import type { BattleDTO, BattleEventDTO, BattlePokemonDTO, BattleStatusDTO } from "./types";
 
 // Mapear o BattleDTO -> o que a mesa do duelo desenha é função PURA, mora aqui e
@@ -42,6 +43,16 @@ export interface PartyMemberView {
   isActive: boolean;
   /** posso trocar pra ele agora? (vivo, não é o ativo, e o round permite trocar) */
   canSwitchTo: boolean;
+  // ── o que a CARTA de reserva desenha ───────────────────────────────────
+  /** "#0025" */
+  dexNumber: string;
+  level: number;
+  types: string[];
+  /** metal da moldura; vem calculada do servidor (ver toBattleDTO) */
+  rarity: RarityTier;
+  /** HP em número, pra carta dizer "42/110" — o hpPct é só a barra */
+  currentHp: number;
+  maxHp: number;
 }
 
 export interface DuelLogLine {
@@ -240,6 +251,12 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
         fainted: m.fainted,
         isActive: m.slot === p.activeSlot,
         canSwitchTo: reveal && canSwitch && !m.fainted && m.slot !== p.activeSlot,
+        dexNumber: `#${String(m.pokemonId).padStart(4, "0")}`,
+        level: m.level,
+        types: m.types,
+        rarity: m.rarity,
+        currentHp: m.currentHp,
+        maxHp: m.maxHp,
       }));
 
   const someUsable = myMon.moves.some((mv) => mv.currentPp > 0);

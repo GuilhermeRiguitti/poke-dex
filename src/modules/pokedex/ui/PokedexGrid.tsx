@@ -1,12 +1,18 @@
+import Link from "next/link";
+import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
 import { bstOf, rarityTier } from "@/src/modules/packs/domain/rarity";
-import PokemonCard from "./PokemonCard";
 import { dexNumber } from "./pokedexView";
 import type { PokemonCardDTO } from "./types";
 
 // Server Component. É o CATÁLOGO: view-only, pra consultar informação. O
 // "Capturar" morreu — a única forma de obter pokémon é abrir pacote. Cada card
-// leva ao detalhe (o Link mora no PokemonCard); o rodapé só marca o que o
-// jogador já tem na coleção.
+// leva ao detalhe; o rodapé só marca o que o jogador já tem na coleção.
+//
+// `details={false}` — é ESTA tela que motiva a flag. Aqui os dados vêm da
+// PokéAPI ao vivo (listPokedexPage) e o PokemonCardDTO é uma whitelist de 5
+// campos, sem stat nenhum. Sem details a carta não mostra Lv nem barras, e a
+// janela de arte cresce pra ocupar o espaço delas — por isso a rota do catálogo
+// não precisou mudar.
 
 export default function PokedexGrid({
   pokemons,
@@ -18,29 +24,31 @@ export default function PokedexGrid({
   const captured = new Set(capturedIds);
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    // No máximo 4 por fileira — mesma régua da coleção (ver CollectionGrid).
+    <div className="grid grid-cols-1 justify-items-center gap-5 min-[580px]:grid-cols-2 min-[860px]:grid-cols-3 min-[1140px]:grid-cols-4">
       {pokemons.map((pokemon, i) => (
-        <PokemonCard
-          key={pokemon.id}
-          pokemonId={pokemon.id}
-          dexNumber={dexNumber(pokemon.id)}
-          name={pokemon.name}
-          artworkUrl={pokemon.artworkUrl}
-          types={pokemon.types}
-          accentType={pokemon.types[0] ?? "normal"}
-          rarity={rarityTier(bstOf(pokemon.id))}
-          index={i}
-        >
-          {captured.has(pokemon.id) ? (
-            <span className="clip-btn flex items-center justify-center gap-1 bg-ok/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ok">
-              ✓ Na coleção
-            </span>
-          ) : (
-            <span className="clip-btn flex items-center justify-center gap-1 bg-panel-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink-dim">
-              Não obtido
-            </span>
-          )}
-        </PokemonCard>
+        <Link key={pokemon.id} href={`/pokemon/${pokemon.id}`}>
+          <PokeCard
+            dexNumber={dexNumber(pokemon.id)}
+            name={pokemon.name}
+            artworkUrl={pokemon.artworkUrl}
+            types={pokemon.types}
+            rarity={rarityTier(bstOf(pokemon.id))}
+            size="grid"
+            index={i}
+            details={false}
+          >
+            {captured.has(pokemon.id) ? (
+              <span className="clip-btn bg-ok/25 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-ok">
+                ✓ Na coleção
+              </span>
+            ) : (
+              <span className="clip-btn bg-black/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white/45">
+                Não obtido
+              </span>
+            )}
+          </PokeCard>
+        </Link>
       ))}
     </div>
   );

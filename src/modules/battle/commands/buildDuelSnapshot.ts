@@ -36,7 +36,7 @@ function toPokemonState(slot: DeckLoadoutSlot, index: number): BattlePokemonStat
   const { pokemon } = slot.userPokemon;
   const derived = deriveStats(pokemon.baseStats, slot.userPokemon.level);
   return {
-    slot: index + 1, // posição no time (1×1 usa o slot 1)
+    slot: index + 1, // posição no time (1..6); o slot 1 começa em campo
     userPokemonId: slot.userPokemon.id,
     pokemonId: pokemon.pokemonApiId,
     name: pokemon.name,
@@ -63,9 +63,10 @@ export interface BattleTeamMember {
 }
 
 /**
- * Monta o time de batalha a partir do deck (loadouts). No 1×1 só o slot ativo
- * (o 1º) entra em campo, mas o time inteiro é montado — o schema fica pronto pra
- * time numa fase futura. Lança se o deck estiver vazio (sem loadout jogável).
+ * Monta o time de batalha a partir do deck (loadouts) — até DECK_LIMIT (6)
+ * pokémons. O slot 1 entra em campo; os outros são a reserva, que a troca
+ * (voluntária ou forçada por desmaio) coloca em jogo. Lança se o deck estiver
+ * vazio (sem loadout jogável).
  */
 export async function buildDuelSnapshot(userId: string, deckId: string): Promise<BattleTeamMember[]> {
   const slots = await readDeckSlots(userId, deckId, DECK_LIMIT);

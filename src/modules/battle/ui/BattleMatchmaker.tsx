@@ -46,7 +46,20 @@ export default function BattleMatchmaker({
       const res = await fetch("/api/battle/queue/status");
       if (!res.ok) return;
       const data = await res.json();
-      if (data.matched && data.battleId) goToBattle(data.battleId);
+      if (data.matched && data.battleId) {
+        goToBattle(data.battleId);
+        return;
+      }
+      // Saí da fila sem ter pareado. Acontece quando alguém tentou parear comigo
+      // e o MEU deck não montou (loadout sem carta): o servidor não me devolve
+      // pra fila, senão eu derrubaria o pareamento de todo mundo que viesse
+      // depois (enqueueBattle). Sem este ramo, a tela ficava girando "procurando"
+      // pra sempre, fora da fila.
+      if (data.queued === false) {
+        stopPolling();
+        setSearching(false);
+        setError("Você saiu da fila. Procure de novo — se repetir, confira as cartas do seu time.");
+      }
     }, POLL_INTERVAL_MS);
   };
 

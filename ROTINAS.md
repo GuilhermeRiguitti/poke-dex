@@ -43,8 +43,9 @@ Catálogo mostrar 1025 é vitrine; capturar, só o que está espelhado.
 
 **O que faz:** resolve turnos de duelo **já vencidos** (>90s) de partidas que
 ninguém está mais empurrando — mata a partida zumbi sem depender de jogador com
-aba aberta. O caminho rápido (jogador da vez joga no tempo) continua sendo o
-polling/`submitAction`; o cron só cobre o buraco.
+aba aberta. O caminho rápido (os dois jogam dentro do tempo, e quem submete por
+último resolve o turno no próprio POST) continua sendo o polling/`submitAction`;
+o cron só cobre o buraco.
 
 - **Agendador:** `pg_cron` + `pg_net` (extensões dentro do Postgres do Supabase).
 - **Chama:** `POST https://poke-dex-rgt.vercel.app/api/cron/resolve-turns`

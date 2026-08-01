@@ -2,6 +2,7 @@
 // no bundle. Nada daqui é linha do Prisma nem resposta crua da PokéAPI.
 
 import type { PokemonCardDTO } from "@/src/modules/pokedex";
+import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 import type { RarityTier } from "../domain/rarity";
 
 /** Uma carta sorteada num pacote. */
@@ -16,6 +17,19 @@ export interface PackCardDTO {
   bst: number;
   /** faixa só pra apresentação (cor/borda) — não é o peso do sorteio */
   rarity: RarityTier;
+  /**
+   * Base stats da espécie, pras barras da carta. `null` quando a espécie não
+   * veio do espelho — mesma razão do `card` acima: erro de leitura não pode
+   * fazer o pacote render menos do que deu.
+   */
+  baseStats: BaseStats | null;
+  /**
+   * Nível de NASCIMENTO do pokémon que acabou de entrar na coleção. Não é
+   * sempre STARTING_LEVEL: forma evoluída nasce no nível em que seria
+   * alcançada (birthLevelForSpecies) — o Charizard sai bem acima de 1. É esse
+   * nível que a carta mostra e por onde ela deriva os stats.
+   */
+  level: number;
   /** false = repetida (o jogador já tinha esse pokémon). Gancho pra troca/pó. */
   isNew: boolean;
 }

@@ -1,79 +1,44 @@
-import HoloCard from "@/src/components/HoloCard";
-import TypeBadge from "@/src/components/TypeBadge";
-import { typeColor } from "@/src/lib/typeColors";
+import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
 import { dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
-import { holoIntensity, isTopRarity, rarityColor, rarityLabel } from "./packView";
 import type { PackCardDTO } from "./types";
 
-// Uma carta revelada do pacote, na moldura estilo TCG (janela de arte no topo,
-// infos no rodapé). A borda usa a cor da RARIDADE e o holo escala com a mesma
-// fortitude (holoIntensity) — lendário fica metálico e com aura.
+// Uma carta revelada do pacote: a MESMA carta do resto do jogo, no tamanho
+// grande (`full`), com o selo "Novo/Repetida" no rodapé.
 //
-// Reusa dexNumber do pokedex/ui (pura). NÃO reusa PokemonCard porque a
-// semântica é outra: aqui manda a raridade e há badge de novo/repetida.
-// O HoloCard ("use client") é o envelope 3D; a page/PackOpener já é cliente.
+// Este arquivo virou um adaptador fino — a moldura toda mora no PokeCard. O que
+// sobra aqui é só o que é do PACOTE: os fallbacks de espécie fora do espelho
+// (o jogador GANHA a carta mesmo com erro de leitura, então nome/arte/stats
+// podem faltar) e o selo de repetida.
+//
+// O `level` não é sempre 1: a forma evoluída nasce no nível em que seria
+// alcançada (birthLevelForSpecies, no openPack). É esse nível que a carta
+// mostra e por onde as barras são derivadas.
 
 export default function PackRevealCard({ card, index }: { card: PackCardDTO; index: number }) {
-  const color = rarityColor(card.rarity);
-  const top = isTopRarity(card.rarity);
-  const name = card.card?.name ?? dexNumber(card.pokemonId);
-  const art = card.card?.artworkUrl ?? null;
-  const accentType = card.card?.types[0] ?? "normal";
+  const dex = dexNumber(card.pokemonId);
 
   return (
-    <HoloCard intensity={holoIntensity(card.rarity)}>
-      <div
-        data-prismatic={top || undefined}
-        className="tcg-card clip-card animate-pack-pop"
-        style={
-          {
-            "--type-c": typeColor(accentType),
-            "--rarity-c": color,
-            animationDelay: `${index * 90}ms`,
-          } as React.CSSProperties
-        }
+    <div className="animate-pack-pop" style={{ animationDelay: `${index * 90}ms` }}>
+      <PokeCard
+        dexNumber={dex}
+        name={card.card?.name ?? dex}
+        artworkUrl={card.card?.artworkUrl ?? null}
+        types={card.card?.types ?? []}
+        rarity={card.rarity}
+        size="full"
+        index={index}
+        details={{ level: card.level, baseStats: card.baseStats ?? undefined }}
       >
-        <div className="tcg-header">
-          <span className="tcg-name">{name}</span>
-          {card.isNew ? (
-            <span className="clip-btn bg-flare px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-              Novo
-            </span>
-          ) : (
-            <span className="clip-btn bg-panel-2 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-dim">
-              Repetida
-            </span>
-          )}
-        </div>
-
-        <div className="tcg-art clip-card">
-          {art ? (
-            // eslint-disable-next-line @next/next/no-img-element -- sprites vêm da PokéAPI (host externo dinâmico)
-            <img src={art} alt={name} loading="lazy" />
-          ) : (
-            <span className="text-ink-dim">?</span>
-          )}
-        </div>
-
-        <div className="tcg-footer">
-          <div className="tcg-row">
-            {card.card && card.card.types.length > 0 ? (
-              <div className="flex gap-1">
-                {card.card.types.map((type) => (
-                  <TypeBadge key={type} type={type} small />
-                ))}
-              </div>
-            ) : (
-              <span />
-            )}
-            <span className="tcg-rarity">{rarityLabel(card.rarity)}</span>
-          </div>
-          <div className="tcg-row">
-            <span className="tcg-bst">{dexNumber(card.pokemonId)}</span>
-            <span className="tcg-bst">BST {card.bst}</span>
-          </div>
-        </div>
-      </div>
-    </HoloCard>
+        {card.isNew ? (
+          <span className="clip-btn bg-flare px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+            Novo
+          </span>
+        ) : (
+          <span className="clip-btn bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white/55">
+            Repetida
+          </span>
+        )}
+      </PokeCard>
+    </div>
   );
 }

@@ -41,7 +41,8 @@ export interface BattleMoveDef {
 // pokemonId/name/types = do espelho Pokemon. level = do UserPokemon do jogador.
 // stats/maxHp = base stats derivados por nível (deriveStats). moves = as cartas
 // do loadout (DeckSlotCard → Move), até 6.
-//  - slot: posição no time (1×1 usa o ativo); o schema fica pronto pra time.
+//  - slot: posição no time (1..6). Quem está em campo é o `activeSlot` do
+//    participante; os demais são reserva e entram por troca.
 //  - userPokemonId: de qual pokémon da coleção este snapshot saiu — é o caminho
 //    de volta pra creditar XP no fim (awardBattleXp). Opcional porque partidas
 //    criadas antes da fatia de XP não têm o vínculo.

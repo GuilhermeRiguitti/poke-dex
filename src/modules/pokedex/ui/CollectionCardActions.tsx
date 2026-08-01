@@ -4,11 +4,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import LoadoutBuilder from "./LoadoutBuilder";
 
-// O rodapé do card da coleção: montar loadout (ou tirar do deck) e soltar.
+// O rodapé do card da coleção: montar loadout, ou tirar do deck.
 //
 // No jogo novo "pôr no deck" não é um toggle — é montar um loadout (1 pokémon +
-// 6 cartas do learnset), então o botão abre o LoadoutBuilder. Tirar do deck e
-// soltar seguem sendo escrita direta + refresh (quem lê é o servidor).
+// 6 cartas do learnset), então o botão abre o LoadoutBuilder. Tirar do deck é
+// escrita direta + refresh (quem lê é o servidor).
+//
+// O "Soltar" (DELETE /api/cards/[id]) foi TIRADO da carta. A rota e o command
+// `removeCard` continuam existindo, só não têm mais gatilho na UI.
 
 export default function CollectionCardActions({
   userPokemonId,
@@ -43,28 +46,18 @@ export default function CollectionCardActions({
 
   const removeFromDeck = () =>
     deckSlotId && run(() => fetch(`/api/deck/${deckSlotId}`, { method: "DELETE" }));
-  const release = () => run(() => fetch(`/api/cards/${userPokemonId}`, { method: "DELETE" }));
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => (inDeck ? removeFromDeck() : setBuilding(true))}
-          disabled={locked || !canToggle}
-          className={`clip-btn cursor-pointer border-0 px-2 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-            inDeck ? "bg-flare text-white hover:bg-flare-dark" : "bg-panel-2 text-ink-dim hover:text-ink"
-          }`}
-        >
-          {inDeck ? "No deck ✓" : "Montar"}
-        </button>
-        <button
-          onClick={release}
-          disabled={locked}
-          className="clip-btn cursor-pointer border-0 bg-panel-2 px-2 py-1.5 text-xs font-bold uppercase tracking-wide text-bad/80 transition-colors hover:text-bad disabled:opacity-40"
-        >
-          Soltar
-        </button>
-      </div>
+      <button
+        onClick={() => (inDeck ? removeFromDeck() : setBuilding(true))}
+        disabled={locked || !canToggle}
+        className={`clip-btn cursor-pointer border-0 px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+          inDeck ? "bg-flare text-white hover:bg-flare-dark" : "bg-panel-2 text-ink-dim hover:text-ink"
+        }`}
+      >
+        {inDeck ? "No deck ✓" : "Montar"}
+      </button>
 
       {building && (
         <LoadoutBuilder

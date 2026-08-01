@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Anton, Rajdhani } from "next/font/google";
+import { Anton, Cinzel, Rajdhani } from "next/font/google";
 import "./globals.css";
 
 const anton = Anton({
@@ -14,6 +14,14 @@ const rajdhani = Rajdhani({
   variable: "--font-rajdhani",
 });
 
+// Só a carta usa Cinzel (o nome e o selo de raridade). O --font-title do resto
+// do app continua sendo o Anton.
+const cinzel = Cinzel({
+  weight: ["600", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-card",
+});
+
 export const metadata: Metadata = {
   title: "PokéArena",
   description: "Capture pokémons, monte seu deck e batalhe contra outros treinadores.",
@@ -25,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={`${anton.variable} ${rajdhani.variable}`}>
+    <html lang="pt-BR" className={`${anton.variable} ${rajdhani.variable} ${cinzel.variable}`}>
       <body>{children}</body>
     </html>
   );

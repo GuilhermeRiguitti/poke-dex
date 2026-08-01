@@ -7,6 +7,7 @@
 // badges. O DTO do card tem 5 campos de propósito.
 
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 
 /** Um pokémon como um CARD precisa dele. Nada além do que a moldura desenha. */
 export interface PokemonCardDTO {
@@ -30,6 +31,13 @@ export interface CollectionCardDTO {
   bst: number;
   /** faixa de raridade (mesma regra do pacote), pra moldura + intensidade do holo */
   rarity: RarityTier;
+  /**
+   * Os 6 base stats da espécie, crus do espelho (Pokemon.baseStats). A carta
+   * deriva pelo nível (deriveStats) pra desenhar as barras. Não vai derivado
+   * daqui de propósito: o nível é do UserPokemon e a conversão é regra de
+   * apresentação, que mora no view (pokedexView), não no DTO.
+   */
+  baseStats: BaseStats;
   /** null se a espécie não estiver no espelho (não deveria ocorrer — FK garante). */
   pokemon: PokemonCardDTO | null;
 }

@@ -1,3 +1,4 @@
+import { bstOf, rarityTier } from "@/src/modules/packs/domain/rarity";
 import type { BattleMoveDef } from "../domain/types";
 import type {
   BattleDTO,
@@ -79,7 +80,14 @@ function toPokemonDTO(row: BattleRow["participants"][number]["pokemons"][number]
     currentHp: row.currentHp,
     fainted: row.fainted,
     moves: moves.map(toMoveDTO),
-    // stats NÃO entram: a UI não usa, e stat do inimigo é informação de jogo.
+    // Raridade pela fortitude: pinta o metal da moldura da carta de reserva.
+    // NÃO é informação nova — sai de `pokemonId`, que já está aqui. Vem
+    // calculada do servidor porque `bstOf` carrega a tabela dos 1025 BSTs e a
+    // arena é código de cliente.
+    rarity: rarityTier(bstOf(row.pokemonId)),
+    // stats NÃO entram: a carta de reserva é `mini` (não desenha barras), e
+    // este DTO leva os pokémon dos DOIS lados — mandar stat daqui entregaria
+    // os números exatos do oponente. Mesma razão do cardSlot, logo abaixo.
   };
 }
 

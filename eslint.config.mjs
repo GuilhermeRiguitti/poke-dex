@@ -10,6 +10,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // docs/ é documentação, não código do app. Tem material de REFERÊNCIA de
+    // design (handoff de carta) que é .tsx mas nunca é compilado nem importado
+    // — lintar isso só produz erro de código que não roda.
+    "docs/**",
   ]),
 ]);
 

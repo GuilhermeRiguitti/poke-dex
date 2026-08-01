@@ -1,3 +1,5 @@
+import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+
 // Contrato de dados entre o servidor e a UI da batalha (duelo simultâneo).
 //
 // Espelho ESTREITO das linhas do Prisma: só entra aqui o que o jogador pode ver.
@@ -30,6 +32,13 @@ export interface BattlePokemonDTO {
   currentHp: number;
   fainted: boolean;
   moves: BattleMoveDTO[];
+  /**
+   * Faixa de raridade pela fortitude (BST) — pinta o metal da moldura.
+   * Calculada NO SERVIDOR de propósito: `bstOf` carrega a tabela dos 1025 BSTs,
+   * e a arena é código de cliente — mandar essa tabela pro browser só pra
+   * escolher uma cor seria peso à toa.
+   */
+  rarity: RarityTier;
 }
 
 export interface ParticipantDTO {

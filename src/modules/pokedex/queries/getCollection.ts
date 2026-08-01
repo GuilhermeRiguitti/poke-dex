@@ -1,6 +1,7 @@
 import { prisma } from "@/src/lib/prisma";
 import { readDeck } from "@/src/modules/deck";
 import { bstOf, rarityTier } from "@/src/modules/packs/domain/rarity";
+import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 import type { CollectionCardDTO, CollectionDTO, PokemonCardDTO } from "../ui/types";
 
 /**
@@ -19,7 +20,15 @@ export async function getCollection(userId: string): Promise<CollectionDTO> {
         id: true,
         level: true,
         xp: true,
-        pokemon: { select: { pokemonApiId: true, name: true, spriteUrl: true, types: true } },
+        pokemon: {
+          select: {
+            pokemonApiId: true,
+            name: true,
+            spriteUrl: true,
+            types: true,
+            baseStats: true,
+          },
+        },
       },
     }),
     readDeck(userId),
@@ -41,6 +50,9 @@ export async function getCollection(userId: string): Promise<CollectionDTO> {
       xp: up.xp,
       bst,
       rarity: rarityTier(bst),
+      // `baseStats` é coluna Json; o cast é a leitura do contrato que o
+      // syncPokedex escreveu (mesmo padrão de readDeck.ts).
+      baseStats: up.pokemon.baseStats as unknown as BaseStats,
       pokemon: card,
     };
   });

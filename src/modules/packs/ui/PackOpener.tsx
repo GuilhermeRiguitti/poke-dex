@@ -113,7 +113,10 @@ export default function PackOpener({ initialState }: { initialState: PackStateDT
               <>Todas repetidas desta vez</>
             )}
           </p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {/* Carta GRANDE (340px), 3 por fileira no desktop. Eram 6 colunas de
+              carta pequena; o pacote é justamente o momento de ver a carta
+              inteira, e a nova não cabe em 6. */}
+          <div className="flex flex-wrap justify-center gap-6">
             {cards.map((card, i) => (
               <PackRevealCard key={`${card.pokemonId}-${i}`} card={card} index={i} />
             ))}
