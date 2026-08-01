@@ -15,7 +15,7 @@ import { collectionView } from "@/src/modules/pokedex/ui/pokedexView";
 export default async function CollectionPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const filters = parseCollectionFilters(await searchParams);
 

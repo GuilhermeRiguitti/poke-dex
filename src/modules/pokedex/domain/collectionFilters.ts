@@ -44,17 +44,29 @@ const DEFAULTS: CollectionFilters = {
   page: 1,
 };
 
+// Next entrega array quando a chave repete na URL (?q=a&q=b). Sem isto o
+// ".trim()"/"parseInt" abaixo estouram num array e viram tela de erro — o
+// oposto da promessa "nada lança". Repetição resolve pro PRIMEIRO valor.
+const first = (v: string | string[] | undefined): string | undefined =>
+  Array.isArray(v) ? v[0] : v;
+
 export function parseCollectionFilters(
-  raw: Record<string, string | undefined>
+  raw: Record<string, string | string[] | undefined>
 ): CollectionFilters {
-  const q = (raw.q ?? "").trim().slice(0, MAX_QUERY_LENGTH);
-  const page = parsePage(raw.page);
+  const rawQ = first(raw.q);
+  const rawType = first(raw.type);
+  const rawRarity = first(raw.rarity);
+  const rawSort = first(raw.sort);
+  const rawPage = first(raw.page);
+
+  const q = (rawQ ?? "").trim().slice(0, MAX_QUERY_LENGTH);
+  const page = parsePage(rawPage);
 
   return {
     q: q.length > 0 ? q : null,
-    type: POKEMON_TYPES.includes(raw.type ?? "") ? raw.type! : null,
-    rarity: RARITY_TIERS.includes(raw.rarity as RarityTier) ? (raw.rarity as RarityTier) : null,
-    sort: SORTS.includes(raw.sort as CollectionSort) ? (raw.sort as CollectionSort) : "captured",
+    type: POKEMON_TYPES.includes(rawType ?? "") ? rawType! : null,
+    rarity: RARITY_TIERS.includes(rawRarity as RarityTier) ? (rawRarity as RarityTier) : null,
+    sort: SORTS.includes(rawSort as CollectionSort) ? (rawSort as CollectionSort) : "captured",
     page,
   };
 }

@@ -56,6 +56,16 @@ describe("parseCollectionFilters", () => {
     const f = parseCollectionFilters({ q: "a".repeat(500) });
     expect(f.q).toHaveLength(50);
   });
+
+  // Next entrega array quando a chave repete na URL (?q=a&q=b). Sem tratar
+  // isso, ".trim()"/"parseInt" num array lançam e a tela de erro substitui a
+  // coleção — o oposto do "NADA LANÇA" prometido no topo do arquivo.
+  it("NÃO lança com query param repetido (array) — usa o primeiro valor", () => {
+    expect(() => parseCollectionFilters({ q: ["a", "b"] })).not.toThrow();
+    expect(parseCollectionFilters({ q: ["a", "b"] }).q).toBe("a");
+    expect(parseCollectionFilters({ page: ["2", "9"] }).page).toBe(2);
+    expect(parseCollectionFilters({ type: ["fire", "water"] }).type).toBe("fire");
+  });
 });
 
 describe("hasActiveFilter", () => {
