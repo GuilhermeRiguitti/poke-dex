@@ -7,6 +7,7 @@ import {
   LOSER_XP_SHARE,
   mergePlayableMoveIds,
   PLAYABLE_LEARN_METHOD,
+  progressionFromXp,
   pruneLoadout,
   refillLoadout,
   xpFromDefeat,
@@ -102,7 +103,10 @@ export async function awardBattleXp(tx: Prisma.TransactionClient, context: XpCon
     const progress = applyXp(row.xp, award.gainedXp);
     await tx.userPokemon.update({
       where: { id: row.id },
-      data: { xp: progress.xp, level: progress.level },
+      // `progressionFromXp` reafirma o par por construção. `applyXp` já devolve
+      // os dois casados; passar pelo helper é o que impede um escritor futuro
+      // de gravar só um dos campos.
+      data: progressionFromXp(progress.xp),
     });
     // Subiu de nível → pode ter cruzado o gatilho de evolução. Só checa quando
     // ganhou nível (não a cada XP). NÃO toca no snapshot da partida (BattlePokemon
