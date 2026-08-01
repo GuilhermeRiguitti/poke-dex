@@ -8,6 +8,7 @@
 
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 import type { BaseStats } from "@/src/modules/progression/domain/leveling";
+import type { CollectionFilters } from "../domain/collectionFilters";
 
 /** Um pokémon como um CARD precisa dele. Nada além do que a moldura desenha. */
 export interface PokemonCardDTO {
@@ -46,6 +47,24 @@ export interface CollectionDTO {
   cards: CollectionCardDTO[];
   /** null quando o jogador ainda não tem deck (ele nasce no primeiro loadout) */
   deck: { id: string; slots: { id: string; userPokemonId: string }[] } | null;
+}
+
+/** Uma PÁGINA da coleção: as 16 cartas, o deck, e o estado da navegação. */
+export interface CollectionPageDTO {
+  cards: CollectionCardDTO[];
+  /** null quando o jogador ainda não tem deck (nasce no primeiro loadout) */
+  deck: { id: string; slots: { id: string; userPokemonId: string }[] } | null;
+  page: number;
+  totalPages: number;
+  /** total que o FILTRO encontrou — é o que a tela conta */
+  totalCards: number;
+  /**
+   * total sem filtro nenhum. Existe pra distinguir os dois estados vazios:
+   * "coleção vazia" (vai capturar) e "o filtro não achou nada" (limpa o
+   * filtro). São telas diferentes.
+   */
+  totalInCollection: number;
+  filters: CollectionFilters;
 }
 
 export interface PokedexPageDTO {

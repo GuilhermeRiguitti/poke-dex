@@ -7,6 +7,7 @@ import {
   LOSER_XP_SHARE,
   mergePlayableMoveIds,
   PLAYABLE_LEARN_METHOD,
+  progressionFromXp,
   pruneLoadout,
   refillLoadout,
   xpFromDefeat,
@@ -102,14 +103,27 @@ export async function awardBattleXp(tx: Prisma.TransactionClient, context: XpCon
     const progress = applyXp(row.xp, award.gainedXp);
     await tx.userPokemon.update({
       where: { id: row.id },
-      data: { xp: progress.xp, level: progress.level },
+      // `progressionFromXp` reafirma o par por construção. `applyXp` já devolve
+      // os dois casados; passar pelo helper é o que impede um escritor futuro
+      // de gravar só um dos campos.
+      data: progressionFromXp(progress.xp),
     });
-    // Subiu de nível → pode ter cruzado o gatilho de evolução. Só checa quando
-    // ganhou nível (não a cada XP). NÃO toca no snapshot da partida (BattlePokemon
-    // é congelado): a evolução vale da PRÓXIMA batalha, que reconstrói do UserPokemon.
-    if (progress.gained > 0) {
-      await maybeEvolve(tx, row.id, row.pokemon, progress.level);
-    }
+    // Evolução RETROATIVA: checa em toda aplicação de XP, não só quando subiu
+    // de nível. Aqui não existe worker pra consertar estado depois (CLAUDE.md
+    // §5), então o estado tem que se curar quando alguém chega — mesmo padrão
+    // do timeout de turno. Sem isto, um pokémon que cruzou o gatilho enquanto a
+    // espécie-alvo não estava no espelho ficava preso na forma antiga pra
+    // sempre (no MAX_LEVEL nunca mais há nível ganho, então a checagem nunca
+    // voltava).
+    //
+    // Custo ZERO no caso saudável: `evolutionTargetFor` é puro e devolve null
+    // sem tocar no banco quando o nível não bate o gatilho da espécie atual —
+    // e quem já evoluiu aponta pro estágio seguinte, cujo nível é mais alto.
+    // A ida ao banco só acontece no caso que estava quebrado.
+    //
+    // NÃO toca no snapshot da partida (BattlePokemon é congelado): a evolução
+    // vale da PRÓXIMA batalha, que reconstrói do UserPokemon.
+    await maybeEvolve(tx, row.id, row.pokemon, progress.level);
   }
 }
 

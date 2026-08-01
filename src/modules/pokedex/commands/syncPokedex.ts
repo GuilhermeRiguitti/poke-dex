@@ -12,10 +12,12 @@ import {
   parseLevelUpEvolutions,
   pickLearnEntry,
   pickVersionGroup,
+  sumBaseStats,
   type BaseStats,
   type EvolutionEdge,
   type LearnsetEntry,
 } from "@/src/modules/progression";
+import { rarityTier } from "@/src/modules/packs/domain/rarity";
 
 // Sincroniza o espelho da PokéAPI (Pokemon/Move/PokemonMove) — o motor único
 // da seed inicial (Fase 0) E do cron de refresh (PLANO_JOGO.md §7). Escreve →
@@ -134,14 +136,24 @@ export async function syncPokedex(
     // Prisma exige InputJsonValue (com index signature) pra colunas Json; o
     // BaseStats/`string[]` tipados não casam sozinhos, daí o cast no ponto de
     // escrita. Hoisted pra não repetir a whitelist em create/update.
+    // `baseStats` sai numa const porque agora ele é usado DUAS vezes: vai pra
+    // coluna Json e alimenta o bst. Somar o que este sync acabou de buscar (e
+    // não ler o BST_BY_ID) é deliberado — a linha fica consistente consigo
+    // mesma, e uma espécie que a tabela gerada não conhece ainda recebe o
+    // valor certo.
+    const baseStats = toBaseStats(p);
+    const bst = sumBaseStats(baseStats);
+
     const data = {
       name: p.name,
       types: toTypeNames(p) as Prisma.InputJsonValue,
-      baseStats: toBaseStats(p) as unknown as Prisma.InputJsonObject,
+      baseStats: baseStats as unknown as Prisma.InputJsonObject,
       baseExperience: p.baseExperience,
       spriteUrl: p.sprites.artwork ?? p.sprites.front_default,
       evolvesToApiId: evolution?.toApiId ?? null,
       evolvesToLevel: evolution?.minLevel ?? null,
+      bst,
+      rarity: rarityTier(bst),
     };
     const row = await prisma.pokemon.upsert({
       where: { pokemonApiId: p.id },

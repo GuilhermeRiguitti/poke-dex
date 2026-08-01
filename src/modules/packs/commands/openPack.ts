@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { birthLevelForSpecies, STARTING_LEVEL, xpForLevel } from "@/src/modules/progression";
+import { birthLevelForSpecies, STARTING_LEVEL, progressionFromLevel } from "@/src/modules/progression";
 import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 import type { PokemonCardDTO } from "@/src/modules/pokedex";
 import { canOpenFree, FREE_PACK_INTERVAL_MS } from "../domain/cooldown";
@@ -142,20 +142,15 @@ export async function openPack(userId: string, rng: () => number = Math.random):
       // porque a troca entre jogadores dá uso a ela.
       //
       // Nível de NASCIMENTO: forma evoluída nasce no nível em que seria alcançada
-      // (Charizard não sai nível 1); forma-base sai em STARTING_LEVEL. Nível/XP
-      // explícitos porque os dois têm que casar: `level` é função de `xp`
-      // (levelFromXp); escrever um sem o outro criaria o único estado inválido
-      // possível aqui.
+      // (Charizard não sai nível 1); forma-base sai em STARTING_LEVEL.
+      // `progressionFromLevel` devolve o par (xp, level) casado — escrever um
+      // sem o outro criaria o único estado inválido possível aqui.
       await tx.userPokemon.createMany({
-        data: drawnIds.map((apiId) => {
-          const level = birthLevels.get(apiId)!;
-          return {
-            userId,
-            pokemonId: byApiId.get(apiId)!.id,
-            level,
-            xp: xpForLevel(level),
-          };
-        }),
+        data: drawnIds.map((apiId) => ({
+          userId,
+          pokemonId: byApiId.get(apiId)!.id,
+          ...progressionFromLevel(birthLevels.get(apiId)!),
+        })),
       });
 
       const updated = await tx.packState.findUniqueOrThrow({

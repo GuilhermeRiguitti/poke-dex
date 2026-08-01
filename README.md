@@ -8,7 +8,9 @@ time e batalha contra outro jogador em turnos.
 - **Coleção com nível.** Cada Pokémon começa no nível 1 e sobe ganhando experiência
   ao batalhar. Subir de nível aumenta os atributos e **libera golpes novos** — cada
   Pokémon só sabe os golpes que aprenderia naquele nível no jogo original. Ao chegar
-  no nível certo, ele **evolui**.
+  no nível certo, ele **evolui**. A tela da coleção é **paginada** (16 cartas por
+  página) e **filtrável** por raridade, tipo e nome — busca, filtro, ordenação e
+  paginação são resolvidos no banco, nunca em JS no cliente.
 - **Deck.** Você monta um time de até 6 Pokémon, e para cada um escolhe até 6
   golpes dele. O primeiro do time começa em campo; os outros ficam na reserva.
 - **Turno simultâneo.** Os dois jogadores escolhem a jogada do round **ao mesmo

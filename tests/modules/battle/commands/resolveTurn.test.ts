@@ -108,8 +108,8 @@ beforeEach(() => {
   tx.battleTurnLog.create.mockResolvedValue({});
   tx.battleAction.deleteMany.mockResolvedValue({ count: 2 });
   tx.userPokemon.findMany.mockResolvedValue([
-    { id: "up-alpha", xp: 8000 },
-    { id: "up-zeta", xp: 8000 },
+    { id: "up-alpha", xp: 8000, pokemon: { evolvesToApiId: null, evolvesToLevel: null } },
+    { id: "up-zeta", xp: 8000, pokemon: { evolvesToApiId: null, evolvesToLevel: null } },
   ]);
   tx.userPokemon.update.mockResolvedValue({});
 });
