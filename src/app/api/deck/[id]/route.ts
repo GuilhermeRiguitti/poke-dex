@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { removeFromDeck } from "@/src/modules/deck";
 
 // DELETE /api/deck/[id] — tira um loadout do deck (o id é do DeckSlot).

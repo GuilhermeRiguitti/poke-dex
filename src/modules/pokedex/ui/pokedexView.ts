@@ -2,8 +2,10 @@
 // API de servidor do módulo e reexporta queries/commands, que importam Prisma.
 // Isto aqui é ui/ — se importasse o barrel, o Prisma iria parar no bundle do
 // browser. domain/ é puro, e é a única coisa que ui/ pode puxar de outro módulo.
+import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 import { DECK_LIMIT, canToggleIntoDeck } from "@/src/modules/deck/domain/rules";
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+
 import type { CollectionDTO, PokemonDetailDTO } from "./types";
 
 // Mapear DTO -> o que a tela desenha é função pura, mora aqui e tem teste.
@@ -28,6 +30,8 @@ export interface CollectionCardView {
   /** fortitude (soma dos base stats) e a raridade derivada — moldura + holo */
   bst: number;
   rarity: RarityTier;
+  /** base stats da espécie — a carta deriva o número e usa a base na barra */
+  baseStats: BaseStats;
   inDeck: boolean;
   /** id do DeckSlot, pra remover do deck. null quando não está no deck. */
   deckSlotId: string | null;
@@ -35,12 +39,17 @@ export interface CollectionCardView {
   canToggle: boolean;
 }
 
+/** Uma vaga do deck. Preenchida, é uma carta mini; vazia, é a moldura tracejada. */
 export interface DeckSlotView {
-  /** null = vaga vazia */
+  /** null = vaga vazia (e aí todo o resto também é null) */
   pokemonId: number | null;
+  dexNumber: string | null;
   name: string | null;
   iconUrl: string | null;
   level: number | null;
+  types: string[];
+  rarity: RarityTier | null;
+  baseStats: BaseStats | null;
 }
 
 export interface CollectionView {
@@ -75,6 +84,10 @@ export function collectionView(collection: CollectionDTO): CollectionView {
       level: card.level,
       bst: card.bst,
       rarity: card.rarity,
+      // passa CRU: a carta precisa da base pra barra (perfil da espécie) e do
+      // nível pro número (derivado). Quem faz as duas contas é o `statBars`,
+      // que é puro e testado (CLAUDE.md, regra 4).
+      baseStats: card.baseStats,
       inDeck,
       deckSlotId,
       canToggle: canToggleIntoDeck(deckCount, inDeck),
@@ -87,13 +100,28 @@ export function collectionView(collection: CollectionDTO): CollectionView {
     const slot = slots[i];
     const card = slot ? cardByUserPokemonId.get(slot.userPokemonId) : undefined;
 
-    if (!card) return { pokemonId: null, name: null, iconUrl: null, level: null };
+    if (!card) {
+      return {
+        pokemonId: null,
+        dexNumber: null,
+        name: null,
+        iconUrl: null,
+        level: null,
+        types: [],
+        rarity: null,
+        baseStats: null,
+      };
+    }
 
     return {
       pokemonId: card.pokemonId,
+      dexNumber: dexNumber(card.pokemonId),
       name: card.pokemon?.name ?? dexNumber(card.pokemonId),
       iconUrl: card.pokemon?.iconUrl ?? null,
       level: card.level,
+      types: card.pokemon?.types ?? [],
+      rarity: card.rarity,
+      baseStats: card.baseStats,
     };
   });
 

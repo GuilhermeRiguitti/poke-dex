@@ -1,4 +1,4 @@
-import HpBar from "@/src/components/HpBar";
+import HpBar from "@/src/layout/HpBar";
 import DetailPanel from "./DetailPanel";
 import type { StatBarView } from "./pokedexView";
 

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { getQueueDeck } from "@/src/modules/battle";
 import BattleMatchmaker from "@/src/modules/battle/ui/BattleMatchmaker";
 

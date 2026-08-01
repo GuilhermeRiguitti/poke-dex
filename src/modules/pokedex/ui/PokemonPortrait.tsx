@@ -1,4 +1,4 @@
-import TypeBadge from "@/src/components/TypeBadge";
+import TypeBadge from "@/src/layout/TypeBadge";
 import { typeColor } from "@/src/lib/typeColors";
 
 // O retrato da página de detalhe: sprite grande, placa do nome, tipos e ficha

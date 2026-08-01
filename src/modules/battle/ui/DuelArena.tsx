@@ -2,8 +2,9 @@
 
 import { Component, type ReactNode, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import TypeBadge from "@/src/components/TypeBadge";
+import TypeBadge from "@/src/layout/TypeBadge";
 import MoveCommandBar from "./MoveCommandBar";
+import ReserveHand from "./ReserveHand";
 import type { DuelMonView, DuelTurnFx, DuelView, PartyMemberView } from "./battleView";
 
 // A ARENA da batalha: palco 3D (three.js/R3F, lazy) atrás + overlays HTML na
@@ -139,37 +140,10 @@ function OppPips({ party }: { party: PartyMemberView[] }) {
   );
 }
 
-function PartyBar({ party, disabled, onSwitch }: { party: PartyMemberView[]; disabled: boolean; onSwitch: (slot: number) => void }) {
-  return (
-    <div className="flex flex-wrap justify-center gap-2">
-      {party.map((m) => {
-        const clickable = m.canSwitchTo && !disabled;
-        const tone = m.hpPct > 50 ? "bg-ok" : m.hpPct > 20 ? "bg-warn" : "bg-bad";
-        return (
-          <button
-            key={m.slot}
-            disabled={!clickable}
-            onClick={() => onSwitch(m.slot)}
-            title={m.name.replace(/-/g, " ")}
-            aria-label={`Trocar para ${m.name.replace(/-/g, " ")}`}
-            className={`relative flex w-14 flex-col items-center rounded-md border p-1 transition-colors ${
-              m.isActive ? "border-energy bg-panel-2" : clickable ? "cursor-pointer border-edge bg-panel hover:border-energy" : "border-edge bg-panel opacity-60"
-            }`}
-          >
-            {m.spriteUrl && (
-              // eslint-disable-next-line @next/next/no-img-element -- sprite da PokéAPI
-              <img src={m.spriteUrl} alt={m.name} className={`h-9 w-9 object-contain ${m.fainted ? "opacity-30 grayscale" : ""}`} />
-            )}
-            <div className="h-1 w-full overflow-hidden rounded-full bg-panel-2">
-              <div className={`h-full ${tone}`} style={{ width: `${m.hpPct}%` }} />
-            </div>
-            {m.isActive && <span className="absolute -top-1 -right-1 rounded-full bg-energy px-1 text-[8px] font-bold text-bg">●</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+// A antiga PartyBar (botõezinhos de 56px com sprite) virou o ReserveHand — o
+// leque de cartas mini no rodapé. Diferença de leitura, não só de visual: a
+// barra mostrava o time INTEIRO com um ponto marcando o ativo; o leque mostra
+// só quem está na RESERVA, porque o ativo já está no palco 3D.
 
 // ── relatório de combate (feed interativo) ──────────────────────────────────
 function iconFor(text: string): { glyph: string; cls: string } {
@@ -312,7 +286,7 @@ export default function DuelArena({
           <p className="font-title text-sm uppercase tracking-wider text-flare">
             {view.me.name.replace(/-/g, " ")} desmaiou — escolha o próximo
           </p>
-          <PartyBar party={view.myParty} disabled={submitting} onSwitch={onSwitch} />
+          <ReserveHand party={view.myParty} disabled={submitting} onSwitch={onSwitch} />
         </div>
       ) : (
         <>
@@ -321,9 +295,9 @@ export default function DuelArena({
           </div>
           <div className="flex flex-col items-center gap-1">
             <span className="font-title text-[10px] uppercase tracking-widest text-ink-dim">
-              {view.canSwitch ? "Trocar (gasta o turno)" : "Seu time"}
+              {view.canSwitch ? "Reservas — trocar gasta o turno" : "Reservas"}
             </span>
-            <PartyBar party={view.myParty} disabled={locked} onSwitch={onSwitch} />
+            <ReserveHand party={view.myParty} disabled={locked} onSwitch={onSwitch} />
           </div>
         </>
       )}

@@ -37,6 +37,12 @@ export {
   parseLevelUpEvolutions,
   evolutionTargetFor,
   pruneLoadout,
+  refillLoadout,
   birthLevelForSpecies,
 } from "./domain/evolution";
-export type { EvolutionEdge, EvolutionDetail, EvolutionChainNode } from "./domain/evolution";
+export type {
+  EvolutionEdge,
+  EvolutionDetail,
+  EvolutionChainNode,
+  LoadoutCandidate,
+} from "./domain/evolution";

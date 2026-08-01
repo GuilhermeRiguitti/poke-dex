@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { readPackState } from "@/src/modules/packs";
 import PackOpener from "@/src/modules/packs/ui/PackOpener";
 

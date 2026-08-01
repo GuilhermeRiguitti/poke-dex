@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/src/lib/auth";
-import { PackIcon } from "@/src/components/icons";
+import { auth } from "@/src/modules/auth/auth";
+import { PackIcon } from "@/src/layout/icons";
 import { readPackState } from "@/src/modules/packs";
 import { streakView } from "@/src/modules/packs/ui/packView";
 

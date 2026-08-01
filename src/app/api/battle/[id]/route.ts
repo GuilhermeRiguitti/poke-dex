@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { getBattleState } from "@/src/modules/battle";
 
 // GET /api/battle/[id] — estado completo (times dos dois lados). Só deve ser

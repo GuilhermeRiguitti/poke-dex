@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { clampPage, listPokedexPage } from "@/src/modules/pokedex";
 import Pagination from "@/src/modules/pokedex/ui/Pagination";
 import PokedexGrid from "@/src/modules/pokedex/ui/PokedexGrid";

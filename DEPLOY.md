@@ -87,9 +87,16 @@ Dev usa o stack do Supabase CLI (Docker, banco em `:54322`):
 
 ```sh
 npx supabase start          # sobe o stack local
-npx supabase db push        # aplica supabase/migrations/ no banco local
 npx prisma migrate deploy   # aplica prisma/migrations/ no banco local
+npx supabase db push        # aplica supabase/migrations/ no banco local
 ```
+
+⚠️ **A ordem é Prisma → Supabase, igual à do CI.** Num banco limpo o inverso
+falha: as migrations de realtime referenciam tabelas que o Prisma ainda não
+criou (o `create function` valida o corpo contra `public."BattleParticipant"`, e
+o `create trigger` precisa de `public."Battle"`). Pelo mesmo motivo o
+`supabase db reset` nunca funciona sozinho aqui — ele roda só
+`supabase/migrations/`; depois dele, refaça os dois comandos acima na ordem.
 
 O `supabase` não é dependência do projeto — use via `npx supabase` (ou instale o
 CLI global). No CI é a action `supabase/setup-cli`.

@@ -106,8 +106,14 @@ Nenhum dos dois quebra o deploy de hoje. Os dois quebram **subir um ambiente nov
   hardcode. Aí o `cron.schedule` vira versionável e o valor fica por ambiente.
   Já documentado como gap em `DEPLOY.md` e no cabeçalho da própria migration.
 
-- [ ] **O fluxo de dev documentado está na ordem errada e quebra num banco limpo.**
-  `DEPLOY.md` § "Rodar migrations localmente (dev)" manda `supabase db push` e
+- [x] ~~**O fluxo de dev documentado está na ordem errada e quebra num banco
+  limpo.**~~ **(a) FEITO (2026-07-31):** `DEPLOY.md` § "Rodar migrations
+  localmente (dev)" agora manda Prisma → Supabase, com o porquê e o aviso do
+  `db reset` ao lado; o `README.md` § "Rodando localmente" ganhou o
+  `supabase db push` que faltava (sem ele o Realtime não sobe no local, apesar de
+  o próprio README prometer isso). **(b) segue aberto:** o script `db:reset` no
+  `package.json`, pra ninguém depender de lembrar a ordem. Contexto original:
+  `DEPLOY.md` mandava `supabase db push` e
   **depois** `prisma migrate deploy`. Num banco local recém-criado isso falha: as
   migrations de realtime dependem de tabelas que o Prisma ainda não criou —
   `create function ... language sql` valida o corpo contra `public."BattleParticipant"`

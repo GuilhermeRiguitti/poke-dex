@@ -1,7 +1,7 @@
 # PokeDex
 
-Jogo de duelo 1×1 de Pokémon, jogado no navegador. Você coleciona Pokémon, monta
-um deck e batalha contra outro jogador em turnos.
+Jogo de duelo de Pokémon, jogado no navegador. Você coleciona Pokémon, monta um
+time e batalha contra outro jogador em turnos.
 
 ## O jogo
 
@@ -9,13 +9,17 @@ um deck e batalha contra outro jogador em turnos.
   ao batalhar. Subir de nível aumenta os atributos e **libera golpes novos** — cada
   Pokémon só sabe os golpes que aprenderia naquele nível no jogo original. Ao chegar
   no nível certo, ele **evolui**.
-- **Deck.** Você escolhe 1 Pokémon e até 6 golpes dele para levar à batalha.
-- **Turno simultâneo.** Os dois jogadores escolhem a carta do round **ao mesmo
+- **Deck.** Você monta um time de até 6 Pokémon, e para cada um escolhe até 6
+  golpes dele. O primeiro do time começa em campo; os outros ficam na reserva.
+- **Turno simultâneo.** Os dois jogadores escolhem a jogada do round **ao mesmo
   tempo, sem ver a escolha do outro**. Quando as duas estão na mesa, o turno é
   resolvido: quem tem mais Velocidade ataca primeiro (alguns golpes têm prioridade
   e furam a fila). A graça está em **ler o oponente e apostar**, não em reagir
   depois de ver a jogada dele.
-- **Fim.** Quando o HP de um Pokémon chega a zero, a batalha acaba.
+- **Troca.** A jogada do round pode ser um golpe **ou** trocar o Pokémon em campo
+  por um da reserva — e trocar gasta o turno, então também é uma aposta. Quando o
+  seu Pokémon desmaia, a batalha pausa até você escolher quem entra no lugar.
+- **Fim.** A batalha acaba quando **todo o time** de um lado desmaia.
 
 Todos os atributos e golpes vêm da [PokéAPI](https://pokeapi.co/) — nada é
 inventado à mão.
@@ -124,8 +128,11 @@ cp .env_example .env
 # 2. sobe o Supabase local (Docker): banco + realtime
 npx supabase start
 
-# 3. prepara o banco e carrega os Pokémon (Gen 1) a partir da PokéAPI
-npx prisma migrate deploy
+# 3. prepara o banco e carrega os Pokémon (Gen 1) a partir da PokéAPI.
+#    A ORDEM importa: o Prisma cria as tabelas, e só depois o `db push` aplica
+#    RLS/realtime, que referenciam essas tabelas (a mesma ordem do CI).
+npx prisma migrate deploy   # tabelas do app
+npx supabase db push        # RLS, extensões e os triggers do Realtime
 npm run seed
 
 # 4. sobe o app

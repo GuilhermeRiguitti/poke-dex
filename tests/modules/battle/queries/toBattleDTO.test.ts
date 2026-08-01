@@ -81,6 +81,18 @@ describe("toBattleDTO", () => {
     expect(JSON.stringify(dto)).not.toContain("specialAttack");
   });
 
+  it("leva a raridade calculada no servidor (metal da moldura da carta)", () => {
+    const dto = toBattleDTO(rowMidTurn());
+    // Pikachu tem BST 320 -> "common". Vem do servidor porque bstOf carrega a
+    // tabela dos 1025 BSTs, que não pode ir pro bundle da arena (cliente).
+    expect(dto.participants[0].pokemons[0].rarity).toBe("common");
+  });
+
+  it("a raridade NÃO é informação nova — sai do pokemonId que já ia no DTO", () => {
+    const dto = toBattleDTO(rowMidTurn());
+    expect(dto.participants[0].pokemons[0].pokemonId).toBe(25);
+  });
+
   it("mantém tudo que a mesa precisa desenhar", () => {
     const dto = toBattleDTO(rowMidTurn());
     const pokemon = dto.participants[0].pokemons[0];

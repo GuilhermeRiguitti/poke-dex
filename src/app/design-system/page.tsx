@@ -2,9 +2,9 @@
 // Página viva de design system — usa os tokens e componentes REAIS do jogo.
 // Direção: MMORPGs 2000s da Level Up × HUD futurista de Overwatch.
 
-import HpBar from "@/src/components/HpBar";
-import { PokeballIcon, SwordsIcon, CardsIcon } from "@/src/components/icons";
-import TypeBadge from "@/src/components/TypeBadge";
+import HpBar from "@/src/layout/HpBar";
+import { PokeballIcon, SwordsIcon, CardsIcon } from "@/src/layout/icons";
+import TypeBadge from "@/src/layout/TypeBadge";
 import { TYPE_COLORS } from "@/src/lib/typeColors";
 
 const SWATCHES = [

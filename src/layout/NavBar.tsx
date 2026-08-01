@@ -12,7 +12,7 @@ import {
   MenuIcon,
   CloseIcon,
 } from "./icons";
-import SignOutButton from "./SignOutButton";
+import SignOutButton from "../modules/auth/SignOutButton";
 
 
 const LINKS = [

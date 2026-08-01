@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PackIcon } from "@/src/components/icons";
+import { PackIcon } from "@/src/layout/icons";
 import type { CheckInResult } from "../commands/checkInLogin";
 
 // Dispara o check-in diário de login uma vez por carga (montado no layout de

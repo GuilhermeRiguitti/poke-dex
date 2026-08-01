@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { checkInLogin } from "@/src/modules/packs";
 
 // POST /api/packs/checkin — marca a presença diária (streak de login).

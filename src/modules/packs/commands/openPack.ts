@@ -1,5 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
 import { birthLevelForSpecies, STARTING_LEVEL, xpForLevel } from "@/src/modules/progression";
+import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 import type { PokemonCardDTO } from "@/src/modules/pokedex";
 import { canOpenFree, FREE_PACK_INTERVAL_MS } from "../domain/cooldown";
 import { drawPack } from "../domain/rarity";
@@ -12,7 +13,13 @@ export type OpenPackResult =
   | { ok: false; error: "on_cooldown" | "empty_pokedex" };
 
 /** Uma espécie do espelho como o pacote precisa dela. */
-type MirrorSpecies = { id: string; pokemonApiId: number; card: PokemonCardDTO };
+type MirrorSpecies = {
+  id: string;
+  pokemonApiId: number;
+  card: PokemonCardDTO;
+  /** pras 6 barras de stat da carta revelada */
+  baseStats: BaseStats;
+};
 
 /**
  * Abre um pacote: sorteia PACK_SIZE cartas ponderadas por raridade e cria os
@@ -55,6 +62,7 @@ export async function openPack(userId: string, rng: () => number = Math.random):
       name: true,
       spriteUrl: true,
       types: true,
+      baseStats: true,
       evolvesToApiId: true,
       evolvesToLevel: true,
     },
@@ -80,10 +88,19 @@ export async function openPack(userId: string, rng: () => number = Math.random):
         iconUrl: s.spriteUrl,
         types: s.types as string[],
       },
+      baseStats: s.baseStats as unknown as BaseStats,
     });
   }
 
   const drawnIds = drawPack(rng, undefined, Array.from(byApiId.keys()));
+
+  // Nível de nascimento por espécie sorteada. Calculado UMA vez: a transação
+  // grava esse nível no UserPokemon e o DTO devolve o MESMO número pra carta —
+  // se as duas contas ficassem separadas, a carta poderia mostrar um nível
+  // diferente do que entrou na coleção.
+  const birthLevels = new Map(
+    drawnIds.map((apiId) => [apiId, birthLevelForSpecies(evolutionEdges, apiId, STARTING_LEVEL)])
+  );
 
   const result = await prisma.$transaction(
     async (tx) => {
@@ -131,7 +148,7 @@ export async function openPack(userId: string, rng: () => number = Math.random):
       // possível aqui.
       await tx.userPokemon.createMany({
         data: drawnIds.map((apiId) => {
-          const level = birthLevelForSpecies(evolutionEdges, apiId, STARTING_LEVEL);
+          const level = birthLevels.get(apiId)!;
           return {
             userId,
             pokemonId: byApiId.get(apiId)!.id,
@@ -155,7 +172,13 @@ export async function openPack(userId: string, rng: () => number = Math.random):
 
   const cards = drawnIds.map((apiId) => {
     const s = byApiId.get(apiId)!;
-    return toPackCardDTO(apiId, s.card, !result.ownedSet.has(s.id));
+    return toPackCardDTO(
+      apiId,
+      s.card,
+      s.baseStats,
+      birthLevels.get(apiId)!,
+      !result.ownedSet.has(s.id)
+    );
   });
 
   return { ok: true, source: result.source, cards, packState: toPackStateDTO(result.updated) };

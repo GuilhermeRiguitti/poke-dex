@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { readBattleState } from "@/src/modules/battle";
 import BattleRoom from "@/src/modules/battle/ui/BattleRoom";
 import BattleRoomShell from "@/src/modules/battle/ui/BattleRoomShell";

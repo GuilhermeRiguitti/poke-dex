@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
+import { CARDS_PER_SLOT } from "@/src/modules/deck";
 import {
   applyXp,
   evolutionTargetFor,
@@ -7,6 +8,7 @@ import {
   mergePlayableMoveIds,
   PLAYABLE_LEARN_METHOD,
   pruneLoadout,
+  refillLoadout,
   xpFromDefeat,
 } from "@/src/modules/progression";
 
@@ -146,9 +148,14 @@ async function maybeEvolve(
 
 /**
  * Poda os loadouts do UserPokemon depois da evolução: apaga as DeckSlotCard cujo
- * move a NOVA espécie não conhece por level-up já destravado no nível atual. A
- * decisão de QUAIS sobrevivem é pura (pokedex/domain/pruneLoadout); aqui é só o
- * I/O. Slots podem ficar com buracos na `order` (só apagamos) — a batalha lê as
+ * move a NOVA espécie não conhece por level-up já destravado no nível atual, e
+ * REPÕE o slot que a poda tiver esvaziado. As duas decisões são puras
+ * (progression/domain/evolution: pruneLoadout + refillLoadout); aqui é só o I/O.
+ *
+ * A reposição não é enfeite: slot vazio deixa o pokémon INJOGÁVEL
+ * (`buildDuelSnapshot` lança) e derrubava o matchmaking — ver refillLoadout.
+ *
+ * Slots podem ficar com buracos na `order` (só apagamos) — a batalha lê as
  * cartas por ordem crescente, então buraco não quebra nada.
  */
 async function pruneLoadoutForSpecies(
@@ -170,7 +177,7 @@ async function pruneLoadoutForSpecies(
   const [valid, granted] = await Promise.all([
     tx.pokemonMove.findMany({
       where: { pokemonId: newSpeciesId, learnMethod: PLAYABLE_LEARN_METHOD, levelLearnedAt: { lte: level } },
-      select: { moveId: true },
+      select: { moveId: true, levelLearnedAt: true },
     }),
     tx.userPokemonMove.findMany({ where: { userPokemonId }, select: { moveId: true } }),
   ]);
@@ -182,6 +189,17 @@ async function pruneLoadoutForSpecies(
     const orphans = currentIds.filter((id) => !kept.has(id));
     if (orphans.length > 0) {
       await tx.deckSlotCard.deleteMany({ where: { deckSlotId: slot.id, moveId: { in: orphans } } });
+    }
+
+    // Só entra quando a poda zerou o slot; senão `refillLoadout` devolve o que
+    // sobreviveu e não há nada a criar. As candidatas são as level-up da espécie
+    // nova (se o slot tivesse uma carta de TM, ela teria sobrevivido — as
+    // concedidas estão no validSet — e o slot não estaria vazio).
+    const added = refillLoadout([...kept], valid, CARDS_PER_SLOT).filter((id) => !kept.has(id));
+    if (added.length > 0) {
+      await tx.deckSlotCard.createMany({
+        data: added.map((moveId, order) => ({ deckSlotId: slot.id, moveId, order })),
+      });
     }
   }
 }

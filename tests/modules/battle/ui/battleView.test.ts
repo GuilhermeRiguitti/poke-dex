@@ -18,6 +18,7 @@ function mon(over: Partial<BattleDTO["participants"][number]["pokemons"][number]
       { id: 1, name: "thunderbolt", type: "electric", power: 90, accuracy: 100, damageClass: "special" as const, priority: 0, maxPp: 15, currentPp: 15 },
       { id: 2, name: "quick-attack", type: "normal", power: 40, accuracy: 100, damageClass: "physical" as const, priority: 1, maxPp: 30, currentPp: 0 },
     ],
+    rarity: "common" as const,
     ...over,
   };
 }
@@ -124,6 +125,29 @@ describe("selectDuelView", () => {
         turnLogs: [{ turnNumber: 1, events: [{ type: "roundStart", round: 1, firstUserId: "me" }] }],
       });
       expect(selectDuelView(b, "me")!.fx).toBeNull();
+    });
+  });
+
+  // O leque de reservas desenha a MESMA carta do resto do jogo, então a party
+  // precisa carregar o que a moldura pede. Sem isto, a carta na batalha ficaria
+  // sem metal, sem tipo e sem nível.
+  describe("myParty — o que a carta de reserva precisa", () => {
+    it("leva dexNumber, nível, tipos, raridade e HP em número", () => {
+      const member = selectDuelView(battle(), "me")!.myParty[0];
+
+      expect(member.dexNumber).toBe("#0025");
+      expect(member.level).toBe(20);
+      expect(member.types).toEqual(["electric"]);
+      expect(member.rarity).toBe("common");
+      expect(member.currentHp).toBe(40);
+      expect(member.maxHp).toBe(80);
+    });
+
+    it("marca quem está em campo — é por isso que o leque filtra", () => {
+      // O leque mostra SÓ os reservas; o ativo está no palco 3D.
+      const party = selectDuelView(battle(), "me")!.myParty;
+      expect(party.filter((m) => m.isActive)).toHaveLength(1);
+      expect(party.find((m) => m.isActive)!.slot).toBe(1);
     });
   });
 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { applyTM, type ApplyTmInput } from "@/src/modules/training";
 
 // POST /api/training/tm — ensina um golpe de MÁQUINA (TM) a um Pokémon do

@@ -78,6 +78,42 @@ export function pruneLoadout(currentMoveIds: string[], validMoveIds: ReadonlySet
   return currentMoveIds.filter((id) => validMoveIds.has(id));
 }
 
+/** Uma carta candidata a repor um loadout: o move e em que nível a espécie o aprende. */
+export interface LoadoutCandidate {
+  moveId: string;
+  levelLearnedAt: number;
+}
+
+/**
+ * Repõe o loadout quando a PODA o deixou VAZIO.
+ *
+ * Por que isto existe: `pruneLoadout` pode tirar TODAS as cartas, e isso não é
+ * caso raro — Caterpie com Tackle/String Shot evolui no nível 7 e o learnset por
+ * level-up de Metapod é praticamente só Harden. O slot ficava com ZERO cartas, e
+ * daí em diante o pokémon não era só fraco, era INJOGÁVEL: `buildDuelSnapshot`
+ * lança em cima de loadout vazio, o que quebrava o matchmaking (e, se o dono do
+ * deck estivesse esperando na fila, quebrava o de todo mundo — ele voltava pra
+ * fila e derrubava o pareamento do próximo). Evoluir nunca pode deixar o pokémon
+ * sem golpe: na série também não deixa.
+ *
+ * Só age no caso vazio — loadout que sobreviveu à poda, mesmo com 1 carta, é
+ * escolha do jogador e não se mexe. As candidatas são os moves da espécie NOVA
+ * já destravados por nível; entram as de nível mais alto primeiro (o que ela
+ * aprendeu por último costuma ser o melhor), com desempate por id pra duas
+ * lambdas concorrentes chegarem no mesmo resultado.
+ */
+export function refillLoadout(
+  kept: readonly string[],
+  candidates: readonly LoadoutCandidate[],
+  limit: number
+): string[] {
+  if (kept.length > 0) return [...kept];
+  return [...candidates]
+    .sort((a, b) => b.levelLearnedAt - a.levelLearnedAt || a.moveId.localeCompare(b.moveId))
+    .slice(0, limit)
+    .map((c) => c.moveId);
+}
+
 /**
  * O nível em que uma espécie É ALCANÇADA por evolução — pra a forma evoluída
  * NASCER num nível condizente (ex.: um Charizard sorteado num pacote não sai

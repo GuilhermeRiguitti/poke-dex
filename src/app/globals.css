@@ -152,19 +152,17 @@ a { color: inherit; text-decoration: none; }
 .card-frame:hover::after { animation: scan-sweep 0.7s ease-out; }
 
 /* ══════════════════════════════════════════════════════════════
-   CARTA HOLOGRÁFICA 3D + moldura estilo TCG (coleção = montar deck ·
-   abertura de pacote). O wrapper dá a perspectiva; a carta inclina
-   seguindo o ponteiro (custom props escritas pelo HoloCard, regra pura em
-   holoTilt.ts). O brilho é METÁLICO e escala com --holo-strength (0..1),
-   que vem da fortitude/raridade. Some sozinho em touch / reduced-motion.
+   MOTOR DE INCLINAÇÃO (HoloCard). Só movimento — nenhum visual mora aqui.
+   O wrapper dá a perspectiva; a carta gira seguindo as custom properties
+   que o HoloCard escreve no nó (regra pura e testada em holoTilt.ts).
+   Some sozinho em touch / reduced-motion (o HoloCard nem liga data-active).
    ══════════════════════════════════════════════════════════════ */
 .holo-scene {
-  height: 100%;
+  display: inline-block;
   perspective: 900px;
 }
 .holo-card {
   position: relative;
-  height: 100%;
   transform-style: preserve-3d;
   transform: rotateX(var(--holo-ry, 0deg)) rotateY(var(--holo-rx, 0deg));
   transition: transform 0.3s var(--ease-snap);
@@ -172,195 +170,632 @@ a { color: inherit; text-decoration: none; }
 }
 /* enquanto o ponteiro corre, a carta acompanha rápido; ao sair, volta suave */
 .holo-card[data-active="true"] { transition: transform 0.07s linear; }
-/* a face da carta preenche a cena; a inclinação já dá o "levantar" */
-.holo-card .tcg-card,
-.holo-card .card-frame { height: 100%; }
-.holo-card .card-frame:hover { transform: none; }
 
-.holo-foil,
-.holo-glare {
+/* ══════════════════════════════════════════════════════════════
+   PokeCard — a carta ÚNICA do jogo (spec: carta-unica-prismatica).
+   Geometria TODA em função de --card-w, então a mesma moldura serve de
+   96px (vaga do deck / reserva) a 340px (pacote). As frações são as do
+   handoff divididas por 340×500 — não invente número novo aqui.
+   ══════════════════════════════════════════════════════════════ */
+.pcard {
+  --u: calc(var(--card-w) / 340); /* 1u = 1px na escala original do handoff */
+  /* Altura da janela de arte, num lugar SÓ. Três elementos dependem dela (a
+     moldura no fluxo, o fundo que pega o holo e a camada da arte) — antes eram
+     três números soltos, que é a armadilha que o README do handoff avisa. */
+  --art-h: calc(232 * var(--u));
+  position: relative;
+  width: var(--card-w);
+  height: calc(var(--card-w) * 500 / 340);
+  box-sizing: border-box;
+  padding: calc(4 * var(--u));
+  font-family: var(--font-rajdhani), sans-serif;
+  background: var(--metal);
+  box-shadow:
+    0 calc(20 * var(--u)) calc(50 * var(--u)) rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 0 calc(40 * var(--u)) var(--metal-glow);
+  clip-path: polygon(
+    calc(18 * var(--u)) 0,
+    100% 0,
+    100% calc(100% - 18 * var(--u)),
+    calc(100% - 18 * var(--u)) 100%,
+    0 100%,
+    0 calc(18 * var(--u))
+  );
+}
+
+/* os quatro metais (raridade -> cardMetal, em pokeCardView.ts) */
+.pcard[data-metal="bronze"] {
+  --metal: linear-gradient(135deg, #f0dcc4 0%, #c08e5a 30%, #7a4f28 55%, #c08e5a 75%, #f0dcc4 100%);
+  --metal-glow: rgba(192, 142, 90, 0.32);
+  --inner: linear-gradient(160deg, #33240f 0%, #6b4a28 30%, #a3763f 55%, #6b4a28 80%, #261a0d 100%);
+  --accent: rgba(220, 172, 118, 0.85);
+}
+.pcard[data-metal="silver"] {
+  --metal: linear-gradient(135deg, #ffffff 0%, #c7cdd6 30%, #8992a1 55%, #c7cdd6 75%, #ffffff 100%);
+  --metal-glow: rgba(199, 205, 214, 0.4);
+  --inner: linear-gradient(160deg, #232830 0%, #4d5663 30%, #8992a1 55%, #4d5663 80%, #1d2128 100%);
+  --accent: rgba(211, 219, 231, 0.88);
+}
+.pcard[data-metal="rose"] {
+  --metal: linear-gradient(135deg, #ffe3e0 0%, #e8a89a 30%, #b56b5c 55%, #e8a89a 75%, #ffe3e0 100%);
+  --metal-glow: rgba(232, 168, 154, 0.45);
+  --inner: linear-gradient(160deg, #331c18 0%, #7a4239 30%, #b56b5c 55%, #7a4239 80%, #26140f 100%);
+  --accent: rgba(243, 189, 178, 0.88);
+}
+.pcard[data-metal="gold"] {
+  --metal: linear-gradient(135deg, #fff6d8 0%, #f6c453 30%, #b8860b 55%, #f6c453 75%, #fff6d8 100%);
+  --metal-glow: rgba(246, 196, 83, 0.55);
+  --inner: linear-gradient(160deg, #4a3308 0%, #8a6415 30%, #d7a53d 55%, #8a6415 80%, #3a2705 100%);
+  --accent: rgba(246, 196, 83, 0.88);
+}
+
+/* AURA do lendário: bem mais forte que as outras faixas — é o "quase não tem
+   no deck". Duas sombras (uma curta e quente, uma larga e difusa) + pulso lento,
+   pra ele brilhar de longe num grid cheio de carta comum. */
+.pcard[data-top] {
+  filter:
+    drop-shadow(0 0 calc(10 * var(--u)) rgba(255, 226, 150, 0.85))
+    drop-shadow(0 0 calc(30 * var(--u)) rgba(246, 196, 83, 0.55));
+  animation: pcard-legendary-aura 3.4s ease-in-out infinite;
+}
+@keyframes pcard-legendary-aura {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 calc(10 * var(--u)) rgba(255, 226, 150, 0.7))
+      drop-shadow(0 0 calc(26 * var(--u)) rgba(246, 196, 83, 0.45));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 calc(16 * var(--u)) rgba(255, 240, 190, 1))
+      drop-shadow(0 0 calc(44 * var(--u)) rgba(246, 196, 83, 0.75));
+  }
+}
+/* o brilho interno da moldura também sobe no lendário */
+.pcard[data-metal="gold"] { --metal-glow: rgba(246, 196, 83, 0.8); }
+/* a coleção marca quem já está no deck */
+.pcard[data-highlighted] .pcard-inner { outline: calc(2 * var(--u)) solid var(--color-flare); outline-offset: calc(-2 * var(--u)); }
+
+.pcard-inner {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--inner);
+  clip-path: polygon(
+    calc(16 * var(--u)) 0,
+    100% 0,
+    100% calc(100% - 16 * var(--u)),
+    calc(100% - 16 * var(--u)) 100%,
+    0 100%,
+    0 calc(16 * var(--u))
+  );
+}
+
+/* grade técnica estática (z1) */
+.pcard-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px calc(34 * var(--u))),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px calc(34 * var(--u)));
+}
+
+/* A JANELA DE ARTE é desenhada em DUAS camadas irmãs, com a mesma geometria:
+   .pcard-artbg (z1)  — o fundo escuro, que RECEBE o prisma
+   .pcard-over  (z11) — o PNG do pokémon + o selo, ACIMA do prisma
+   Elas têm que ser irmãs do prisma, não filhas da coluna de conteúdo: o
+   .pcard-content é position:relative com z-index, ou seja CRIA UM CONTEXTO DE
+   EMPILHAMENTO — z-index alto lá dentro nunca passa do prisma que está fora.
+   É essa a armadilha que faz o código do handoff tingir o pokémon apesar do
+   README dele dizer que não tinge. NÃO mova a arte pra dentro do content. */
+.pcard-artbg,
+.pcard-over {
+  position: absolute;
+  top: calc(65 * var(--u));
+  left: calc(18 * var(--u));
+  right: calc(18 * var(--u));
+  height: var(--art-h);
+  pointer-events: none;
+  clip-path: polygon(
+    calc(10 * var(--u)) 0,
+    100% 0,
+    100% calc(100% - 10 * var(--u)),
+    calc(100% - 10 * var(--u)) 100%,
+    0 100%,
+    0 calc(10 * var(--u))
+  );
+}
+.pcard-artbg {
+  z-index: 1;
+  background: radial-gradient(circle at 50% 30%, #223b52, #0d1622);
+}
+.pcard-over { z-index: 11; }
+
+/* cantoneiras de HUD (z3) */
+.pcard-hud { position: absolute; z-index: 3; pointer-events: none; }
+.pcard-hud-tr {
+  top: calc(10 * var(--u));
+  right: calc(10 * var(--u));
+  width: calc(22 * var(--u));
+  height: calc(22 * var(--u));
+  border-top: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+}
+.pcard-hud-bl {
+  bottom: calc(10 * var(--u));
+  left: calc(10 * var(--u));
+  width: calc(22 * var(--u));
+  height: calc(22 * var(--u));
+  border-bottom: 2px solid var(--accent);
+  border-left: 2px solid var(--accent);
+}
+
+/* brilhos: só no topo de raridade */
+.pcard-sparkle {
+  position: absolute;
+  z-index: 6;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 calc(6 * var(--u)) 1px #fff;
+  animation: pcard-twinkle 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes pcard-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+/* véu que mantém as barras legíveis sob o prisma (z7) */
+.pcard-scrim {
+  position: absolute;
+  z-index: 7;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: calc(296 * var(--u));
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(6, 10, 18, 0) 0%, rgba(6, 10, 18, 0.3) 30%, rgba(6, 10, 18, 0.48) 100%);
+}
+
+/* ── O BRILHO (z9/z10) ──────────────────────────────────────────
+   TODA carta tem brilho em movimento; o que muda é a NATUREZA dele:
+
+   - comum / incomum / raro → faixa especular METÁLICA. Branca, sem
+     arco-íris, em `overlay`. É o reflexo do metal da moldura — o que faz
+     bronze, prata e rose continuarem distinguíveis (o arco-íris em cima de
+     todas lavava as três na mesma pasta pastel).
+   - lendário → o PRISMA do handoff: arco-íris em `color-dodge`, com giro
+     de matiz. Fica reservado pro topo, e é o que o torna especial.
+
+   Em repouso os dois deslizam sozinhos (a carta nunca fica morta); com o
+   ponteiro em cima, ele assume o posicionamento.
+
+   O 0.72 e o 320% do prisma mantêm a varredura no MEIO do gradiente — a
+   1:1 as pontas transparentes aparecem e as camadas passam a ler como
+   folhas soltas nas bordas da carta. */
+.pcard-foil,
+.pcard-glare {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
-}
-/* foil: faixa especular prateada (metal) + arco-íris de difração. As duas
-   camadas deslizam com o ponteiro em sentidos opostos (parallax de metal). */
-.holo-foil {
-  background:
-    linear-gradient(
-      105deg,
-      transparent 32%,
-      rgba(255, 255, 255, 0.5) 46%,
-      rgba(255, 255, 255, 0.12) 52%,
-      transparent 62%
-    ),
-    repeating-linear-gradient(
-      112deg,
-      rgba(255, 120, 116, 0.55) 0%,
-      rgba(255, 238, 150, 0.55) 9%,
-      rgba(150, 255, 150, 0.55) 18%,
-      rgba(140, 247, 255, 0.55) 27%,
-      rgba(150, 170, 255, 0.55) 36%,
-      rgba(216, 140, 255, 0.55) 45%,
-      rgba(255, 120, 116, 0.55) 54%
-    );
-  background-size: 220% 220%, 300% 300%;
-  background-position: 50% 50%, 50% 50%;
-  /* overlay funciona sobre a moldura CLARA e sobre a janela de arte escura
-     (color-dodge estouraria em branco no fundo claro) */
-  mix-blend-mode: overlay;
-  filter: contrast(1.3) saturate(calc(1.15 + var(--holo-strength, 0.5) * 1));
-  /* SEMPRE visível (sheen lento), mais forte quanto maior a raridade */
-  opacity: calc(0.1 + var(--holo-strength, 0.5) * 0.24);
-  animation: holo-idle 7s ease-in-out infinite;
-}
-.holo-card[data-active="true"] .holo-foil {
-  animation: none; /* o ponteiro assume o posicionamento — o movimento continua */
-  opacity: calc(0.32 + var(--holo-strength, 0.5) * 0.5);
-  background-position:
-    calc(var(--holo-mx, 50%) * -1 + 100%) var(--holo-my, 50%),
-    var(--holo-mx, 50%) var(--holo-my, 50%);
-}
-@keyframes holo-idle {
-  0%, 100% { background-position: 15% 50%, 0% 50%; }
-  50% { background-position: 85% 50%, 100% 50%; }
-}
-/* glare: brilho especular branco que segue o ponteiro */
-.holo-glare {
-  background: radial-gradient(
-    circle at var(--holo-mx, 50%) var(--holo-my, 50%),
-    rgba(255, 255, 255, 0.9),
-    rgba(255, 255, 255, 0.18) 18%,
-    transparent 46%
-  );
-  mix-blend-mode: overlay;
-  opacity: 0;
-}
-.holo-card[data-active="true"] .holo-glare {
-  opacity: calc(0.45 + var(--holo-strength, 0.5) * 0.45);
 }
 
-/* ── moldura estilo TCG: borda tingida pela raridade, janela de arte no
-   topo, infos no rodapé. --rarity-c pinta a borda; --type-c a janela. ── */
-.tcg-card {
+/* padrão: faixa metálica (comum / incomum / raro) */
+.pcard-foil {
+  z-index: 9;
+  background: linear-gradient(
+    112deg,
+    transparent 26%,
+    rgba(255, 255, 255, 0.18) 40%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0.18) 60%,
+    transparent 74%
+  );
+  background-size: 260% 260%;
+  background-position: 50% 50%;
+  mix-blend-mode: overlay;
+  opacity: calc(0.4 + var(--holo-strength, 0.5) * 0.35);
+  animation: pcard-sheen 6.5s ease-in-out infinite;
+  transition: background-position 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.5s;
+}
+@keyframes pcard-sheen {
+  0%, 100% { background-position: 14% 50%; }
+  50% { background-position: 86% 50%; }
+}
+
+/* LENDÁRIO: o prisma de verdade */
+.pcard[data-top] .pcard-foil {
+  background: linear-gradient(
+    115deg,
+    transparent 8%,
+    rgba(255, 80, 170, var(--holo-i, 0.6)) 20%,
+    rgba(255, 190, 60, var(--holo-i, 0.6)) 30%,
+    rgba(140, 255, 150, var(--holo-i, 0.6)) 40%,
+    rgba(90, 190, 255, calc(var(--holo-i, 0.6) * 0.65)) 48%,
+    rgba(190, 110, 255, var(--holo-i, 0.6)) 58%,
+    rgba(255, 140, 90, var(--holo-i, 0.6)) 68%,
+    rgba(255, 80, 170, calc(var(--holo-i, 0.6) * 0.6)) 78%,
+    transparent 90%
+  );
+  background-size: 320% 320%;
+  mix-blend-mode: color-dodge;
+  filter: hue-rotate(calc(var(--holo-mx-n, 0) * 1.1deg));
+  opacity: 0.45;
+  animation: pcard-prism 8s ease-in-out infinite;
+}
+@keyframes pcard-prism {
+  0%, 100% { background-position: 28% 42%; }
+  50% { background-position: 72% 58%; }
+}
+
+/* com o ponteiro em cima, a mão assume o posicionamento (nos dois casos) */
+.holo-card[data-active="true"] .pcard-foil {
+  animation: none;
+  transition: none;
+  background-position:
+    calc(50% + var(--holo-mx-n, 0) * 0.72 * 1%)
+    calc(50% + var(--holo-my-n, 0) * 0.72 * 1%);
+}
+.pcard-glare {
+  z-index: 10;
+  background: radial-gradient(
+    circle at var(--holo-mx, 50%) var(--holo-my, 50%),
+    rgba(255, 255, 255, 0.42),
+    rgba(255, 255, 255, 0.1) 28%,
+    transparent 58%
+  );
+  mix-blend-mode: soft-light;
+  opacity: 0.5;
+}
+
+/* coluna de conteúdo: texto e barras (z8 — SOB o prisma, protegida pelo scrim) */
+.pcard-content {
   position: relative;
+  z-index: 8;
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 7px;
-  overflow: hidden;
-  color: #131a27;
-  /* fundo CLARO e vívido, puxado pelo tipo e pela raridade */
-  background: linear-gradient(
-    157deg,
-    color-mix(in srgb, var(--type-c, #8da0bf) 34%, #eef3fc) 0%,
-    color-mix(in srgb, var(--rarity-c, #8da0bf) 26%, #d4deef) 100%
-  );
-  border: 2px solid color-mix(in srgb, var(--rarity-c, var(--color-edge)) 60%, #ffffff);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    inset 0 -14px 26px -14px rgba(20, 30, 55, 0.3),
-    0 6px 16px rgba(0, 0, 0, 0.45);
+  padding: calc(16 * var(--u)) calc(16 * var(--u)) calc(14 * var(--u));
 }
-/* TOPO (lendário = raro/forte): fundo PRISMÁTICO único, arco-íris que deriva.
-   É o "quase não tem no deck" — reservado à maior fortitude. */
-.tcg-card[data-prismatic] {
-  color: #14121c;
-  background: linear-gradient(
-    125deg,
-    #ffb0c0 0%, #ffe6a0 16%, #bff3ad 32%, #a7ecff 48%,
-    #bcb4ff 64%, #f3aef0 80%, #ffb0c0 100%
-  );
-  background-size: 280% 280%;
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 0 26px -4px rgba(255, 255, 255, 0.5),
-    0 6px 18px rgba(0, 0, 0, 0.5);
-  animation: prismatic-drift 9s linear infinite;
-}
-@keyframes prismatic-drift {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 280% 50%; }
-}
-.tcg-header {
+
+.pcard-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  padding: 0 2px;
+  gap: calc(6 * var(--u));
 }
-.tcg-name {
+.pcard-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-title);
-  font-size: 13px;
-  line-height: 1.05;
-  letter-spacing: 0.03em;
+  font-family: var(--font-card), serif;
+  font-weight: 700;
+  font-size: calc(20 * var(--u));
+  letter-spacing: calc(2 * var(--u));
   text-transform: uppercase;
-  color: #0e1521;
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.55);
+  color: #fdf6e3;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 10px var(--metal-glow);
 }
-/* janela de arte: painel ESCURO e vívido (o sprite salta), moldura branca */
-.tcg-art {
+.pcard-lv {
+  flex: none;
+  background: var(--metal);
+  color: #241a05;
+  font-weight: 700;
+  font-size: calc(13 * var(--u));
+  padding: calc(4 * var(--u)) calc(12 * var(--u));
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  clip-path: polygon(calc(8 * var(--u)) 0, 100% 0, 100% 100%, 0 100%, 0 calc(8 * var(--u)));
+}
+.pcard-rule {
+  height: 2px;
+  margin-top: calc(6 * var(--u));
+  background: linear-gradient(90deg, rgba(255, 120, 180, 0.5), var(--accent) 50%, rgba(120, 200, 255, 0.4), transparent);
+}
+
+/* a moldura da janela de arte (só a borda — o conteúdo mora no .pcard-over) */
+.pcard-art {
   position: relative;
+  margin-top: calc(12 * var(--u));
+  height: var(--art-h);
+  flex: none;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), inset 0 0 calc(20 * var(--u)) rgba(0, 0, 0, 0.3);
+  clip-path: polygon(
+    calc(10 * var(--u)) 0,
+    100% 0,
+    100% calc(100% - 10 * var(--u)),
+    calc(100% - 10 * var(--u)) 100%,
+    0 100%,
+    0 calc(10 * var(--u))
+  );
+}
+/* sem stats (catálogo): a arte cresce e ocupa o espaço das barras, então a
+   moldura mantém a mesma altura em toda tela em vez de ficar com um buraco. */
+.pcard[data-details="false"] { --art-h: calc(340 * var(--u)); }
+.pcard[data-details="false"] .pcard-scrim { top: calc(404 * var(--u)); }
+
+/* No grid, o rodapé leva BOTÕES (Montar/Soltar), bem mais altos que o "+ DECK"
+   fininho do handoff. Com a arte em 232u as 6 barras não cabiam e o bloco
+   transbordava PRA CIMA, escondendo o rótulo HP atrás dos chips de tipo.
+   A arte encolhe pra abrir o espaço que os botões tomaram. */
+.pcard[data-size="grid"][data-details="true"] { --art-h: calc(205 * var(--u)); }
+.pcard[data-size="grid"][data-details="true"] .pcard-scrim { top: calc(270 * var(--u)); }
+
+/* A ARTE DO POKÉMON, dentro do .pcard-over (z11) — ACIMA do prisma. */
+.pcard-over img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 calc(5 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, 0.55));
+}
+
+/* selo de raridade no canto da arte */
+.pcard-seal {
+  position: absolute;
+  top: calc(8 * var(--u));
+  left: calc(8 * var(--u));
+  width: calc(52 * var(--u));
+  height: calc(52 * var(--u));
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 5 / 4;
-  overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.7);
-  background:
-    radial-gradient(78% 62% at 50% 30%, color-mix(in srgb, var(--type-c, #000) 60%, #0b1422), #0a111e 78%);
-  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.6);
+  background: conic-gradient(from 180deg, #ff8fe3, #ffe17a, #7affd0, #7ab8ff, #ff8fe3);
+  background-size: 200% 200%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.5);
+  animation: pcard-foilshift 3s linear infinite;
 }
-.tcg-art img {
-  width: 86%;
-  height: 86%;
-  object-fit: contain;
-  filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.55));
-}
-/* scanlines sutis na arte (cara de holofoil) */
-.tcg-art::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 255, 255, 0.045) 3px 4px);
-}
-/* infos num painel CLARO — legível sobre qualquer moldura (inclusive a prismática) */
-.tcg-footer {
+.pcard-seal > span {
+  width: calc(42 * var(--u));
+  height: calc(42 * var(--u));
+  border-radius: 50%;
+  background: #0c1a2b;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-top: auto;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  color: #1a2233;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-size: calc(9 * var(--u));
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  text-align: center;
 }
-.tcg-row {
+@keyframes pcard-foilshift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* tipos + selo LENDÁRIO */
+.pcard-types {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+  margin-top: calc(12 * var(--u));
+  min-width: 0;
+}
+.pcard-type {
+  /* O chip fica SOB o prisma (z8), e color-dodge lava cor clara até virar
+     pastel. Por isso a cor do tipo entra escurecida e o texto vai branco: é o
+     que sobrevive ao arco-íris passando por cima. */
+  background: color-mix(in srgb, var(--t-bg) 78%, #06101c);
+  color: #ffffff;
+  /* cede espaço pra raridade em vez de empurrá-la pra fora: dois tipos +
+     "LENDÁRIO" na mesma linha não cabem inteiros num card de 210px */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: calc(13 * var(--u));
+  letter-spacing: calc(0.6 * var(--u));
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  padding: calc(5 * var(--u)) calc(14 * var(--u)) calc(5 * var(--u)) calc(18 * var(--u));
+  clip-path: polygon(calc(10 * var(--u)) 0, 100% 0, calc(100% - 10 * var(--u)) 100%, 0 100%);
+}
+/* A RARIDADE em texto. Aparece nas quatro faixas (comum/incomum/raro/lendário)
+   — o selo redondo sobre a arte é pequeno demais pra ler no grid. A cor sai do
+   --accent do metal, então cada faixa fala com a cor da própria moldura. */
+.pcard-rarity {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--font-card), serif;
+  font-size: calc(13 * var(--u));
+  font-weight: 700;
+  letter-spacing: calc(1.2 * var(--u));
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--accent);
+  /* fica SOB o prisma; sem a sombra o color-dodge come o texto */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.6);
+}
+/* só o topo de raridade ganha o texto em foil animado */
+.pcard[data-top] .pcard-rarity {
+  background: linear-gradient(90deg, var(--accent), #fff6d8, var(--accent));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  animation: pcard-foilshift 3s linear infinite;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+}
+
+/* as 6 barras */
+.pcard-stats {
+  margin-top: calc(12 * var(--u));
+  display: flex;
+  flex-direction: column;
+  /* flex-start, NUNCA center: com `center`, um bloco maior que o espaço
+     disponível transborda pros DOIS lados e a primeira barra sobe por cima da
+     linha de tipos (era esse o bug do rótulo HP sumido). */
+  justify-content: flex-start;
+  gap: calc(6 * var(--u));
+  flex: 1;
+  min-height: 0;
+}
+.pcard-stat {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+  line-height: 1;
+}
+.pcard-stat-label {
+  width: calc(46 * var(--u));
+  flex: none;
+  /* o handoff usa 11px numa carta de 340; como o grid é 260, a proporção sobe
+     pra o texto sair no mesmo tamanho aparente */
+  font-size: calc(12 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.pcard-stat-track {
+  position: relative;
+  flex: 1;
+  height: calc(9 * var(--u));
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.35);
+  clip-path: polygon(calc(4 * var(--u)) 0, 100% 0, calc(100% - 4 * var(--u)) 100%, 0 100%);
+}
+.pcard-stat-fill {
+  display: block;
+  height: 100%;
+  background-image:
+    linear-gradient(90deg, #7ec8ff, #fff0b8),
+    repeating-linear-gradient(90deg, transparent 0 calc(10 * var(--u)), rgba(0, 0, 0, 0.4) calc(10 * var(--u)) calc(12 * var(--u)));
+  box-shadow: 0 0 calc(8 * var(--u)) rgba(255, 240, 184, 0.5);
+}
+.pcard-stat-value {
+  width: calc(32 * var(--u));
+  flex: none;
+  text-align: right;
+  font-size: calc(12 * var(--u));
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* rodapé: nº da dex + o que a tela passar por children */
+.pcard-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: calc(8 * var(--u));
+  margin-top: calc(10 * var(--u));
+  padding-top: calc(8 * var(--u));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-.tcg-rarity {
-  font-family: var(--font-title);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--rarity-c, #8da0bf) 62%, #0b0f16);
+.pcard-foot > *:only-child { margin-left: auto; }
+.pcard-dex {
+  flex: none;
+  font-size: calc(10 * var(--u));
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
-.tcg-bst {
-  font-family: var(--font-title);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: #3a475e;
+
+/* MINI: só moldura + arte + Lv. Barras, tipos e rodapé viram ruído em 96px. */
+.pcard[data-size="mini"] .pcard-stats,
+.pcard[data-size="mini"] .pcard-foot,
+.pcard[data-size="mini"] .pcard-types,
+.pcard[data-size="mini"] .pcard-hud,
+.pcard[data-size="mini"] .pcard-seal,
+.pcard[data-size="mini"] .pcard-sparkle,
+.pcard[data-size="mini"] .pcard-rule { display: none; }
+.pcard[data-size="mini"] .pcard-content { padding: calc(14 * var(--u)); }
+.pcard[data-size="mini"] .pcard-art { height: auto; flex: 1; margin-top: calc(10 * var(--u)); }
+.pcard[data-size="mini"] .pcard-artbg,
+.pcard[data-size="mini"] .pcard-over { top: calc(80 * var(--u)); bottom: calc(20 * var(--u)); height: auto; }
+.pcard[data-size="mini"] .pcard-name { font-size: calc(30 * var(--u)); letter-spacing: 0; }
+.pcard[data-size="mini"] .pcard-lv { font-size: calc(24 * var(--u)); padding: calc(2 * var(--u)) calc(9 * var(--u)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pcard-seal,
+  .pcard-rarity,
+  .pcard-sparkle { animation: none; }
+  /* o brilho fica (parado, no meio da carta); o movimento sai */
+  .pcard-foil { animation: none; transition: none; }
+  /* a aura do lendário fica, o pulso sai */
+  .pcard[data-top] { animation: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   LEQUE DE RESERVAS (batalha). As cartas mini abrem em leque no rodapé
+   da arena, sobrepostas e inclinadas. O ATIVO não entra aqui — ele está
+   no palco 3D. --rot e --lift vêm do componente (posição na mão).
+   ══════════════════════════════════════════════════════════════ */
+.rhand {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding-top: 26px; /* espaço pra carta subir no hover sem cortar */
+}
+.rhand-slot {
+  position: relative;
+  margin-inline: -18px; /* a sobreposição do leque */
+  border: 0;
+  padding: 0;
+  background: none;
+  transform-origin: bottom center;
+  transform: rotate(var(--rot, 0deg)) translateY(var(--lift, 0px));
+  transition: transform 0.25s var(--ease-snap), filter 0.25s ease;
+}
+.rhand-slot:not([disabled]) { cursor: pointer; }
+.rhand-slot:not([disabled]):hover,
+.rhand-slot:not([disabled]):focus-visible {
+  transform: rotate(0deg) translateY(-26px) scale(1.28);
+  z-index: 50;
+}
+/* nocauteado: cinza e caído pra fora do leque */
+.rhand-slot[data-fainted] {
+  filter: grayscale(1) brightness(0.5);
+  transform: rotate(var(--rot, 0deg)) translateY(16px);
+}
+/* vivo mas não trocável agora (já joguei o round): meio-termo */
+.rhand-slot[disabled]:not([data-fainted]) { filter: brightness(0.75); }
+
+/* barra fina de HP sobre a moldura — reserva guarda dano entre trocas, e é
+   isso que decide a troca */
+.rhand-hp {
+  position: absolute;
+  z-index: 20;
+  left: 8px;
+  right: 8px;
+  bottom: 7px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.rhand-hp > span {
+  display: block;
+  height: 100%;
+  transition: width 0.4s var(--ease-snap);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rhand-slot {
+    margin-inline: 3px;
+    transform: none;
+    transition: none;
+  }
+  .rhand-slot:not([disabled]):hover,
+  .rhand-slot:not([disabled]):focus-visible { transform: none; }
+  .rhand-slot[data-fainted] { transform: none; }
+}
+
 
 /* ── barra de HP/stat segmentada (barra de EXP de MMORPG) ──── */
 .bar-track {

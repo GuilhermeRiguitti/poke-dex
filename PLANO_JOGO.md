@@ -19,11 +19,12 @@
 **PokéDuel.** Você **coleciona Pokémon** — cada um nasce em **nível 1** e sobe
 jogando. O nível **libera skills**: cada Pokémon só conhece o que já aprendeu por
 level-up naquele nível, exatamente como a PokéAPI descreve (`level_learned_at`).
-Pra montar o deck, você escolhe **um Pokémon** e **até 6 cartas (skills)** dele —
-sua "barra de golpes". A batalha é **1×1 por turnos SIMULTÂNEOS**: os dois
-escolhem a carta do mesmo round **sem ver a do outro**, e quem tem mais Speed
-executa primeiro (priority do golpe vem antes de tudo). A profundidade vem de
-**ler o oponente e apostar** — não de reagir depois de ver.
+Pra montar o deck, você escolhe **até 6 Pokémon** e, pra cada um, **até 6 cartas
+(skills)** dele — sua "barra de golpes". A batalha é por **turnos SIMULTÂNEOS**
+com **time de até 6**: os dois escolhem a jogada do mesmo round **sem ver a do
+outro** (golpe ou troca), e quem tem mais Speed executa primeiro (priority do
+golpe vem antes de tudo). A profundidade vem de **ler o oponente e apostar** —
+não de reagir depois de ver.
 
 Nada de stat é inventado por nós: **tudo deriva das base stats da API + o nível**.
 
@@ -34,7 +35,8 @@ Nada de stat é inventado por nós: **tudo deriva das base stats da API + o nív
 **Travadas:**
 - Turno **SIMULTÂNEO**, como a série. Dentro do turno a ordem é **priority do
   golpe → Speed → sorteio** (speed tie). ~~Alternado~~ — revertido em 2026-07-21.
-- Deck = **1 Pokémon + até 6 cartas** desse Pokémon (a carta é uma *skill*).
+- Deck = **até 6 Pokémon**, cada um com **até 6 cartas** dele (a carta é uma
+  *skill*). ~~1 Pokémon + até 6 cartas~~ — o time entrou em 2026-07-24 (§9).
 - **Stats 100% da API.** Some o nível 50 fixo e todo stat montado à mão.
 - **Nível incremental**: entra na coleção no nv.5, sobe com XP de batalha, e o
   papel dele é **liberar skills** + escalar stats (§6). **Não** multiplica o
@@ -43,7 +45,8 @@ Nada de stat é inventado por nós: **tudo deriva das base stats da API + o nív
   refresh** — revertendo de propósito a decisão atual de "nunca espelhar" (§7).
 
 **Também travadas (respondidas):**
-- **F1 — 1×1 puro**, com o schema já pronto pra time (troca vira uma fase depois).
+- **F1 — 1×1 puro**, com o schema já pronto pra time. ✅ **Superado em
+  2026-07-24:** a troca entrou e o time de até 6 é o modelo atual (§9).
 - **F2 — o MVP (Fase A) já entra com energia + reação.** Não é o loop mínimo: é o
   jogo tático completo desde a primeira versão jogável (decisão do dono).
 - **F3 — reset total liberado.** A base de dev pode ser recriada à vontade; não há
@@ -636,9 +639,10 @@ está no ledger do Prisma e o `npm run seed` rodou (learnset re-populado a parti
 da API). O trigger `battle_action_submitted` (`supabase/migrations/…121000`) está
 no ledger do Supabase. O `.env` aponta pro Supabase de PROD.
 
-⏳ **Próxima fatia:** timer sincronizado na tela, energia (A2), Fase D, e
-(opcional) repor o canvas Konva. A "janela de reação" precisa ser
-**redesenhada** — o desenho antigo pressupunha turno alternado (§3.3).
+⏳ **Próxima fatia:** timer sincronizado na tela, energia (A2), Fase D. A "janela
+de reação" precisa ser **redesenhada** — o desenho antigo pressupunha turno
+alternado (§3.3). *(O "repor o canvas Konva" saiu da lista: a mesa foi refeita em
+3D — three.js/R3F — em 2026-07-31.)*
 
 ✅ **Evolução por nível FEITA (2026-07-22)** — `tsc` · `vitest` 171 · `eslint` ·
 `next build` verdes. Decisão do dono: **podar as órfãs**.
@@ -671,6 +675,46 @@ que "leva 2×" logava "0 de dano, super eficaz" (contradição) e disparava a
 animação de super efetivo. A imunidade de move de **dano** segue tratada à parte,
 então "sem efeito" continua aparecendo.
 
+✅ **TIME DE ATÉ 6 + TROCA FEITOS (2026-07-24)** — migration
+`20260723130000_battle_action_type_switch` (`BattleAction.type` = MOVE | SWITCH).
+É o que **supera o F1 (1×1 puro)**; o schema já estava pronto pra isso desde a A1.
+- **Domínio**: `duelTypes` ganhou o lado com TIME (`DuelSide.team` + `activeSlot`)
+  e `duelEngine` ganhou `applyVoluntarySwitch` + `applyForcedSwitch`.
+- **Dois tipos de round**: NORMAL (os dois escolhem golpe ou troca; trocar gasta
+  o turno) e **TROCA FORÇADA** — o ativo de alguém desmaiou e há reserva viva, aí
+  só o dono do desmaio joga (e só SWITCH); timeout auto-promove o 1º vivo, e esse
+  round **não conta falta**. `resolveIfDue` dá prioridade pra troca forçada.
+- **Fim de jogo** deixou de ser "HP zerou" e virou "o time inteiro desmaiou"
+  (`hasLivingMon`); empate (os dois zerando) é caso tratado no overlay.
+- **Persistência**: `persistSide` grava o `activeSlot` + cada pokémon cujo
+  HP/fainted/PP mudou — antes era sempre o ativo.
+- **UI**: troca voluntária + estado do time do oponente; `battleView` passou a
+  projetar os dois times. A `PartyBar` (botõezinhos com sprite) virou o
+  `ReserveHand` — leque de cartas mini no rodapé, só com os RESERVAS (o ativo
+  está no palco 3D).
+
+✅ **Também nesta leva (2026-07-23 a 07-31):**
+- **TM (2026-07-23)** — `20260723120000_user_pokemon_move_and_tm`:
+  `UserPokemonMove` (golpe destravado por fora do nível) + `User.tmTokens`,
+  ganhos no check-in diário e gastos pra ensinar golpe `machine` que a espécie
+  conhece. §7.2.
+- **Duplicatas na coleção (2026-07-24)** — `20260724024738_allow_duplicate_userpokemon`:
+  caiu o `@@unique[userId, pokemonId]`; ficou o índice pro `where userId` e pro
+  `isNew` do pack.
+- **Módulo `progression` (2026-07-30)** — `leveling`/`evolution`/`learnset` saíram
+  de `lib/` pra `src/modules/progression/domain/`. Split opcional de
+  `leveling.ts` (stats × xp) registrado no `TODO.md`, não feito.
+- **UI 3D (2026-07-31)** — cartas holográficas em CSS 3D (`HoloCard`), palco de
+  batalha em three.js/R3F (`DuelStage3D`) e os golpes viraram barra de comando
+  (`MoveCommandBar`). Ver a decisão em [[ui-3d-holo-card-decision]].
+- **Carta única (2026-08-01)** — a moldura `.tcg-card` foi substituída pelo
+  `PokeCard` (`src/components/`), uma só carta pra TODAS as telas: catálogo,
+  coleção, vagas do deck, pacote e reservas na batalha. Três tamanhos por
+  `--card-w` (340/210/96) e a flag `details`: com dados do nosso banco a carta
+  mostra Lv + as 6 barras de stat derivadas pelo nível; no catálogo (PokéAPI ao
+  vivo, sem stats no DTO) ela não mostra, e a rota do catálogo não mudou.
+  Sem migration. Spec: `docs/superpowers/specs/2026-07-31-carta-unica-prismatica-design.md`.
+
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta
 iterando. Vale quebrá-la internamente em *sub-entregas testáveis* — (A1) loop
@@ -701,7 +745,8 @@ direto até o jogo completo.
 
 ## 11. Decisões
 
-- **F1** ✅ 1×1 puro, schema pronto pra time.
+- **F1** ✅ entregue como 1×1 puro e **superado em 2026-07-24**: o time de até 6
+  com troca está em produção (§9).
 - **F2** ✅ MVP completo na Fase A. *(A "reação" precisa ser redesenhada — §3.3.)*
 - **F3** ✅ reset total da base liberado.
 - **F4** ⏳ curva de XP — hoje medium-fast (n³) e ganho pela fórmula da série;
@@ -715,6 +760,18 @@ direto até o jogo completo.
 - **XP pela fórmula da série**, perdedor leva 25%.
 - **Evolução por nível fica pra fatia própria** — o que ela exige está listado no
   fim de "Estado da Fase A".
+
+**Decidido em 2026-08-01:**
+- **Evoluir nunca deixa o Pokémon sem carta.** A poda das órfãs (decisão de
+  07-22) continua, mas se ela ZERAR o loadout, o slot é **reposto** com os golpes
+  que a espécie nova já destravou por nível (`refillLoadout`). Não é polish: o
+  caso é comum (Caterpie → Metapod no nv.7 poda tudo), e slot vazio deixava o
+  Pokémon injogável — `buildDuelSnapshot` lança, e o dono do deck, parado na
+  fila, **travava o matchmaking de todos**. Loadout que sobreviveu com 1 carta
+  não é mexido: é escolha do jogador.
+- **Quem falha o snapshot não volta pra fila** (`enqueueBattle`). Antes, qualquer
+  falha devolvia o oponente pra fila — inclusive quando o deck quebrado era o
+  DELE, que era o que espalhava o travamento pro próximo jogador.
 
 **Decidido em 2026-07-22:**
 - **Nível inicial = 1** (era 5). Toda espécie já conhece ≥1 move no nível 1, então

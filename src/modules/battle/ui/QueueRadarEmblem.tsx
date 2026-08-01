@@ -1,4 +1,4 @@
-import { SwordsIcon } from "@/src/components/icons";
+import { SwordsIcon } from "@/src/layout/icons";
 
 // Emblema da arena. Os anéis de radar só aparecem enquanto procura oponente —
 // é por isso que ele precisa saber do `searching`, e é o motivo de ele não

@@ -36,15 +36,26 @@ export async function enqueueBattle(userId: string, deckId: string) {
   // na fila de novo.
   //
   // MAS: essa partida pode estar ZUMBI. Se os dois jogadores fecharam a aba,
-  // ninguém faz polling, e sem polling nada resolve o turno (não há worker —
-  // CLAUDE.md, regra 5). A partida fica IN_PROGRESS pra sempre, e como este
-  // check devolve ela, os DOIS ficam presos: nunca mais conseguem entrar numa
-  // fila. Não existe cron pra limpar isso (Hobby roda 1x por dia).
+  // ninguém faz polling, e sem polling nada resolve o turno pelo lado da Vercel
+  // (não há worker — CLAUDE.md, regra 5). Ela fica IN_PROGRESS, e como este
+  // check devolve ela, os DOIS ficam presos fora do matchmaking.
   //
-  // Então este request é a única coisa viva que pode encerrá-la — e encerra:
-  // tryResolveTurn conta as janelas de timeout vencidas de forma retroativa, e
-  // uma partida abandonada há tempo suficiente morre aqui, em ABANDONED. Se ela
-  // morrer, o jogador segue direto pro matchmaking, sem esperar 3×90s.
+  // Hoje existe backstop: o job `resolve-battle-turns` do pg_cron do Supabase
+  // roda a cada 30s e chama resolveDueBattles, que encerra a zumbi sem ninguém
+  // olhando. Mesmo assim este tryResolveTurn fica, por dois motivos:
+  //  - LATÊNCIA: o jogador que voltou não espera o próximo tick pra destravar;
+  //    resolve no próprio request e segue pra fila.
+  //  - GARANTIA: o job é agendado FORA de migration (a URL é do ambiente — ver
+  //    supabase/migrations/20260715022134), então um ambiente novo sobe sem ele.
+  //
+  // Encerrar é retroativo: tryResolveTurn conta as janelas de timeout vencidas
+  // desde turnStartedAt, e uma partida abandonada há tempo suficiente morre aqui
+  // em ABANDONED — sem esperar 3×90s.
+  //
+  // O UPDATE que isso gera dispara o trigger battle_broadcast_update: se o outro
+  // jogador estiver com a aba aberta, ele recebe `battle_updated` no canal
+  // battle:<id> e refaz o GET. O broadcast sai do banco; não há nada a chamar
+  // daqui (REALTIME.md).
   const existingBattle = await prisma.battleParticipant.findFirst({
     where: { userId, battle: { status: "IN_PROGRESS" } },
     select: { battleId: true },
@@ -84,23 +95,51 @@ export async function enqueueBattle(userId: string, deckId: string) {
 
   await prisma.matchmakingQueueEntry.deleteMany({ where: { userId } });
 
-  let teamA: Awaited<ReturnType<typeof buildDuelSnapshot>>;
-  let teamB: Awaited<ReturnType<typeof buildDuelSnapshot>>;
-  try {
-    [teamA, teamB] = await Promise.all([
-      buildDuelSnapshot(userId, deckId),
-      buildDuelSnapshot(opponent.userId, opponent.deckId),
-    ]);
-  } catch (err) {
-    console.error("buildDuelSnapshot failed:", err);
-    // Devolve o oponente pra fila pra não deixar ele travado esperando.
-    await prisma.matchmakingQueueEntry.upsert({
-      where: { userId: opponent.userId },
-      update: { deckId: opponent.deckId, enqueuedAt: new Date() },
-      create: { userId: opponent.userId, deckId: opponent.deckId },
-    });
+  // `allSettled`, e não `all`, porque IMPORTA de QUEM é o deck que falhou.
+  //
+  // Montar o snapshot pode lançar (deck sumiu, loadout sem carta). Antes, um
+  // catch só devolvia o oponente pra fila em qualquer caso — e se o deck
+  // quebrado fosse justamente o DELE, ele voltava pra fila com o mesmo defeito e
+  // derrubava o pareamento do próximo jogador, e do próximo. Um único deck ruim
+  // parado na fila travava o matchmaking de TODO MUNDO, e não há cron de faxina
+  // que resolva isso (o pg_cron só resolve turno; ver ROTINAS.md §2).
+  //
+  // Regra: só volta pra fila quem tem deck jogável. Quem falhou fica de fora até
+  // arrumar — o erro aparece pra ele no próprio POST quando tentar de novo.
+  const [mine, theirs] = await Promise.allSettled([
+    buildDuelSnapshot(userId, deckId),
+    buildDuelSnapshot(opponent.userId, opponent.deckId),
+  ]);
+
+  if (mine.status === "rejected" || theirs.status === "rejected") {
+    if (mine.status === "rejected") console.error("buildDuelSnapshot (jogador) falhou:", mine.reason);
+    if (theirs.status === "rejected") console.error("buildDuelSnapshot (oponente) falhou:", theirs.reason);
+
+    if (theirs.status === "fulfilled") {
+      // O deck quebrado é o MEU: o oponente volta pra fila, sem prejuízo.
+      await prisma.matchmakingQueueEntry.upsert({
+        where: { userId: opponent.userId },
+        update: { deckId: opponent.deckId, enqueuedAt: new Date() },
+        create: { userId: opponent.userId, deckId: opponent.deckId },
+      });
+      return { error: "snapshot_failed" as const };
+    }
+
+    // O deck quebrado é o DELE (já saiu da fila lá em cima e NÃO volta). Se o meu
+    // está ok, eu assumo o lugar na fila em vez de levar um erro por culpa alheia.
+    if (mine.status === "fulfilled") {
+      await prisma.matchmakingQueueEntry.upsert({
+        where: { userId },
+        update: { deckId, enqueuedAt: new Date() },
+        create: { userId, deckId },
+      });
+      return { matched: false as const, queued: true as const };
+    }
     return { error: "snapshot_failed" as const };
   }
+
+  const teamA = mine.value;
+  const teamB = theirs.value;
 
   // Nada de "quem começa": no simultâneo os dois já estão em turno a partir da
   // rodada 1, e a ordem de execução é decidida DENTRO de cada turno, pela carta

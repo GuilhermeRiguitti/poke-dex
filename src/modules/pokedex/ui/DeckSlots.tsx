@@ -1,9 +1,16 @@
 import Link from "next/link";
-import { SwordsIcon } from "@/src/components/icons";
+import { SwordsIcon } from "@/src/layout/icons";
+import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
+import { CARD_WIDTH } from "@/src/modules/pokedex/ui/pokeCardView";
 import type { DeckSlotView } from "./pokedexView";
 
 // Server Component: as vagas do deck são só desenho. Quem MEXE no deck é o
 // botão do card (CollectionCardActions), que é o cliente.
+//
+// Cada vaga preenchida é a MESMA carta das outras telas, no tamanho `mini`:
+// nele as barras, os tipos e o rodapé somem (viram ruído em 96px) e sobram
+// moldura, arte e Lv. A vaga vazia repete a proporção da carta pra fileira não
+// ficar desalinhada.
 
 export default function DeckSlots({
   slots,
@@ -36,34 +43,33 @@ export default function DeckSlots({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-        {slots.map((slot, i) => (
-          <div
-            key={i}
-            className={`clip-btn flex aspect-square flex-col items-center justify-center gap-1 border ${
-              slot.pokemonId !== null ? "border-flare/50 bg-panel-2" : "border-dashed border-edge"
-            }`}
-          >
-            {slot.pokemonId === null ? (
+      <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
+        {slots.map((slot, i) =>
+          slot.pokemonId === null || slot.rarity === null ? (
+            <div
+              key={i}
+              className="clip-card flex items-center justify-center border border-dashed border-edge"
+              style={{
+                width: CARD_WIDTH.mini,
+                height: (CARD_WIDTH.mini * 500) / 340,
+              }}
+            >
               <span className="font-title text-2xl text-edge">+</span>
-            ) : (
-              <>
-                {slot.iconUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- sprite da PokéAPI
-                  <img
-                    src={slot.iconUrl}
-                    alt={slot.name ?? ""}
-                    className="h-14 w-14 object-contain"
-                  />
-                )}
-                <span className="font-title text-[10px] uppercase tracking-wide">{slot.name}</span>
-                <span className="lv-badge">
-                  <span>Lv {slot.level}</span>
-                </span>
-              </>
-            )}
-          </div>
-        ))}
+            </div>
+          ) : (
+            <PokeCard
+              key={i}
+              dexNumber={slot.dexNumber ?? ""}
+              name={slot.name ?? ""}
+              artworkUrl={slot.iconUrl}
+              types={slot.types}
+              rarity={slot.rarity}
+              size="mini"
+              index={i}
+              details={{ level: slot.level ?? 1, baseStats: slot.baseStats ?? undefined }}
+            />
+          )
+        )}
       </div>
     </section>
   );

@@ -12,9 +12,12 @@ const card: PokemonCardDTO = {
   types: ["electric"],
 };
 
+// base stats reais do Pikachu — a carta desenha as 6 barras a partir deles
+const base = { hp: 35, atk: 55, def: 40, spa: 50, spd: 50, spe: 90 };
+
 describe("toPackCardDTO", () => {
   it("mapeia bst e raridade a partir do id", () => {
-    const dto = toPackCardDTO(25, card, true);
+    const dto = toPackCardDTO(25, card, base, 1, true);
     expect(dto.pokemonId).toBe(25);
     expect(dto.bst).toBe(320); // Pikachu, do índice gerado
     expect(dto.rarity).toBe("common");
@@ -23,7 +26,7 @@ describe("toPackCardDTO", () => {
   });
 
   it("card null (espécie fora do espelho) => card null, mas a carta ainda é concedida", () => {
-    const dto = toPackCardDTO(150, null, true);
+    const dto = toPackCardDTO(150, null, null, 1, true);
     expect(dto.card).toBeNull();
     expect(dto.pokemonId).toBe(150);
     expect(dto.bst).toBe(680); // Mewtwo — bst vem do índice estático, não da rede

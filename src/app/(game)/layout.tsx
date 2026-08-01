@@ -1,5 +1,5 @@
-import NavBar from "@/src/components/NavBar";
-import { auth } from "@/src/lib/auth";
+import NavBar from "@/src/layout/NavBar";
+import { auth } from "@/src/modules/auth/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import DailyCheckIn from "@/src/modules/packs/ui/DailyCheckIn";
