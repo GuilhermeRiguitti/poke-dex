@@ -157,6 +157,30 @@ tela), nunca **o quê**.
 Os DTOs ficam em `ui/types.ts` — são o contrato entre servidor e UI, e como são
 `interface`, não pesam no bundle.
 
+### 3.1 Guarda no banco o que o banco precisa CONSULTAR. Deriva o resto.
+
+Guardar valor derivado não remove uma fonte de verdade — **adiciona** uma. Só
+compensa quando o banco precisa filtrar ou ordenar por aquilo, porque aí não há
+alternativa: não dá pra pôr num `WHERE` o que só existe em JS.
+
+- `UserPokemon.xp` é a verdade; `level` é `f(xp)` mas está materializado
+  **porque a coleção ordena por ele**. Os dois são escritos SEMPRE juntos, e só
+  pelos helpers `progressionFromXp` / `progressionFromLevel`.
+- `Pokemon.bst` e `Pokemon.rarity` são fatos imutáveis da ESPÉCIE, congelados na
+  importação (`syncPokedex`). Ficam na espécie e não no `UserPokemon` porque a
+  evolução troca `UserPokemon.pokemonId` — a carta muda de raridade sozinha ao
+  evoluir. Cravado no `UserPokemon`, o valor velho ficaria pra trás pra sempre.
+- Os 6 **stats derivados** (`deriveStats`) NÃO são guardados. São função de
+  (espécie, nível), que já estão salvos; guardá-los obrigaria a reescrever tudo
+  em todo level-up e toda evolução, e aqui não há worker pra reparar depois.
+- `BattlePokemon.stats` é a exceção, e **não é cache — é isolamento**: o
+  snapshot é congelado pra um level-up no meio não mudar a partida em andamento.
+
+**Fronteira do BST:** `bstOf()`/`BST_BY_ID` (JS) é do **sorteio de pacotes**, que
+pondera as 1025 espécies — a maioria não tem linha em `Pokemon`. Quem TEM a linha
+lê `pokemon.bst`/`pokemon.rarity`. É o que garante que a raridade desenhada na
+carta é a mesma que o filtro do banco usou pra achar ela.
+
 ### 4. Lógica de apresentação sai do componente
 
 Mapear DTO → o que a tela desenha é **função pura**, mora em `ui/<x>View.ts` e

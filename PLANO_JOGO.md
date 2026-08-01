@@ -668,6 +668,17 @@ e `20260722130000_pokemon_level_evolution` estão no ledger do Prisma, e o
 `npm run seed` re-rodou depois — `evolvesToApiId`/`evolvesToLevel` populados
 (53 das 151 espécies da Gen 1 têm evolução por nível gravada).
 
+✅ **Bug corrigido (2026-08-01) — evolução agora é checada em TODA aplicação de
+XP, retroativa.** Antes, `maybeEvolve` só rodava quando o XP fazia o nível SUBIR
+naquela chamada. Um pokémon que cruzasse o gatilho de evolução num momento em
+que a espécie-alvo ainda não estivesse no espelho (seed parcial) ficava preso na
+forma antiga **pra sempre** — no `MAX_LEVEL` não há mais nível a ganhar, então a
+checagem nunca mais voltava. Agora `awardBattleXp` chama `maybeEvolve` depois de
+TODA aplicação de XP (não só quando o nível mudou), com custo zero no caso
+saudável (`evolutionTargetFor` é puro e devolve `null` sem tocar no banco quando
+o gatilho não bate). Uma carta presa evolui na próxima vez que ganhar XP, mesmo
+que o gatilho tenha ficado pra trás — ver `src/modules/battle/commands/awardBattleXp.ts`.
+
 ✅ **Fix de dano (2026-07-23)** — `tsc` · `vitest` 172 · `eslint` · `next build`
 verdes. Move de status (sem `power`) agora reporta efetividade **1** em
 `calculateDamage`, não o multiplicador de tipo. Antes, um status contra um tipo
