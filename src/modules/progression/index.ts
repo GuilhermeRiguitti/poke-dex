@@ -18,6 +18,9 @@ export {
   levelFromXp,
   xpToNextLevel,
   xpFromDefeat,
+  sumBaseStats,
+  progressionFromXp,
+  progressionFromLevel,
 } from "./domain/leveling";
 export type { BaseStats, DerivedStats, Progress } from "./domain/leveling";
 

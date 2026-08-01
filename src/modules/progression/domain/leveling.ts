@@ -155,3 +155,33 @@ export function applyXp(totalXp: number, gainedXp: number): Progress {
   const after = levelFromXp(next);
   return { level: after, xp: next, gained: after - before };
 }
+
+// ─── o par (xp, level) escrito por construção ──────────────────────────────
+//
+// `level` é função de `xp` (levelFromXp), mas as DUAS são coluna do
+// UserPokemon: o banco precisa ORDENAR por nível, e não dá pra ordenar por uma
+// conta feita em JS depois da query. Materializar é a escolha certa; o preço é
+// que quem escreve uma tem que escrever a outra.
+//
+// Até aqui isso era garantido por convenção e comentário nos dois escritores
+// (openPack e awardBattleXp). Com estes helpers passa a ser por construção: o
+// caller monta o `data` com o objeto inteiro e não consegue produzir o par
+// inválido. São dois porque os dois escritores andam em sentidos opostos —
+// nascimento sabe o NÍVEL, batalha sabe o XP.
+
+/** Soma dos 6 base stats: a "fortitude" da espécie, que define a raridade. */
+export function sumBaseStats(base: BaseStats): number {
+  return base.hp + base.atk + base.def + base.spa + base.spd + base.spe;
+}
+
+/** Par consistente a partir do XP TOTAL acumulado. Nunca lança. */
+export function progressionFromXp(totalXp: number): { xp: number; level: number } {
+  const xp = Number.isFinite(totalXp) ? Math.max(0, Math.floor(totalXp)) : 0;
+  return { xp, level: levelFromXp(xp) };
+}
+
+/** Par consistente a partir de um nível de nascimento. Nunca lança. */
+export function progressionFromLevel(level: number): { xp: number; level: number } {
+  const clamped = clampLevel(level);
+  return { xp: xpForLevel(clamped), level: clamped };
+}

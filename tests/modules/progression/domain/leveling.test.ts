@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_LEVEL,
+  MIN_LEVEL,
   STARTING_LEVEL,
   FALLBACK_BASE_EXPERIENCE,
   applyXp,
@@ -11,6 +12,9 @@ import {
   xpForLevel,
   xpFromDefeat,
   xpToNextLevel,
+  sumBaseStats,
+  progressionFromXp,
+  progressionFromLevel,
   type BaseStats,
 } from "@/src/modules/progression/domain/leveling";
 
@@ -122,5 +126,69 @@ describe("applyXp", () => {
 
   it("ignora ganho negativo/lixo em vez de regredir", () => {
     expect(applyXp(216, -100)).toEqual({ level: 6, xp: 216, gained: 0 });
+  });
+});
+
+describe("sumBaseStats", () => {
+  // Os números conferidos contra a PokéAPI. Este teste é o que prova que a
+  // coluna Pokemon.bst (somada no syncPokedex) e a tabela gerada BST_BY_ID
+  // (usada pelo sorteio de pacotes) não divergiram.
+  it("bate com o BST conhecido das espécies de referência", () => {
+    // Charmander #4
+    expect(sumBaseStats({ hp: 39, atk: 52, def: 43, spa: 60, spd: 50, spe: 65 })).toBe(309);
+    // Charizard #6
+    expect(sumBaseStats({ hp: 78, atk: 84, def: 78, spa: 109, spd: 85, spe: 100 })).toBe(534);
+    // Magikarp #129 — o piso da dex
+    expect(sumBaseStats({ hp: 20, atk: 10, def: 55, spa: 15, spd: 20, spe: 80 })).toBe(200);
+    // Arceus #493 — o teto
+    expect(sumBaseStats({ hp: 120, atk: 120, def: 120, spa: 120, spd: 120, spe: 120 })).toBe(720);
+  });
+
+  it("bate com o bstOf da tabela gerada nas mesmas espécies", async () => {
+    const { bstOf } = await import("@/src/modules/packs/domain/rarity");
+    expect(bstOf(4)).toBe(309);
+    expect(bstOf(6)).toBe(534);
+    expect(bstOf(129)).toBe(200);
+    expect(bstOf(493)).toBe(720);
+  });
+});
+
+describe("progressionFromXp", () => {
+  it("devolve o par (xp, level) que casa", () => {
+    expect(progressionFromXp(1000)).toEqual({ xp: 1000, level: 10 });
+  });
+
+  it("nunca devolve xp negativo nem fracionário", () => {
+    expect(progressionFromXp(-50)).toEqual({ xp: 0, level: MIN_LEVEL });
+    expect(progressionFromXp(1000.9)).toEqual({ xp: 1000, level: 10 });
+  });
+
+  it("não estoura no teto de nível", () => {
+    const acima = xpForLevel(MAX_LEVEL) + 999_999;
+    expect(progressionFromXp(acima).level).toBe(MAX_LEVEL);
+  });
+
+  it("aguenta entrada inválida sem lançar", () => {
+    expect(progressionFromXp(Number.NaN)).toEqual({ xp: 0, level: MIN_LEVEL });
+  });
+});
+
+describe("progressionFromLevel", () => {
+  it("devolve o XP exato de entrada no nível", () => {
+    expect(progressionFromLevel(16)).toEqual({ xp: 4096, level: 16 });
+  });
+
+  it("recorta o nível na faixa válida", () => {
+    expect(progressionFromLevel(0).level).toBe(MIN_LEVEL);
+    expect(progressionFromLevel(999).level).toBe(MAX_LEVEL);
+  });
+
+  // A propriedade que importa: ida e volta fecham. É o que garante que uma
+  // carta nascida no nível N não "perde" o nível na primeira leitura.
+  it("fecha o ciclo com progressionFromXp em toda a faixa", () => {
+    for (let nivel = MIN_LEVEL; nivel <= MAX_LEVEL; nivel++) {
+      const nascimento = progressionFromLevel(nivel);
+      expect(progressionFromXp(nascimento.xp).level).toBe(nivel);
+    }
   });
 });
