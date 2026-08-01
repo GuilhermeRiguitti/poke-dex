@@ -1,6 +1,6 @@
 "use client";
 
-import TypeBadge from "@/src/components/TypeBadge";
+import TypeBadge from "@/src/layout/TypeBadge";
 import { typeColor } from "@/src/lib/typeColors";
 import type { DuelCardView } from "./battleView";
 

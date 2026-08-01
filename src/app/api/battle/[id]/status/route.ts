@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { getBattleStatus } from "@/src/modules/battle";
 
 // GET /api/battle/[id]/status — polling leve; também é quem "empurra" a

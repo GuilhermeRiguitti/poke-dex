@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeHoloTilt, HOLO_REST } from "@/src/components/holoTilt";
+import { computeHoloTilt, HOLO_REST } from "@/src/layout/holoTilt";
 
 describe("computeHoloTilt", () => {
   it("no centro não inclina e põe o brilho no meio", () => {

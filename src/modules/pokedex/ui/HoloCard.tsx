@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { computeHoloTilt } from "../../../components/holoTilt";
+import { computeHoloTilt } from "../../../layout/holoTilt";
 
 // Envelope 3D de qualquer carta: inclina seguindo o ponteiro. É a ÚNICA parte
 // cliente da carta — o conteúdo (children) vem renderizado do servidor.

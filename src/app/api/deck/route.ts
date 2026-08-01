@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { addToDeck, type AddToDeckInput } from "@/src/modules/deck";
 
 // POST /api/deck — monta um loadout no deck (1 UserPokemon + as cartas escolhidas).

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { openPack } from "@/src/modules/packs";
 
 // POST /api/packs/open — abre um pacote (a ÚNICA forma de obter pokémon).

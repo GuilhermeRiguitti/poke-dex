@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { submitAction, type SubmitActionInput } from "@/src/modules/battle";
 
 // POST /api/battle/[id]/move — registra a carta do jogador no round e resolve o

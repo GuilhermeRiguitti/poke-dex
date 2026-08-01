@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { getCollection } from "@/src/modules/pokedex";
 import CollectionGrid from "@/src/modules/pokedex/ui/CollectionGrid";
 import DeckSlots from "@/src/modules/pokedex/ui/DeckSlots";

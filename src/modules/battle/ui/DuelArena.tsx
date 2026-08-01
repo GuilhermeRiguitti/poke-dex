@@ -2,7 +2,7 @@
 
 import { Component, type ReactNode, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import TypeBadge from "@/src/components/TypeBadge";
+import TypeBadge from "@/src/layout/TypeBadge";
 import MoveCommandBar from "./MoveCommandBar";
 import ReserveHand from "./ReserveHand";
 import type { DuelMonView, DuelTurnFx, DuelView, PartyMemberView } from "./battleView";

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { removeCard } from "@/src/modules/pokedex";
 
 // DELETE /api/cards/[id] — solta um pokémon (tira da coleção).

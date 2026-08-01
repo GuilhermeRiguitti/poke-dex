@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { readLearnset } from "@/src/modules/deck";
 import { readTmTokens } from "@/src/modules/packs";
 

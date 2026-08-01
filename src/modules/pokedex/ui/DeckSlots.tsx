@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SwordsIcon } from "@/src/components/icons";
+import { SwordsIcon } from "@/src/layout/icons";
 import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
 import { CARD_WIDTH } from "@/src/modules/pokedex/ui/pokeCardView";
 import type { DeckSlotView } from "./pokedexView";

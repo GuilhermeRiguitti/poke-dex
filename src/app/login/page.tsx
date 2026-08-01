@@ -1,6 +1,6 @@
-import { PokeballIcon } from "@/src/components/icons";
-import LoginForm from "@/src/components/LoginForm";
-import { auth } from "@/src/lib/auth";
+import { PokeballIcon } from "@/src/layout/icons";
+import { auth } from "@/src/modules/auth/auth";
+import LoginForm from "@/src/modules/auth/LoginForm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 

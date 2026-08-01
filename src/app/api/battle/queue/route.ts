@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { enqueueBattle, leaveQueue } from "@/src/modules/battle";
 
 // POST /api/battle/queue — entra na fila de matchmaking; pareia na hora se possível

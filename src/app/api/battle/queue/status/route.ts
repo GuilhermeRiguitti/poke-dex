@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { auth } from "@/src/lib/auth";
+import { auth } from "@/src/modules/auth/auth";
 import { getQueueStatus } from "@/src/modules/battle";
 
 // GET /api/battle/queue/status — polling leve enquanto espera pareamento
