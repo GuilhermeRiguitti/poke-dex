@@ -8,6 +8,7 @@
 export type {
   CollectionDTO,
   CollectionCardDTO,
+  CollectionPageDTO,
   PokedexPageDTO,
   PokemonCardDTO,
   PokemonDetailDTO,
@@ -30,7 +31,16 @@ export type { RefreshPokedexSummary, RefreshPokedexOptions } from "./commands/re
 // Todas as queries abaixo SÓ LEEM — podem ser chamadas do render de uma page.
 // A escrita (inclusive a do cache da PokéAPI) mora nos commands.
 export { listPokedexPage } from "./queries/listPokedexPage";
-export { getCollection } from "./queries/getCollection";
+export { getCollectionPage } from "./queries/getCollectionPage";
+export {
+  COLLECTION_PAGE_SIZE,
+  POKEMON_TYPES,
+  RARITY_TIERS,
+  parseCollectionFilters,
+  hasActiveFilter,
+  collectionHref,
+} from "./domain/collectionFilters";
+export type { CollectionFilters, CollectionSort } from "./domain/collectionFilters";
 // Conjunto de moveId jogáveis de um UserPokemon (level-up destravado ∪ concedidos).
 // Consumido por deck (addToDeck) e battle (poda pós-evolução).
 export { getUnlockedMoveIds } from "./queries/getUnlockedMoveIds";
