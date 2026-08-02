@@ -1,7 +1,18 @@
 
 // Página viva de design system — usa os tokens e componentes REAIS do jogo.
 // Direção: MMORPGs 2000s da Level Up × HUD futurista de Overwatch.
+//
+// A seção da carta importa o PokeCard de verdade, o mesmo que a coleção, o
+// catálogo, o pacote e a batalha usam. Nada de cópia "parecida": se a carta
+// mudar, esta página muda junto, sem ninguém lembrar de vir aqui. As variações
+// abaixo são só props do mesmo componente.
 
+import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
+import { CARD_WIDTH, cardMetal, type PokeCardSize } from "@/src/modules/pokedex/ui/pokeCardView";
+import { dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
+import { bstOf, rarityTier, type RarityTier } from "@/src/modules/packs/domain/rarity";
+import { holoIntensity, rarityLabel } from "@/src/modules/packs/ui/packView";
+import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 import HpBar from "@/src/layout/HpBar";
 import { PokeballIcon, SwordsIcon, CardsIcon } from "@/src/layout/icons";
 import TypeBadge from "@/src/layout/TypeBadge";
@@ -26,6 +37,58 @@ const TYPE_SCALE = [
   { name: "Corpo", cls: "font-semibold text-sm", spec: "Rajdhani 600 · 14px" },
   { name: "Dados/números", cls: "font-title text-sm tracking-wider tabular-nums", spec: "Anton · tabular-nums" },
 ];
+
+// Espécies de exemplo — uma por faixa de raridade. Os base stats são os reais
+// da série, então a raridade sai da MESMA regra do jogo (rarityTier(bstOf(id))),
+// não de um valor escrito à mão que poderia mentir.
+interface Specimen {
+  id: number;
+  name: string;
+  types: string[];
+  level: number;
+  baseStats: BaseStats;
+}
+
+const PIKACHU: Specimen = {
+  id: 25,
+  name: "pikachu",
+  types: ["electric"],
+  level: 12,
+  baseStats: { hp: 35, atk: 55, def: 40, spa: 50, spd: 50, spe: 90 },
+};
+const CHARMELEON: Specimen = {
+  id: 5,
+  name: "charmeleon",
+  types: ["fire"],
+  level: 24,
+  baseStats: { hp: 58, atk: 64, def: 58, spa: 80, spd: 65, spe: 80 },
+};
+const CHARIZARD: Specimen = {
+  id: 6,
+  name: "charizard",
+  types: ["fire", "flying"],
+  level: 41,
+  baseStats: { hp: 78, atk: 84, def: 78, spa: 109, spd: 85, spe: 100 },
+};
+const MEWTWO: Specimen = {
+  id: 150,
+  name: "mewtwo",
+  types: ["psychic"],
+  level: 62,
+  baseStats: { hp: 106, atk: 110, def: 90, spa: 154, spd: 90, spe: 130 },
+};
+
+const RARITY_ROW = [PIKACHU, CHARMELEON, CHARIZARD, MEWTWO];
+
+// A arte oficial da PokéAPI, o mesmo host que o espelho (Pokemon.spriteUrl)
+// guarda — a carta recebe a URL pronta, então aqui basta montar por id.
+function artworkOf(id: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+}
+
+function rarityOf(s: Specimen): RarityTier {
+  return rarityTier(bstOf(s.id));
+}
 
 export default function DesignSystemPage() {
   return (
@@ -80,15 +143,183 @@ export default function DesignSystemPage() {
         </div>
       </Section>
 
-      {/* 4. Componentes de jogo */}
+      {/* 4. A carta do jogo */}
+      <Section title="A carta">
+        <p className="mb-8 max-w-2xl text-sm font-semibold text-ink-dim">
+          Existe <strong className="text-ink">uma moldura só</strong>, num componente só:{" "}
+          <Code>PokeCard</Code>. Coleção, catálogo, pacote e o leque de reservas da batalha
+          desenham a mesma carta — o que muda entre elas são três props (<Code>size</Code>,{" "}
+          <Code>details</Code>, <Code>children</Code>) e a raridade, que vem do BST da espécie.
+          Esta página importa esse mesmo componente: tudo que você vê abaixo é a carta de
+          verdade, não uma imitação.
+        </p>
+
+        {/* O tamanho `mini` (96px) existe no PokeCard e é o que a reserva da
+            batalha usa hoje, mas está FORA desta página de propósito: ele vai
+            embora na refatoração da batalha. Não o traga de volta pra cá. */}
+        <Sub title="Tamanhos — prop size">
+          A geometria inteira sai de uma variável (<Code>--card-w</Code>), então a carta encolhe
+          inteira: fonte, moldura, espaçamento. Não são dois desenhos, é um só em duas larguras.
+        </Sub>
+        <div className="flex flex-wrap items-end justify-center gap-6">
+          <CardDemo
+            spec={CHARMELEON}
+            size="grid"
+            details={{ level: CHARMELEON.level, baseStats: CHARMELEON.baseStats }}
+            caption={`grid · ${CARD_WIDTH.grid}px`}
+            note="Coleção e catálogo. Cabem 4 por fileira; abaixo disso o texto fica pequeno demais."
+          />
+          <CardDemo
+            spec={CHARIZARD}
+            size="full"
+            details={{ level: CHARIZARD.level, baseStats: CHARIZARD.baseStats }}
+            caption={`full · ${CARD_WIDTH.full}px`}
+            note="A abertura do pacote. É a proporção original do desenho — as outras são reduções dela."
+          />
+        </div>
+
+        <Sub title="O que a carta sabe — prop details">
+          <Code>details=&#123;false&#125;</Code> é o catálogo: os dados vêm da PokéAPI ao vivo e não
+          trazem stat nenhum, então a carta não mostra Lv nem barras e a janela de arte cresce pra
+          ocupar o espaço. Com o objeto, os dados vêm do nosso banco: entra o Lv e entram as 6
+          barras. O dado vai <em>dentro</em> da flag de propósito — assim não dá pra ligar a flag e
+          esquecer de passar o stat.
+        </Sub>
+        <div className="flex flex-wrap justify-center gap-6">
+          <CardDemo
+            spec={CHARIZARD}
+            size="grid"
+            details={false}
+            caption="details={false}"
+            note="Catálogo. No lugar do Lv aparece o número da dex."
+          >
+            <span className="clip-btn bg-ok/25 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-ok">
+              ✓ Na coleção
+            </span>
+          </CardDemo>
+          <CardDemo
+            spec={CHARIZARD}
+            size="grid"
+            details={{ level: CHARIZARD.level, baseStats: CHARIZARD.baseStats }}
+            caption="details={{ level, baseStats }}"
+            note="Coleção, pacote e deck. O número da barra é o stat já derivado pelo nível; o preenchimento é o stat base da espécie."
+          />
+        </div>
+
+        <Sub title="Raridade — metal, prisma e selo">
+          A raridade não é escolhida: é o BST (a soma dos 6 stats base) caindo numa faixa. Ela
+          decide o metal da moldura, a força do holográfico e o selo sobre a arte. O lendário ganha
+          brilhos e uma aura pulsando.
+        </Sub>
+        <div className="flex flex-wrap justify-center gap-5">
+          {RARITY_ROW.map((s) => (
+            <CardDemo
+              key={s.id}
+              spec={s}
+              size="grid"
+              details={{ level: s.level, baseStats: s.baseStats }}
+              caption={`${rarityLabel(rarityOf(s))} · metal ${cardMetal(rarityOf(s))}`}
+              note={`BST ${bstOf(s.id)} · holo ${holoIntensity(rarityOf(s))}`}
+            />
+          ))}
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-120 text-left text-xs font-semibold">
+            <thead className="text-ink-dim">
+              <tr className="border-b border-edge">
+                <Th>faixa</Th>
+                <Th>BST</Th>
+                <Th>metal</Th>
+                <Th>holo</Th>
+                <Th>extra</Th>
+              </tr>
+            </thead>
+            <tbody>
+              <RarityRow tier="common" bst="< 350" extra="—" />
+              <RarityRow tier="uncommon" bst="350 – 479" extra="—" />
+              <RarityRow tier="rare" bst="480 – 579" extra="—" />
+              <RarityRow tier="legendary" bst="≥ 580" extra="brilhos + aura + selo em foil" />
+            </tbody>
+          </table>
+        </div>
+
+        <Sub title="Rodapé — prop children">
+          O rodapé é a única parte que cada tela escreve. A carta só reserva a linha; quem passa o
+          conteúdo é quem usa. Por isso o mesmo desenho serve pra um botão, um selo ou nada.
+        </Sub>
+        <div className="flex flex-wrap justify-center gap-5">
+          <CardDemo
+            spec={PIKACHU}
+            size="grid"
+            details={{ level: PIKACHU.level, baseStats: PIKACHU.baseStats }}
+            caption="Coleção"
+            note="Botão de montar loadout (CollectionCardActions)."
+          >
+            {/* réplica estática do botão do CollectionCardActions — aqui não há
+                userPokemonId de verdade pra abrir o LoadoutBuilder. */}
+            <span className="clip-btn bg-panel-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink-dim">
+              Montar
+            </span>
+          </CardDemo>
+          <CardDemo
+            spec={CHARMELEON}
+            size="grid"
+            details={{ level: CHARMELEON.level, baseStats: CHARMELEON.baseStats }}
+            caption="Pacote"
+            note="Selo de novidade na revelação."
+          >
+            <span className="clip-btn bg-flare px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+              Novo
+            </span>
+          </CardDemo>
+          <CardDemo
+            spec={MEWTWO}
+            size="grid"
+            details={false}
+            caption="Catálogo"
+            note="Só marca o que o jogador ainda não tem."
+          >
+            <span className="clip-btn bg-black/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white/45">
+              Não obtido
+            </span>
+          </CardDemo>
+        </div>
+
+        <Sub title="Moldura destacada — prop highlighted">
+          Um contorno em laranja pra marcar uma carta escolhida. Existe na carta e está pronto;
+          hoje nenhuma tela liga (a coleção esconde quem já está no deck, então não precisa
+          marcar).
+        </Sub>
+        <div className="flex flex-wrap justify-center gap-6">
+          <CardDemo
+            spec={CHARIZARD}
+            size="grid"
+            details={{ level: CHARIZARD.level, baseStats: CHARIZARD.baseStats }}
+            caption="highlighted"
+            note="Contorno em flare por dentro da moldura."
+            highlighted
+          />
+        </div>
+
+        <p className="mt-8 text-xs font-semibold text-ink-dim">
+          <strong className="text-ink">Inclinação 3D:</strong> passe o mouse por qualquer carta
+          acima. O envelope (<Code>HoloCard</Code>) é a única parte cliente — ele só mede o
+          ponteiro e escreve variáveis CSS no nó, sem re-renderizar o React (um grid de 20 cartas
+          não aguentaria). Quanto mais rara a carta, mais forte a inclinação e o arco-íris. Em tela
+          de toque e com <Code>prefers-reduced-motion</Code> ele se desliga sozinho e a carta fica
+          reta.
+        </p>
+      </Section>
+
+      {/* 5. Componentes de jogo */}
       <Section title="Componentes de jogo">
         <p className="mb-3 text-xs font-bold uppercase tracking-wider text-ink-dim">
-          Card de pokémon — estados
+          Painel (card-frame) — a moldura genérica das telas, não da carta
         </p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <DemoCard label="Padrão" typeC={TYPE_COLORS.grass} />
-          <DemoCard label="Hover (passe o mouse)" typeC={TYPE_COLORS.fire} />
-          <DemoCard label="No deck" typeC={TYPE_COLORS.water} inDeck />
+          <DemoPanel label="Padrão" typeC={TYPE_COLORS.grass} />
+          <DemoPanel label="Hover (passe o mouse)" typeC={TYPE_COLORS.fire} />
+          <DemoPanel label="Destacado" typeC={TYPE_COLORS.water} inDeck />
         </div>
 
         <p className="mb-3 mt-8 text-xs font-bold uppercase tracking-wider text-ink-dim">
@@ -129,7 +360,7 @@ export default function DesignSystemPage() {
         </div>
       </Section>
 
-      {/* 5. Motion */}
+      {/* 6. Motion */}
       <Section title="Motion">
         <div className="grid gap-4 sm:grid-cols-2">
           <MotionDemo name="rise" spec="350ms · ease-snap · entrada de cards">
@@ -179,7 +410,77 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DemoCard({ label, typeC, inDeck }: { label: string; typeC: string; inDeck?: boolean }) {
+function Sub({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-4 mt-10 first:mt-0">
+      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-dim">{title}</p>
+      <p className="max-w-2xl text-sm font-semibold text-ink-dim">{children}</p>
+    </div>
+  );
+}
+
+function Code({ children }: { children: React.ReactNode }) {
+  return <code className="font-title text-xs tracking-wide text-energy">{children}</code>;
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return <th className="py-2 pr-4 font-bold uppercase tracking-wider">{children}</th>;
+}
+
+function RarityRow({ tier, bst, extra }: { tier: RarityTier; bst: string; extra: string }) {
+  return (
+    <tr className="border-b border-edge/60">
+      <td className="py-2 pr-4 font-title uppercase tracking-wide">{rarityLabel(tier)}</td>
+      <td className="py-2 pr-4 tabular-nums text-ink-dim">{bst}</td>
+      <td className="py-2 pr-4 text-ink-dim">{cardMetal(tier)}</td>
+      <td className="py-2 pr-4 tabular-nums text-ink-dim">{holoIntensity(tier)}</td>
+      <td className="py-2 pr-4 text-ink-dim">{extra}</td>
+    </tr>
+  );
+}
+
+// A carta REAL com uma legenda embaixo. Nada de estilo próprio na carta: só as
+// props que as telas do jogo passam.
+function CardDemo({
+  spec,
+  size,
+  details,
+  caption,
+  note,
+  highlighted,
+  children,
+}: {
+  spec: Specimen;
+  size: PokeCardSize;
+  details: { level: number; baseStats?: BaseStats } | false;
+  caption: string;
+  note: string;
+  highlighted?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <figure className="flex flex-col items-center gap-3" style={{ width: CARD_WIDTH[size] }}>
+      <PokeCard
+        dexNumber={dexNumber(spec.id)}
+        name={spec.name}
+        artworkUrl={artworkOf(spec.id)}
+        types={spec.types}
+        rarity={rarityOf(spec)}
+        size={size}
+        details={details}
+        highlighted={highlighted}
+      >
+        {children}
+      </PokeCard>
+      <figcaption className="text-center">
+        <span className="block font-title text-sm uppercase tracking-wide">{caption}</span>
+        <span className="mt-1 block text-xs font-semibold leading-snug text-ink-dim">{note}</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+function DemoPanel({ label, typeC, inDeck }: { label: string; typeC: string; inDeck?: boolean }) {
   return (
     <div
       data-in-deck={inDeck || undefined}

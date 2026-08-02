@@ -30,7 +30,7 @@ export default function QueueDeckCard({
       {isEmpty && (
         <p className="mt-3 text-sm font-semibold text-warn">
           Seu deck está vazio. Monte-o na{" "}
-          <Link href="/pokedex" className="underline">
+          <Link href="/" className="underline">
             sua coleção
           </Link>{" "}
           antes de batalhar.
