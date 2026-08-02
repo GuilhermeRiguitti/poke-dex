@@ -113,5 +113,5 @@ export function collectionHref(
   if (next.page !== DEFAULTS.page) params.set("page", String(next.page));
 
   const qs = params.toString();
-  return qs ? `/pokedex?${qs}` : "/pokedex";
-}
+  return qs ? `/?${qs}` : "/";
+} 

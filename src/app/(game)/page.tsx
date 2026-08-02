@@ -29,7 +29,7 @@ type CollectionPageProps = {
    searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function CollectionPage({ searchParams }: CollectionPageProps) {
+export default async function HomePage({ searchParams }: CollectionPageProps) {
    const filters = parseCollectionFilters(await searchParams);
    const session = await auth.api.getSession({ headers: await headers() });
    if (!session) redirect("/login");
