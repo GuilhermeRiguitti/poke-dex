@@ -733,9 +733,224 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LEQUE DE RESERVAS (batalha). As cartas mini abrem em leque no rodapé
-   da arena, sobrepostas e inclinadas. O ATIVO não entra aqui — ele está
-   no palco 3D. --rot e --lift vêm do componente (posição na mão).
+   HUD DA BATALHA. O palco 3D ocupa a tela inteira e estas peças
+   flutuam por cima, nas quinas (ver DuelArena). Tudo aqui é
+   translúcido com blur de propósito: o cenário precisa continuar
+   visível por baixo, senão a arena vira um formulário.
+   ══════════════════════════════════════════════════════════════ */
+
+/* o céu atrás do grid — o canvas é alpha, então este gradiente aparece.
+   `isolation` prende o z-index do palco (o balão do drei chega a 30) aqui
+   dentro: sem isso ele subiria por cima das placas do HUD. */
+.duel-sky {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 55% 38% at 50% 58%, rgba(35, 201, 255, 0.10), transparent 70%),
+    radial-gradient(ellipse 75% 45% at 50% 4%, rgba(97, 84, 214, 0.16), transparent 68%),
+    linear-gradient(180deg, #070b12 0%, #0a1120 52%, #0b0f16 100%);
+}
+/* escurece as bordas: joga o olho pro centro e assenta o HUD nas quinas */
+.duel-vignette {
+  z-index: 1;
+  background: radial-gradient(ellipse 78% 72% at 50% 45%, transparent 45%, rgba(4, 7, 12, 0.72) 100%);
+}
+
+/* placa do HUD (HP, relatório, gaveta) */
+.hud-panel {
+  position: relative;
+  background: color-mix(in srgb, var(--color-panel) 80%, transparent);
+  border: 1px solid var(--color-edge);
+  backdrop-filter: blur(7px);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+/* fio de luz no topo: diz de quem é a placa antes de qualquer texto */
+.hud-panel::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--hud-accent, var(--color-edge)) 45%, transparent);
+  pointer-events: none;
+}
+.hud-panel[data-side="opp"] { --hud-accent: var(--color-enemy); }
+.hud-panel[data-side="me"] { --hud-accent: var(--color-energy); }
+
+/* retrato do ativo na placa */
+.hud-thumb {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  background: rgba(9, 12, 18, 0.55);
+  border: 1px solid var(--color-edge);
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+.hud-thumb > img { width: 40px; height: 40px; object-fit: contain; }
+
+/* marcadores do time do oponente (vivo / em campo / caído) */
+.hud-pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: 1px solid var(--color-enemy);
+  background: color-mix(in srgb, var(--color-enemy) 40%, transparent);
+}
+.hud-pip[data-state="active"] {
+  background: var(--color-enemy);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-enemy) 70%, transparent);
+}
+.hud-pip[data-state="down"] {
+  border-color: var(--color-edge);
+  background: var(--color-panel-2);
+}
+
+/* ── balão de dano (ancorado na cabeça do pokémon) ───────────── */
+.dmg-callout {
+  position: relative;
+  padding: 4px 12px 5px;
+  text-align: center;
+  background: rgba(8, 11, 18, 0.88);
+  border: 1px solid var(--cal-c, var(--color-edge));
+  box-shadow: 0 0 20px color-mix(in srgb, var(--cal-c, #000) 30%, transparent);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  animation: callout-in 0.28s var(--ease-snap) both;
+}
+/* a setinha que aponta pra quem levou */
+.dmg-callout::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid var(--cal-c, var(--color-edge));
+}
+@keyframes callout-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.82); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── relatório de combate ────────────────────────────────────── */
+.feed-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 1px 4px;
+  border-left: 2px solid transparent;
+}
+.feed-line[data-last] { border-left-color: var(--color-flare); }
+.feed-line[data-round] { justify-content: center; opacity: 0.75; }
+.feed-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 5px;
+  font-family: var(--font-title);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.feed-tag[data-actor="me"] {
+  color: var(--color-energy);
+  border: 1px solid color-mix(in srgb, var(--color-energy) 55%, transparent);
+  background: color-mix(in srgb, var(--color-energy) 12%, transparent);
+}
+.feed-tag[data-actor="opp"] {
+  color: #2a0f12;
+  background: var(--color-enemy);
+}
+.feed-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-energy);
+  box-shadow: 0 0 8px var(--color-energy);
+  animation: playable-pulse 1.8s ease-in-out infinite;
+}
+
+/* ── gaveta de reservas (canto de baixo à direita) ───────────── */
+.reserve-dock {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+.reserve-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: 25rem;
+  max-width: 88vw;
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+  transform-origin: bottom right;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.24s var(--ease-snap);
+}
+/* abre no hover/foco da ficha — e fica aberta quando o React manda (troca forçada) */
+.reserve-dock:hover .reserve-panel,
+.reserve-dock:focus-within .reserve-panel,
+.reserve-dock[data-open] .reserve-panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.reserve-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  color: var(--color-ink);
+  background: color-mix(in srgb, var(--color-panel-2) 88%, transparent);
+  border: 1px solid var(--color-edge);
+  backdrop-filter: blur(7px);
+  cursor: pointer;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s var(--ease-snap);
+}
+.reserve-dock:hover .reserve-chip,
+.reserve-dock:focus-within .reserve-chip,
+.reserve-dock[data-open] .reserve-chip {
+  border-color: color-mix(in srgb, var(--color-flare) 60%, var(--color-edge));
+  background: color-mix(in srgb, var(--color-flare) 14%, var(--color-panel-2));
+  transform: translateY(-2px);
+}
+.reserve-chip-icon {
+  width: 12px;
+  height: 14px;
+  border: 1px solid var(--color-flare);
+  box-shadow: 3px -3px 0 -1px color-mix(in srgb, var(--color-flare) 55%, transparent);
+}
+.reserve-chip-count {
+  min-width: 20px;
+  padding: 0 5px;
+  font-family: var(--font-title);
+  font-size: 12px;
+  text-align: center;
+  color: #241a05;
+  background: var(--color-flare);
+}
+/* dentro da gaveta a carta em foco sobe MENOS: a placa tem clip-path, e o
+   pulo cheio do leque seria decepado na borda do painel */
+.reserve-panel .rhand {
+  padding-top: 30px;
+  padding-inline: 10px;
+}
+.reserve-panel .rhand-slot:not([disabled]):hover,
+.reserve-panel .rhand-slot:not([disabled]):focus-visible {
+  transform: rotate(0deg) translateY(-16px) scale(1.18);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LEQUE DE RESERVAS (batalha). As cartas mini abrem em leque dentro
+   da gaveta, sobrepostas e inclinadas. O ATIVO não entra aqui — ele
+   está no palco 3D. --rot e --lift vêm do componente (posição na mão).
    ══════════════════════════════════════════════════════════════ */
 .rhand {
   display: flex;

@@ -18,7 +18,8 @@ import SignOutButton from "../modules/auth/SignOutButton";
 const LINKS = [
   { href: "/streak", label: "Recompensas", icon: PackIcon },
   { href: "/catalog", label: "Catálogo", icon: GridIcon },
-  { href: "/pokedex", label: "Coleção", icon: CardsIcon },
+  // A coleção é a HOME desde o redesign do workspace — não existe mais /pokedex.
+  { href: "/", label: "Coleção", icon: CardsIcon },
 ] as const;
 
 export default function NavBar({ userName }: { userName: string }) {

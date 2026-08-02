@@ -81,26 +81,28 @@ describe("hasActiveFilter", () => {
   });
 });
 
+// A coleção é a HOME ("/") desde o redesign do workspace — a rota /pokedex não
+// existe mais.
 describe("collectionHref", () => {
   it("preserva o que não foi trocado", () => {
     const f = parseCollectionFilters({ q: "char", type: "fire", page: "2" });
-    expect(collectionHref(f, { page: 3 })).toBe("/pokedex?q=char&type=fire&page=3");
+    expect(collectionHref(f, { page: 3 })).toBe("/?q=char&type=fire&page=3");
   });
 
   it("omite o que está no default (URL limpa)", () => {
-    expect(collectionHref(parseCollectionFilters({}), {})).toBe("/pokedex");
+    expect(collectionHref(parseCollectionFilters({}), {})).toBe("/");
   });
 
   // O comportamento que evita a página fantasma: trocar um FILTRO tem que
   // voltar pra página 1, senão o jogador cai numa página que não existe mais.
   it("trocar filtro zera a página", () => {
     const f = parseCollectionFilters({ page: "5", q: "char" });
-    expect(collectionHref(f, { rarity: "rare" })).toBe("/pokedex?q=char&rarity=rare");
+    expect(collectionHref(f, { rarity: "rare" })).toBe("/?q=char&rarity=rare");
   });
 
   it("trocar só a página NÃO zera a página", () => {
     const f = parseCollectionFilters({ page: "5" });
-    expect(collectionHref(f, { page: 6 })).toBe("/pokedex?page=6");
+    expect(collectionHref(f, { page: 6 })).toBe("/?page=6");
   });
 });
 

@@ -50,12 +50,13 @@ describe("collectionFilterView", () => {
   it("com filtro, mostra o botão de limpar apontando pra coleção limpa", () => {
     const v = collectionFilterView(parseCollectionFilters({ q: "pika", page: "4" }));
     expect(v.showClear).toBe(true);
-    expect(v.clearHref).toBe("/pokedex");
+    // A coleção é a HOME desde o redesign do workspace — não há mais /pokedex.
+    expect(v.clearHref).toBe("/");
   });
 
   it("preserva a ordenação ao limpar os filtros", () => {
     // Ordenação não é filtro: limpar "fogo" não pode desfazer "por nível".
     const v = collectionFilterView(parseCollectionFilters({ type: "fire", sort: "level_desc" }));
-    expect(v.clearHref).toBe("/pokedex?sort=level_desc");
+    expect(v.clearHref).toBe("/?sort=level_desc");
   });
 });
