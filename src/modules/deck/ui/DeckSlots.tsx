@@ -1,61 +1,82 @@
 import Link from "next/link";
 import { SwordsIcon } from "@/src/layout/icons";
-import { CARD_WIDTH } from "@/src/modules/pokedex/ui/pokeCardView";
 import DeckSlotCard from "./DeckSlotCard";
 import type { DeckBoardView } from "./deckBoardView";
 
-// Server Component: as vagas do deck são desenho + composição do card client
-// (DeckSlotCard) que leva o X de remover. Montar um loadout continua vindo da
-// coleção (CollectionCardActions); tirar do deck é só aqui.
+// Server Component: a TRILHA DA DIREITA do workspace da coleção. Montar um
+// loadout continua vindo da coleção (CollectionCardActions); tirar do deck é só
+// aqui, no X de cada linha (DeckSlotCard, client).
 //
-// Cada vaga preenchida é a MESMA carta das outras telas, no tamanho `mini`:
-// nele as barras, os tipos e o rodapé somem (viram ruído em 96px) e sobram
-// moldura, arte e Lv. A vaga vazia repete a proporção da carta pra fileira não
-// ficar desalinhada.
+// As vagas deixaram de ser cartas mini lado a lado e viraram LINHAS empilhadas:
+// na coluna estreita a carta de 96px não cabia em fileira, e a linha mostra o
+// que decide o time (nome, nível e tipos) em texto legível, sem depender da
+// moldura. A carta inteira continua sendo a da coleção, ao lado.
+//
+// Não há botão de "limpar deck": não existe command pra isso — o único caminho
+// de saída é o DELETE de uma vaga por vez.
 
 export default function DeckSlots({ deck }: { deck: DeckBoardView }) {
-  const { slots, count, limit } = deck;
+  const { slots, count, limit, full, battleLabel } = deck;
 
   return (
-    <section className="clip-card mb-8 border border-edge bg-panel p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="plate border border-edge bg-panel-2 px-3 py-1">
-          <span className="plate-inner flex items-center gap-2 font-title text-sm uppercase tracking-wider">
+    <aside className="flex flex-col border-t border-edge bg-panel/60 xl:min-h-0 xl:border-l xl:border-t-0">
+      <div className="flex-none border-b border-edge bg-panel-2/50 p-3.5">
+        <div className="flex items-baseline gap-2">
+          <h2 className="flex items-center gap-2 font-title text-base uppercase tracking-wider">
             <SwordsIcon size={15} className="text-flare" />
             Deck de batalha
-            <span className="text-ink-dim">
-              {count}/{limit}
-            </span>
+          </h2>
+          <span className="ml-auto font-title text-base text-flare">
+            {count}
+            <span className="text-ink-dim">/{limit}</span>
           </span>
-        </h2>
-        {count > 0 && (
-          <Link
-            href="/battle"
-            className="clip-btn bg-flare px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-flare-dark"
-          >
-            Batalhar
-          </Link>
-        )}
+        </div>
+
+        {/* uma marca por vaga: dá o "quanto falta" antes de ler a lista */}
+        <div className="mt-2.5 flex gap-1">
+          {slots.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1 flex-1 ${i < count ? "bg-flare" : "bg-edge"}`}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
+      <div className="flex flex-col gap-1.5 p-3 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
         {slots.map((slot, i) =>
-          slot.pokemonId === null || slot.rarity === null ? (
+          slot.id === null ? (
             <div
               key={i}
-              className="clip-card flex items-center justify-center border border-dashed border-edge"
-              style={{
-                width: CARD_WIDTH.mini,
-                height: (CARD_WIDTH.mini * 500) / 340,
-              }}
+              className="clip-btn flex min-h-14.5 items-center gap-2.5 border border-dashed border-edge px-2.5 text-ink-dim/60"
             >
-              <span className="font-title text-2xl text-edge">+</span>
+              <span className="flex h-10 w-10 flex-none items-center justify-center border border-edge font-title text-base">
+                {i + 1}
+              </span>
+              <span className="font-title text-xs uppercase tracking-widest">Slot vazio</span>
             </div>
           ) : (
-            <DeckSlotCard key={i} slot={slot} index={i} />
+            <DeckSlotCard key={slot.id} slot={slot} />
           )
         )}
       </div>
-    </section>
+
+      <div className="flex-none border-t border-edge bg-panel-2/50 p-3.5">
+        {count > 0 ? (
+          <Link
+            href="/battle"
+            className={`clip-btn block bg-flare px-4 py-3 text-center font-title text-sm uppercase tracking-wider text-white transition-colors hover:bg-flare-dark ${
+              full ? "animate-playable-pulse" : ""
+            }`}
+          >
+            {battleLabel}
+          </Link>
+        ) : (
+          <span className="clip-btn block cursor-not-allowed border border-edge px-4 py-3 text-center font-title text-sm uppercase tracking-wider text-ink-dim opacity-50">
+            {battleLabel}
+          </span>
+        )}
+      </div>
+    </aside>
   );
 }

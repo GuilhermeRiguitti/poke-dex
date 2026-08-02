@@ -12,9 +12,10 @@ import type { CollectionCardView } from "./pokedexView";
 
 export default function CollectionGrid({ cards }: { cards: CollectionCardView[] }) {
   return (
-    // No máximo 4 por fileira: a carta é 260px, e passar disso espremeria a
-    // moldura abaixo do tamanho em que o texto do handoff é legível.
-    <div className="grid grid-cols-1 justify-items-center gap-5 min-[580px]:grid-cols-2 min-[860px]:grid-cols-3 min-[1140px]:grid-cols-4">
+    // A coluna do meio do workspace muda de largura com a tela (as duas trilhas
+    // são fixas), então a fileira se resolve sozinha: cabe quem couber em 260px,
+    // que é a largura da carta — abaixo disso o texto do handoff fica ilegível.
+    <div className="grid content-start justify-items-center gap-5 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
       {cards.map((card, i) => (
         <PokeCard
           key={card.userPokemonId}

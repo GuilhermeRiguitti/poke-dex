@@ -140,8 +140,8 @@
     "semantic_hash": ""
   },
   "src/app/(game)/pokedex/page.tsx": {
-    "mtime": 1785641995.294374,
-    "ast_hash": "03e54ad9c9455a45cb7c8234af651996",
+    "mtime": 1785640334.5704775,
+    "ast_hash": "ee98a994a673cc5f5d11ad4b1604e4c1",
     "semantic_hash": ""
   },
   "src/app/(game)/pokemon/[id]/page.tsx": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/CollectionGrid.tsx": {
-    "mtime": 1785641956.4390795,
-    "ast_hash": "51708847179754a3189237ccc6469610",
+    "mtime": 1785637029.8203144,
+    "ast_hash": "dfc3744d5ed421fe89df88d78a5c82dd",
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/DetailPanel.tsx": {
@@ -885,8 +885,8 @@
     "semantic_hash": ""
   },
   "tsconfig.json": {
-    "mtime": 1785642149.9225485,
-    "ast_hash": "576c5e199af22decffd588ffa94ce73c",
+    "mtime": 1785465509.4846437,
+    "ast_hash": "0cfe79d5732bb4d07766e0f9602e4ae9",
     "semantic_hash": ""
   },
   "vitest.config.ts": {
@@ -965,8 +965,8 @@
     "semantic_hash": ""
   },
   "PLANO_JOGO.md": {
-    "mtime": 1785642210.9156325,
-    "ast_hash": "9e3c315f40ff34cfb979aa1403853663",
+    "mtime": 1785638184.9429822,
+    "ast_hash": "0885992ab0319722a23b156f4a8d87d0",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1050,8 +1050,8 @@
     "semantic_hash": ""
   },
   "src/layout/NavBar.tsx": {
-    "mtime": 1785642036.9108727,
-    "ast_hash": "e85e347c78456be09b40704f6d7fc931",
+    "mtime": 1785604067.149387,
+    "ast_hash": "c7789943a25de33e32c6f529302e16be",
     "semantic_hash": ""
   },
   "src/layout/TypeBadge.tsx": {
@@ -1115,8 +1115,8 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/CollectionFilterBar.tsx": {
-    "mtime": 1785641905.8090374,
-    "ast_hash": "4ac01a03b94d5c78af52812f36ec9feb",
+    "mtime": 1785641900.9824426,
+    "ast_hash": "837bde5b6919a245115646507e918955",
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/HoloCard.tsx": {
@@ -1130,7 +1130,7 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/collectionFilterView.ts": {
-    "mtime": 1785642187.153468,
+    "mtime": 1785641828.557093,
     "ast_hash": "f32dd08f7e11ff3d1bf25668850d2a2d",
     "semantic_hash": ""
   },
@@ -1170,8 +1170,8 @@
     "semantic_hash": ""
   },
   "tests/modules/pokedex/ui/collectionFilterView.test.ts": {
-    "mtime": 1785642052.206315,
-    "ast_hash": "50a0dfa396cdb814596fbbd599f1a0e1",
+    "mtime": 1785622779.5812674,
+    "ast_hash": "ac36ecbb8d48214380219c337e32176c",
     "semantic_hash": ""
   },
   "tests/modules/pokedex/ui/paginationView.test.ts": {
@@ -1210,41 +1210,41 @@
     "semantic_hash": ""
   },
   "src/modules/deck/ui/DeckSlotCard.tsx": {
-    "mtime": 1785641943.5914807,
-    "ast_hash": "07f149a7dc55734cfa261895e4e484b4",
+    "mtime": 1785637802.5219152,
+    "ast_hash": "c848a335242e0a8502b0b437227272a4",
     "semantic_hash": ""
   },
   "src/modules/deck/ui/DeckSlots.tsx": {
-    "mtime": 1785641928.294864,
-    "ast_hash": "07e9891cf4046832fea6c150d4746470",
+    "mtime": 1785637817.347777,
+    "ast_hash": "2eb0b5e36d6262b344241a67bbfb8762",
     "semantic_hash": ""
   },
   "src/modules/deck/ui/deckBoardView.ts": {
-    "mtime": 1785642180.5174553,
+    "mtime": 1785641847.774679,
     "ast_hash": "5172a4471dacd8c478c0d62a29d86da3",
     "semantic_hash": ""
   },
   "tests/modules/deck/ui/deckBoardView.test.ts": {
-    "mtime": 1785642063.3386738,
-    "ast_hash": "592a66d2188d413d8411c8521439dc5c",
+    "mtime": 1785638016.6763625,
+    "ast_hash": "29b053f8c306cd6edcb1d700f7cfe80e",
     "semantic_hash": ""
   },
-  "docs/design/colecao-deck/support.js": {
+  "src/redesigncollection-interface/support.js": {
     "mtime": 1785641407.541488,
     "ast_hash": "951ae391b8ae72ef12e671c2fad23353",
     "semantic_hash": ""
   },
-  "docs/design/colecao-deck/uploads/CollectionFilterBar.tsx": {
+  "src/redesigncollection-interface/uploads/CollectionFilterBar.tsx": {
     "mtime": 1785641407.551015,
     "ast_hash": "b27726b49bc8f4867eabb62fcf38a061",
     "semantic_hash": ""
   },
-  "docs/design/colecao-deck/Colecao Deck.dc.html": {
+  "src/redesigncollection-interface/Colecao Deck.dc.html": {
     "mtime": 1785641407.5334682,
     "ast_hash": "dd6338f816097b70dc7e96691e11f2a3",
     "semantic_hash": ""
   },
-  "docs/design/colecao-deck/uploads/pasted-1785640393868-0.png": {
+  "src/redesigncollection-interface/uploads/pasted-1785640393868-0.png": {
     "mtime": 1785641407.5640435,
     "ast_hash": "b6cd63bf823af97a08bd1c37396189b6",
     "semantic_hash": ""

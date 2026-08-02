@@ -1,6 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
 import { getUnlockedMoveIds } from "@/src/modules/pokedex";
-import { CARDS_PER_SLOT, DECK_LIMIT } from "../domain/rules";
+import { CARDS_PER_SLOT, isDeckFull } from "../domain/rules";
 import { getOrCreateDeck } from "../queries/readDeck";
 import type { DeckSlotDTO } from "../ui/types";
 import { toDeckSlotDTO } from "../queries/toDeckDTO";
@@ -61,7 +61,7 @@ export async function addToDeck(userId: string, input: AddToDeckInput): Promise<
     let order = existing?.order;
     if (existing == null) {
       const count = await tx.deckSlot.count({ where: { deckId: deck.id } });
-      if (count >= DECK_LIMIT) return { ok: false as const, error: "deck_full" as const };
+      if (isDeckFull(count)) return { ok: false as const, error: "deck_full" as const };
       order = count; // próxima posição livre (0-based)
     }
 

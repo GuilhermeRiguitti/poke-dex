@@ -23,15 +23,6 @@ export async function getOrCreateDeck(userId: string) {
   return prisma.deck.create({ data: { userId }, select: { id: true } });
 }
 
-/** Quantos loadouts há no deck do usuário. 0 se ele nem tem deck. Só leitura. */
-export async function countDeckSlots(userId: string): Promise<number> {
-  const deck = await prisma.deck.findFirst({
-    ...deckOfUser(userId),
-    select: { _count: { select: { slots: true } } },
-  });
-  return deck?._count.slots ?? 0;
-}
-
 // ─── Loadout completo pro battle montar o snapshot (lê o espelho local) ─────
 
 /** Uma carta do loadout já resolvida no Move do espelho. */

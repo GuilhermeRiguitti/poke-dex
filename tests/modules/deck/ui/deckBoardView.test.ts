@@ -56,10 +56,30 @@ describe("deckBoardView", () => {
     expect(v.slots[0].baseStats).toEqual(BASE_STATS);
   });
 
-  it("mais vagas do que o limite não estouram a fileira", () => {
+  it("mais vagas do que o limite não estouram a fileira nem a contagem", () => {
     const cheio = Array.from({ length: DECK_LIMIT + 2 }, (_, i) =>
       vaga(`slot-${i}`, i, 4 + i)
     );
-    expect(deckBoardView(board({ slots: cheio })).slots).toHaveLength(DECK_LIMIT);
+    const v = deckBoardView(board({ slots: cheio }));
+    expect(v.slots).toHaveLength(DECK_LIMIT);
+    // conta as vagas DESENHADAS — contar o que veio da query escreveria "8/6"
+    expect(v.count).toBe(DECK_LIMIT);
+  });
+
+  it("a vaga preenchida leva o tipo que tinge a linha", () => {
+    expect(deckBoardView(board()).slots[0].accentType).toBe("fire");
+    expect(deckBoardView(board()).slots[1].accentType).toBeNull();
+  });
+
+  it("o rótulo de batalhar acompanha o time enchendo", () => {
+    expect(deckBoardView({ id: null, slots: [] }).battleLabel).toBe("Deck vazio");
+    expect(deckBoardView({ id: null, slots: [] }).full).toBe(false);
+
+    expect(deckBoardView(board()).battleLabel).toBe("Batalhar · 1");
+
+    const cheio = Array.from({ length: DECK_LIMIT }, (_, i) => vaga(`slot-${i}`, i, 4 + i));
+    const v = deckBoardView(board({ slots: cheio }));
+    expect(v.full).toBe(true);
+    expect(v.battleLabel).toBe("Batalhar agora");
   });
 });
