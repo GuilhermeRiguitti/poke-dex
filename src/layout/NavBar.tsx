@@ -16,7 +16,7 @@ import SignOutButton from "../modules/auth/SignOutButton";
 
 
 const LINKS = [
-  { href: "/packs", label: "Pacotes", icon: PackIcon },
+  { href: "/streak", label: "Recompensas", icon: PackIcon },
   { href: "/catalog", label: "Catálogo", icon: GridIcon },
   { href: "/pokedex", label: "Coleção", icon: CardsIcon },
 ] as const;
