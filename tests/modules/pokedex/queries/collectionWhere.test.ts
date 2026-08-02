@@ -3,9 +3,9 @@ import { buildCollectionWhere, orderByFor } from "@/src/modules/pokedex/queries/
 import { parseCollectionFilters } from "@/src/modules/pokedex/domain/collectionFilters";
 
 describe("buildCollectionWhere", () => {
-  it("sem filtro, recorta só pelo dono", () => {
+  it("sem filtro, recorta só pelo dono e exclui quem já está no deck", () => {
     const where = buildCollectionWhere("u1", parseCollectionFilters({}));
-    expect(where).toEqual({ userId: "u1", pokemon: {} });
+    expect(where).toEqual({ userId: "u1", deckSlots: { none: {} }, pokemon: {} });
   });
 
   it("busca por nome é insensível a maiúscula", () => {

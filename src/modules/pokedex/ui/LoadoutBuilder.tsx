@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { CARDS_PER_SLOT } from "@/src/modules/deck/domain/rules";
 import type { LearnsetMoveDTO } from "@/src/modules/deck/ui/types";
 import { typeColor } from "@/src/lib/typeColors";
+import { toastWarn } from "@/src/layout/toast";
 
 // Modal de montar loadout: busca o learnset da espécie e deixa escolher até 6
 // cartas (CARDS_PER_SLOT). É o coração do jogo novo — o deck deixou de ser "só
@@ -117,7 +118,14 @@ export default function LoadoutBuilder({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error === "deck_full" ? "Seu deck já está cheio (6 loadouts)." : "Não foi possível salvar.");
+        // Deck cheio não é erro de formulário — é aviso, e a checagem de
+        // verdade é do servidor (addToDeck), não da tela: o botão "Montar" não
+        // se desabilita antecipando isso.
+        if (data.error === "deck_full") {
+          toastWarn("Seu deck já está cheio (6 loadouts). Tire uma carta antes de montar outra.");
+          return;
+        }
+        setError("Não foi possível salvar.");
         return;
       }
       onDone();

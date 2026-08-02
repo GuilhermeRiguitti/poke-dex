@@ -1,12 +1,12 @@
 # Graph Report - poke-dex-next  (2026-08-01)
 
 ## Corpus Check
-- 240 files · ~117,936 words
+- 236 files · ~117,205 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1022 nodes · 2062 edges · 72 communities (51 shown, 21 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.63)
+- 1012 nodes · 2027 edges · 70 communities (50 shown, 20 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.6)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
@@ -82,13 +82,11 @@
 - @tailwindcss/postcss
 - @react-three/fiber
 - three
-- token/route.ts
-- queue/status/route.ts
 
 ## God Nodes (most connected - your core abstractions)
-1. `rarityTier` - 33 edges
+1. `rarityTier` - 29 edges
 2. `auth` - 23 edges
-3. `BaseStats` - 23 edges
+3. `BaseStats` - 19 edges
 4. `syncPokedex()` - 17 edges
 5. `compilerOptions` - 17 edges
 6. `resolveIfDue()` - 14 edges
@@ -110,37 +108,37 @@
   src/app/(game)/battle/[id]/page.tsx → src/modules/battle/queries/readBattleState.ts
 
 ## Import Cycles
-- None detected.
+- 4-file cycle: `src/modules/deck/commands/addToDeck.ts -> src/modules/pokedex/index.ts -> src/modules/pokedex/queries/getCollectionPage.ts -> src/modules/deck/index.ts -> src/modules/deck/commands/addToDeck.ts`
 
-## Communities (72 total, 21 thin omitted)
+## Communities (70 total, 20 thin omitted)
 
 ### Community 0 - "battle/index.ts"
-Cohesion: 0.16
-Nodes (15): BattleQueuePage(), getQueueDeck(), BattleRow, toMoveDTO(), toParticipantDTO(), toPokemonDTO(), BattleMatchmaker(), BattleDTO (+7 more)
+Cohesion: 0.20
+Nodes (11): GET(), BattleQueuePage(), getQueueDeck(), getQueueStatus(), BattleMatchmaker(), BattleEventDTO, BattleMoveDTO, BattlePokemonDTO (+3 more)
 
 ### Community 1 - "resolveTurn.ts"
-Cohesion: 0.06
-Nodes (76): loadXpContext(), BattleTeamMember, buildDuelSnapshot(), buildTypeChart(), DAMAGE_CLASSES, toBattleMove(), toPokemonState(), enqueueBattle() (+68 more)
+Cohesion: 0.05
+Nodes (78): loadXpContext(), XpContext, BattleTeamMember, buildDuelSnapshot(), buildTypeChart(), DAMAGE_CLASSES, toBattleMove(), toPokemonState() (+70 more)
 
 ### Community 2 - "packs/index.ts"
-Cohesion: 0.10
-Nodes (28): CollectionPage(), deckBoardView, collectionHref(), CollectionSort, DEFAULTS, first(), hasActiveFilter(), parseCollectionFilters() (+20 more)
+Cohesion: 0.09
+Nodes (34): CollectionPage(), CollectionFilters, collectionHref(), CollectionSort, DEFAULTS, first(), hasActiveFilter(), parseCollectionFilters() (+26 more)
 
 ### Community 3 - "deck/index.ts"
-Cohesion: 0.10
-Nodes (31): DELETE(), POST(), addToDeck(), AddToDeckInput, AddToDeckResult, removeFromDeck(), RemoveFromDeckResult, isDeckFull() (+23 more)
+Cohesion: 0.12
+Nodes (27): DELETE(), POST(), globalForPrisma, addToDeck(), AddToDeckInput, AddToDeckResult, removeFromDeck(), RemoveFromDeckResult (+19 more)
 
 ### Community 4 - "progression/index.ts"
-Cohesion: 0.10
-Nodes (41): awardBattleXp(), CombatantRow, maybeEvolve(), pruneLoadoutForSpecies(), XpAward, XpContext, SyncedSpecies, getUnlockedMoveIds() (+33 more)
+Cohesion: 0.15
+Nodes (30): awardBattleXp(), CombatantRow, maybeEvolve(), pruneLoadoutForSpecies(), XpAward, getUnlockedMoveIds(), EvolutionChainNode, EvolutionDetail (+22 more)
 
 ### Community 5 - "design-system/page.tsx"
-Cohesion: 0.07
-Nodes (47): { POST, GET }, DELETE(), POST(), GET(), POST(), POST(), PacksPage(), HomePage() (+39 more)
+Cohesion: 0.09
+Nodes (31): { POST, GET }, GET(), POST(), POST(), GET(), PacksPage(), HomePage(), auth (+23 more)
 
 ### Community 6 - "battleView.ts"
-Cohesion: 0.13
-Nodes (10): DuelMonView, DuelView, PartyMemberView, CombatFeed(), DuelStage3D, effBannerFor(), Floater(), floaterFor() (+2 more)
+Cohesion: 0.06
+Nodes (27): anton, cinzel, metadata, rajdhani, AppToaster(), toastWarn(), TypeBadge(), typeColor() (+19 more)
 
 ### Community 7 - "compilerOptions"
 Cohesion: 0.07
@@ -155,8 +153,8 @@ Cohesion: 0.08
 Nodes (24): 10. Riscos / o que quebra (honestidade), 11. Decisões, 1. A visão em um parágrafo, 2. Decisões travadas × decisões abertas, 3.1 Ordem dentro do turno (`domain/turnOrder.ts`), 3.2 Economia de energia (a tensão de "gastar ou guardar")  *(fatia A2)*, 3.3 Janela de reação *(reavaliar)*, 3.4 Como o motor ficou (+16 more)
 
 ### Community 10 - "pokeapi.ts"
-Cohesion: 0.07
-Nodes (52): main(), parseRange(), DELETE(), POST(), POST(), CatalogPage(), authorizeCron(), CACHE_FOREVER (+44 more)
+Cohesion: 0.05
+Nodes (60): main(), parseRange(), DELETE(), POST(), POST(), CatalogPage(), PokemonDetailPage(), authorizeCron() (+52 more)
 
 ### Community 11 - "5. Serverless (Vercel Hobby) não é detalhe, é restrição de projeto"
 Cohesion: 0.08
@@ -167,8 +165,8 @@ Cohesion: 0.08
 Nodes (25): 1.1 `Pokemon.bst` e `Pokemon.rarity`, 1.2 `syncPokedex` passa a gravar os dois, 1.3 A fronteira do `BST_BY_ID`, 1.4 Evolução retroativa (bug), 1.5 `progressionFields(xp)`, 1.6 Testes da Fase 1, 2.1 Parser de filtros (puro), 2.2 A query (+17 more)
 
 ### Community 13 - "checkInLogin.ts"
-Cohesion: 0.05
-Nodes (31): SWATCHES, TYPE_SCALE, anton, cinzel, metadata, rajdhani, HpBar(), CardsIcon() (+23 more)
+Cohesion: 0.07
+Nodes (21): SWATCHES, TYPE_SCALE, HpBar(), CardsIcon(), CloseIcon(), GridIcon(), MenuIcon(), PackIcon() (+13 more)
 
 ### Community 14 - "2. O que é usado pra calcular a raridade: **BST**"
 Cohesion: 0.10
@@ -188,7 +186,7 @@ Nodes (19): better-auth, next, dependencies, better-auth, next, react, react-dom
 
 ### Community 20 - "listPokedexPage.ts"
 Cohesion: 0.07
-Nodes (37): PokemonDetailPage(), DeckSlotView, VAGA_VAZIA, DeckSlotCard(), bstOf(), drawPack(), BST_BY_ID, rarityTier (+29 more)
+Nodes (45): bstOf(), drawPack(), BST_BY_ID, rarityTier, weightForBst(), toPackCardDTO(), PackOpener(), Phase (+37 more)
 
 ### Community 21 - "training/index.ts"
 Cohesion: 0.32
@@ -219,12 +217,12 @@ Cohesion: 0.25
 Nodes (7): 1. Fonte dos dados de pokémon — quem lê o quê, 2. Cron: `resolve-battle-turns` (a cada 30s), 3. Cron: `refresh-pokedex` (diário, 03:15 UTC), 4. Rotina manual: seed do espelho (por geração), 5. Fair use da PokéAPI — como cumprimos, 6. Runbook — operar os crons, Rotinas do sistema — fontes de dados, crons e fair use
 
 ### Community 29 - "token/route.ts"
-Cohesion: 0.25
-Nodes (12): activeMon(), DuelLogLine, DuelMode, effLabel(), eventText(), hpPctOf(), selectDuelView(), selectLatestFx() (+4 more)
+Cohesion: 0.22
+Nodes (14): activeMon(), DuelLogLine, DuelMode, DuelView, effLabel(), eventText(), hpPctOf(), selectDuelView() (+6 more)
 
 ### Community 30 - "toBattleDTO.ts"
-Cohesion: 0.60
-Nodes (3): BattlePage(), readBattleState(), BattleRoomShell()
+Cohesion: 0.23
+Nodes (8): BattlePage(), readBattleState(), BattleRow, toBattleDTO(), toMoveDTO(), toParticipantDTO(), toPokemonDTO(), BattleRoomShell()
 
 ### Community 31 - "graphify reference: query, path, explain"
 Cohesion: 0.33
@@ -243,8 +241,8 @@ Cohesion: 0.50
 Nodes (4): __dirname, fetchBst(), main(), OUT
 
 ### Community 35 - "app/layout.tsx"
-Cohesion: 0.31
-Nodes (6): BattleErrorToast(), BattleRoom(), CHANNEL_EVENTS, useBattleRoom(), getSupabaseBrowser(), useRealtimeChannel()
+Cohesion: 0.23
+Nodes (7): BattleErrorToast(), BattleRoom(), BattleDTO, CHANNEL_EVENTS, useBattleRoom(), getSupabaseBrowser(), useRealtimeChannel()
 
 ### Community 36 - "resolveDueBattles.test.ts"
 Cohesion: 0.40
@@ -287,44 +285,40 @@ Cohesion: 0.50
 Nodes (3): input, prismaMock, tx
 
 ### Community 53 - "getBattleState.ts"
-Cohesion: 0.23
-Nodes (8): GET(), GET(), loadBattleForResolve(), BattleParticipants, isParticipant(), getBattleState(), getBattleStatus(), toBattleDTO()
+Cohesion: 0.30
+Nodes (7): GET(), GET(), loadBattleForResolve(), BattleParticipants, isParticipant(), getBattleState(), getBattleStatus()
 
 ### Community 56 - "react-konva"
-Cohesion: 0.33
-Nodes (8): POST(), tryResolveTurn(), mustSwitch(), ParticipantWithMons, persist(), submitAction(), SubmitActionInput, validSwitchTarget()
+Cohesion: 0.36
+Nodes (7): POST(), mustSwitch(), ParticipantWithMons, persist(), submitAction(), SubmitActionInput, validSwitchTarget()
 
 ### Community 57 - "@supabase/supabase-js"
 Cohesion: 0.39
 Nodes (5): clamp01(), computeHoloTilt(), HOLO_REST, HoloTilt, HoloCard()
 
 ### Community 63 - "queue/route.ts"
-Cohesion: 0.20
-Nodes (5): DuelTurnFx, AnimState, ME_POS, OPP_POS, Side
-
-### Community 70 - "token/route.ts"
-Cohesion: 0.43
-Nodes (4): GET(), signRealtimeToken(), createRealtimeToken(), RealtimeToken
+Cohesion: 0.50
+Nodes (3): DELETE(), POST(), leaveQueue()
 
 ## Knowledge Gaps
-- **321 isolated node(s):** `supabase`, `eslintConfig`, `nextConfig`, `name`, `version` (+316 more)
+- **319 isolated node(s):** `supabase`, `eslintConfig`, `nextConfig`, `name`, `version` (+314 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **20 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `rarityTier` connect `listPokedexPage.ts` to `battle/index.ts`, `packs/index.ts`, `deck/index.ts`, `design-system/page.tsx`, `battleView.ts`, `pokeapi.ts`, `token/route.ts`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
-- **Why does `auth` connect `design-system/page.tsx` to `battle/index.ts`, `packs/index.ts`, `deck/index.ts`, `token/route.ts`, `queue/status/route.ts`, `pokeapi.ts`, `checkInLogin.ts`, `getBattleState.ts`, `training/index.ts`, `react-konva`, `toBattleDTO.ts`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `BaseStats` connect `listPokedexPage.ts` to `pokeapi.ts`, `deck/index.ts`, `progression/index.ts`, `design-system/page.tsx`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+- **Why does `rarityTier` connect `listPokedexPage.ts` to `battle/index.ts`, `packs/index.ts`, `design-system/page.tsx`, `battleView.ts`, `pokeapi.ts`, `token/route.ts`, `toBattleDTO.ts`?**
+  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Why does `auth` connect `design-system/page.tsx` to `battle/index.ts`, `packs/index.ts`, `deck/index.ts`, `pokeapi.ts`, `checkInLogin.ts`, `getBattleState.ts`, `training/index.ts`, `react-konva`, `toBattleDTO.ts`, `queue/route.ts`?**
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
+- **Why does `BattleMoveDef` connect `resolveTurn.ts` to `react-konva`, `battle/index.ts`, `toBattleDTO.ts`?**
+  _High betweenness centrality (0.012) - this node is a cross-community bridge._
 - **What connects `supabase`, `eslintConfig`, `nextConfig` to the rest of the system?**
-  _321 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _319 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `resolveTurn.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.05516596540439458 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.054199328107502796 - nodes in this community are weakly interconnected._
 - **Should `packs/index.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10188261351052048 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08941176470588236 - nodes in this community are weakly interconnected._
 - **Should `deck/index.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.09855072463768116 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.12435897435897436 - nodes in this community are weakly interconnected._

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { collectionView, dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
 import { parseCollectionFilters } from "@/src/modules/pokedex/domain/collectionFilters";
-import { DECK_LIMIT } from "@/src/modules/deck/domain/rules";
 import type { CollectionPageDTO } from "@/src/modules/pokedex/ui/types";
 
 const BASE_STATS = { hp: 39, atk: 52, def: 43, spa: 60, spd: 50, spe: 65 };
@@ -25,7 +24,6 @@ const carta = (id: string, pokemonId: number) => ({
 
 const pagina = (over: Partial<CollectionPageDTO> = {}): CollectionPageDTO => ({
   cards: [carta("up-1", 4)],
-  deck: null,
   page: 1,
   totalPages: 1,
   totalCards: 1,
@@ -42,21 +40,18 @@ describe("dexNumber", () => {
 });
 
 describe("collectionView", () => {
-  it("sempre devolve DECK_LIMIT vagas, mesmo sem deck", () => {
-    expect(collectionView(pagina()).deckSlots).toHaveLength(DECK_LIMIT);
-  });
-
-  it("marca a carta que está no deck e dá o id da vaga", () => {
-    const v = collectionView(
-      pagina({ deck: { id: "d1", slots: [{ id: "slot-9", userPokemonId: "up-1" }] } })
-    );
-    expect(v.cards[0].inDeck).toBe(true);
-    expect(v.cards[0].deckSlotId).toBe("slot-9");
-    expect(v.deckCount).toBe(1);
-  });
-
   it("usa o primeiro tipo como cor de destaque", () => {
     expect(collectionView(pagina()).cards[0].accentType).toBe("fire");
+  });
+
+  // A coleção deixou de saber qualquer coisa de deck: quem está numa vaga nem
+  // é listado (buildCollectionWhere exclui no banco), então não há "inDeck",
+  // "deckSlotId" nem "canToggle" pra vazar de volta pra cá.
+  it("a carta não carrega nada sobre deck", () => {
+    const card = collectionView(pagina()).cards[0];
+    expect(card).not.toHaveProperty("inDeck");
+    expect(card).not.toHaveProperty("deckSlotId");
+    expect(card).not.toHaveProperty("canToggle");
   });
 
   it("sem carta e sem coleção, o vazio é de COLEÇÃO", () => {
@@ -64,11 +59,26 @@ describe("collectionView", () => {
     expect(v.emptyState).toBe("collection");
   });
 
-  it("sem carta MAS com coleção, o vazio é de FILTRO", () => {
+  it("sem carta, COM coleção e COM filtro ativo, o vazio é de FILTRO", () => {
     // O jogador tem 40 cartas e filtrou "lendária" sem ter nenhuma. Tela
     // diferente: manda limpar o filtro, não capturar.
-    const v = collectionView(pagina({ cards: [], totalCards: 0, totalInCollection: 40 }));
+    const v = collectionView(
+      pagina({
+        cards: [],
+        totalCards: 0,
+        totalInCollection: 40,
+        filters: parseCollectionFilters({ rarity: "legendary" }),
+      })
+    );
     expect(v.emptyState).toBe("filter");
+  });
+
+  it("sem carta, COM coleção e SEM filtro, o vazio é 'tudo no deck'", () => {
+    // A coleção não lista mais quem está no deck. Quem montou tudo tem `cards`
+    // vazio sem filtro nenhum — mandar "limpar filtros" aí seria pedir pra
+    // limpar o que não existe.
+    const v = collectionView(pagina({ cards: [], totalCards: 0, totalInCollection: 6 }));
+    expect(v.emptyState).toBe("all_in_deck");
   });
 
   it("com carta, não há vazio", () => {

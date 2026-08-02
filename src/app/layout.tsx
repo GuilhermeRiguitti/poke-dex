@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Anton, Cinzel, Rajdhani } from "next/font/google";
+import { AppToaster } from "@/src/layout/toast";
 import "./globals.css";
 
 const anton = Anton({
@@ -34,7 +35,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className={`${anton.variable} ${rajdhani.variable} ${cinzel.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <AppToaster />
+      </body>
     </html>
   );
 }

@@ -18,6 +18,10 @@ export function buildCollectionWhere(
 ): Prisma.UserPokemonWhereInput {
   return {
     userId,
+    // Carta já numa vaga do deck não aparece na coleção — o deck é a única
+    // tela dela agora. Sem isso a carta apareceria nos dois lugares e a coleção
+    // precisaria voltar a saber o estado do deck só pra pintar o botão.
+    deckSlots: { none: {} },
     pokemon: {
       ...(f.q ? { name: { contains: f.q, mode: "insensitive" as const } } : {}),
       ...(f.type ? { types: { array_contains: [f.type] } } : {}),
