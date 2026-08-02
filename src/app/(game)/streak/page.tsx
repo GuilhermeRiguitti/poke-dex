@@ -13,7 +13,7 @@ import { streakView } from "@/src/modules/packs/ui/packView";
 //
 // Page é servidor: lê o estado do pacote no banco e passa pintado. Sem "use
 // client", sem fetch de cliente, sem estado de loading.
-export default async function HomePage() {
+export default async function StreakPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
 
