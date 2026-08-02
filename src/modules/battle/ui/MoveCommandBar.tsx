@@ -44,7 +44,7 @@ function MoveButton({
       aria-label={`${name} · ${card.type} · ${cls.short} · poder ${card.power ?? "sem dano"} · ${card.currentPp} de ${card.maxPp} PP`}
     >
       <div className="flex items-start justify-between gap-1">
-        <span className="line-clamp-2 min-h-[24px] text-left font-title text-[11px] uppercase capitalize leading-tight tracking-wide text-ink">
+        <span className="line-clamp-2 min-h-6 text-left font-title text-[11px] uppercase leading-tight tracking-wide text-ink">
           {name}
         </span>
         <span
@@ -103,7 +103,9 @@ export default function MoveCommandBar({
   onPlay: (slot: number) => void;
 }) {
   return (
-    <div className="flex justify-center gap-2 overflow-x-auto px-1 pb-1">
+    // pt-4: o botão sobe 4px no hover e ganha um glow — sem essa folga o
+    // overflow-x (que também recorta no eixo Y) decepava o efeito.
+    <div className="flex justify-center gap-2 overflow-x-auto px-1 pb-1 pt-4">
       {cards.map((c) => (
         <MoveButton
           key={c.slot}

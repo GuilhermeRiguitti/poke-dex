@@ -1,4 +1,5 @@
 {
+  "0": "konva",
   "1": "resolveTurn.ts",
   "2": "packs/index.ts",
   "3": "deck/index.ts",
@@ -61,7 +62,6 @@
   "68": "@react-three/fiber",
   "70": "token/route.ts",
   "71": "queue/status/route.ts",
-  "75": "jose",
   "76": "@prisma/client",
   "77": "react-hot-toast",
   "78": "@react-three/fiber",

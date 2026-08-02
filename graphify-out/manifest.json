@@ -400,8 +400,8 @@
     "semantic_hash": ""
   },
   "src/modules/battle/ui/BattleRoomShell.tsx": {
-    "mtime": 1785604038.9512286,
-    "ast_hash": "c12c3283773cd9224210e5c30014f356",
+    "mtime": 1785661025.4940624,
+    "ast_hash": "7e89d748c7e74e5ed8f104013c047744",
     "semantic_hash": ""
   },
   "src/modules/battle/ui/QueueDeckCard.tsx": {
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "src/modules/battle/ui/battleView.ts": {
-    "mtime": 1785604067.164933,
-    "ast_hash": "531e7d427be96662bf090c8279d81a5b",
+    "mtime": 1785691262.8750587,
+    "ast_hash": "760101567c53efc23018692fcf60530c",
     "semantic_hash": ""
   },
   "src/modules/battle/ui/types.ts": {
@@ -780,8 +780,8 @@
     "semantic_hash": ""
   },
   "tests/modules/battle/ui/battleView.test.ts": {
-    "mtime": 1785604067.1909962,
-    "ast_hash": "e0ce04fd3bcaa57a670af5388037e81c",
+    "mtime": 1785691283.5234444,
+    "ast_hash": "6b41c89b9c94b0be3c047d6f7e6a84d7",
     "semantic_hash": ""
   },
   "tests/modules/deck/commands/addToDeck.test.ts": {
@@ -955,8 +955,8 @@
     "semantic_hash": ""
   },
   "PLANO_JOGO.md": {
-    "mtime": 1785642674.6593196,
-    "ast_hash": "9e3c315f40ff34cfb979aa1403853663",
+    "mtime": 1785691660.8570168,
+    "ast_hash": "9becef1c2ead4a53d2e05f826a657cac",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1000,18 +1000,18 @@
     "semantic_hash": ""
   },
   "src/modules/battle/ui/DuelArena.tsx": {
-    "mtime": 1785604067.1614218,
-    "ast_hash": "ffb96f281b557531b88741fdd5404f4f",
+    "mtime": 1785661335.8733008,
+    "ast_hash": "8dcb48f3c2f8dad3c84607e2f6909a6b",
     "semantic_hash": ""
   },
   "src/modules/battle/ui/DuelStage3D.tsx": {
-    "mtime": 1785604038.9532292,
-    "ast_hash": "3b9340fd0b4af6620c0ce13e44e00d73",
+    "mtime": 1785691248.3113756,
+    "ast_hash": "beeb2614f63dfb9b3399d70ef0fc3c90",
     "semantic_hash": ""
   },
   "src/modules/battle/ui/MoveCommandBar.tsx": {
-    "mtime": 1785604067.162421,
-    "ast_hash": "beb4ee1df9222464b67e7d422207ce1c",
+    "mtime": 1785661280.258723,
+    "ast_hash": "bbb6ee09fa31898e89bf1bd54abd25f5",
     "semantic_hash": ""
   },
   "prisma/migrations/20260801210236_pokemon_bst_rarity/migration.sql": {
@@ -1197,6 +1197,26 @@
   "src/app/(game)/streak/page.tsx": {
     "mtime": 1785657314.590528,
     "ast_hash": "79fb220bd8cae7ea4d26d6cfa943f8ab",
+    "semantic_hash": ""
+  },
+  "src/modules/battle/ui/CombatLog.tsx": {
+    "mtime": 1785691270.3193984,
+    "ast_hash": "b33277bfa0bdfc1688047425db2b755b",
+    "semantic_hash": ""
+  },
+  "src/modules/battle/ui/CombatantPanel.tsx": {
+    "mtime": 1785661316.0541134,
+    "ast_hash": "0d6a3995a1e400a0d5bca6ae525645d7",
+    "semantic_hash": ""
+  },
+  "src/modules/battle/ui/DuelCallout.tsx": {
+    "mtime": 1785660891.6291504,
+    "ast_hash": "41b1bc7b0c65e0f1dcde1521e959672d",
+    "semantic_hash": ""
+  },
+  "src/modules/battle/ui/ReserveDrawer.tsx": {
+    "mtime": 1785691450.2033875,
+    "ast_hash": "5f3031207fe64d5532435dddda3be7c9",
     "semantic_hash": ""
   }
 }

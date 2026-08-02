@@ -702,8 +702,9 @@ então "sem efeito" continua aparecendo.
   HP/fainted/PP mudou — antes era sempre o ativo.
 - **UI**: troca voluntária + estado do time do oponente; `battleView` passou a
   projetar os dois times. A `PartyBar` (botõezinhos com sprite) virou o
-  `ReserveHand` — leque de cartas mini no rodapé, só com os RESERVAS (o ativo
-  está no palco 3D).
+  `ReserveHand` — leque de cartas mini só com os RESERVAS (o ativo está no palco
+  3D). Em 2026-08-02 o leque saiu do rodapé e foi pra gaveta do canto
+  (`ReserveDrawer`) — ver a leva de 08-02 abaixo.
 
 ✅ **Também nesta leva (2026-07-23 a 07-31):**
 - **TM (2026-07-23)** — `20260723120000_user_pokemon_move_and_tm`:
@@ -774,6 +775,29 @@ então "sem efeito" continua aparecendo.
     dele ficava preso no contexto de empilhamento `z-40` do header.
   - O handoff do Claude Design ficou em `docs/design/colecao-deck/` (saiu de
     `src/`, onde quebrava o `tsc`; `docs` entrou no `exclude` do tsconfig).
+- **Arena virou cenário + HUD flutuante (2026-08-02)** — o palco 3D
+  (`DuelStage3D`) deixou de ser um quadro no meio da tela e passou a ocupar a
+  **viewport inteira**; a UI flutua por cima, nas quinas. Sem migration, sem
+  query nova. O que mudou:
+  - **Câmera recalibrada** (`CAM_POS`/`LOOK_AT`/`FOV` + posições dos dois mons):
+    o enquadramento é a composição — oponente à direita e acima, eu à esquerda e
+    abaixo, centro livre pro balão de dano.
+  - **HUD novo**: `CombatantPanel` (retrato + HP + tipos, e o time do oponente em
+    marcadores), `CombatLog` (o "relatório de combate", com etiqueta VOCÊ/OPONENTE
+    e o dano em coluna), `DuelCallout` (o balão "−18 / super eficaz", **ancorado
+    na cabeça** do pokémon pelo `<Html>` do drei — porcentagem em CSS erraria o
+    alvo ao redimensionar) e `ReserveDrawer` (o leque virou gaveta no canto, abre
+    no hover; abre sozinha na troca forçada). `BattleRoomShell` perdeu o
+    `max-w`.
+  - **`DuelLogLine` virou estruturada** (`kind`/`actor`/`subject`/`damage`/flags).
+    Antes o componente lia o texto pronto com regex pra escolher ícone e cor —
+    mudar uma palavra da frase trocava o ícone em silêncio. `duelLogMark` e
+    `duelCalloutFor` são puras e testadas.
+  - **Sprite do palco não suspende mais** (`useSpriteTexture` no lugar do
+    `useLoader`): o Canvas do R3F repassa a suspensão pro Suspense de fora, então
+    uma imagem lenta apagava a arena inteira e deixava o "Montando arena…" pra
+    sempre. Como o palco agora é a tela toda, isso deixou de ser um quadrado
+    vazio e virou o jogo sem cenário.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { selectDuelView } from "@/src/modules/battle/ui/battleView";
+import {
+  duelCalloutFor,
+  duelLogMark,
+  selectDuelView,
+  type DuelLogLine,
+  type DuelTurnFx,
+} from "@/src/modules/battle/ui/battleView";
 import type { BattleDTO } from "@/src/modules/battle/ui/types";
 
 function mon(over: Partial<BattleDTO["participants"][number]["pokemons"][number]> = {}) {
@@ -69,13 +75,42 @@ describe("selectDuelView", () => {
     expect(v.opponentReady).toBe(true);
   });
 
-  it("log em ordem cronológica (asc por turno) e chaveado por 'Você'/'Oponente'", () => {
+  it("log em ordem cronológica (asc por turno), com ator e dano SEPARADOS do texto", () => {
     const v = selectDuelView(battle(), "me")!;
     // turnLogs vêm desc; a view ordena asc por turnNumber → turno 3 (ataque)
     // antes do turno 4 (roundStart).
-    expect(v.logLines[0].text).toContain("Você usou thunderbolt");
-    expect(v.logLines[0].text).toContain("super eficaz");
-    expect(v.logLines[1].text).toContain("Rodada 3");
+    const [attack, round] = v.logLines;
+
+    // o relatório desenha a etiqueta e o dano em colunas próprias — se o nome do
+    // ator ou o número voltarem pro texto, a linha quebra o alinhamento.
+    expect(attack.kind).toBe("attack");
+    expect(attack.actor).toBe("me");
+    expect(attack.text).toBe("usou");
+    expect(attack.subject).toBe("thunderbolt"); // sem hífen: a tela desenha o nome do golpe em destaque
+    expect(attack.text).not.toContain("Você");
+    expect(attack.damage).toBe(22);
+    expect(attack.effectiveness).toBe(2);
+
+    expect(round.kind).toBe("round");
+    expect(round.actor).toBeNull();
+    expect(round.text).toContain("Rodada 3");
+  });
+
+  it("errou: sem dano na coluna (não é 'zero de dano', é dano nenhum)", () => {
+    const b = battle({
+      turnLogs: [
+        {
+          turnNumber: 6,
+          events: [
+            { type: "attack", userId: "opp", cardName: "hydro-pump", damage: 0, effectiveness: 1, isCrit: false, missed: true, targetFainted: false },
+          ],
+        },
+      ],
+    });
+    const line = selectDuelView(b, "me")!.logLines[0];
+    expect(line.actor).toBe("opp");
+    expect(line.missed).toBe(true);
+    expect(line.damage).toBeNull();
   });
 
   it("fim de jogo: isOver + iWon pelo winnerId", () => {
@@ -149,5 +184,99 @@ describe("selectDuelView", () => {
       expect(party.filter((m) => m.isActive)).toHaveLength(1);
       expect(party.find((m) => m.isActive)!.slot).toBe(1);
     });
+  });
+});
+
+// O balão flutua EM CIMA de um dos dois pokémon — então a regra que decide se
+// ele aparece (e do lado de quem) é o que impede o texto de nascer na cabeça
+// errada. Por isso é função pura com teste, e não um if dentro do componente.
+describe("duelCalloutFor", () => {
+  function fx(over: Partial<DuelTurnFx> = {}): DuelTurnFx {
+    return {
+      turnNumber: 1,
+      actor: "me",
+      kind: "attack",
+      cardName: "thunderbolt",
+      target: "opp",
+      damage: 18,
+      effectiveness: 2,
+      isCrit: false,
+      missed: false,
+      fainted: false,
+      ...over,
+    };
+  }
+
+  it("aparece só sobre QUEM LEVOU o golpe", () => {
+    expect(duelCalloutFor(fx(), "opp", "ekans")).not.toBeNull();
+    expect(duelCalloutFor(fx(), "me", "articuno")).toBeNull();
+  });
+
+  it("dano super eficaz: valor negativo + selo, com o nome de quem levou", () => {
+    const c = duelCalloutFor(fx(), "opp", "ekans")!;
+    expect(c.name).toBe("ekans");
+    expect(c.value).toBe("-18");
+    expect(c.note).toBe("Super eficaz");
+    expect(c.tone).toBe("super");
+  });
+
+  it("crítico ganha o tom de crítico e acumula os selos", () => {
+    const c = duelCalloutFor(fx({ isCrit: true, fainted: true }), "opp", "ekans")!;
+    expect(c.tone).toBe("crit");
+    expect(c.note).toBe("Crítico! · Super eficaz · Nocaute!");
+  });
+
+  it("errou/imune não mostram número — mostram o porquê", () => {
+    expect(duelCalloutFor(fx({ missed: true }), "opp", "ekans")!.value).toBe("Errou");
+    expect(duelCalloutFor(fx({ effectiveness: 0 }), "opp", "ekans")!.value).toBe("Imune");
+  });
+
+  it("hesitar é do ATOR (quem perdeu o turno), não do alvo", () => {
+    const h = fx({ kind: "hesitate", actor: "opp", target: null, damage: 0 });
+    expect(duelCalloutFor(h, "opp", "ekans")!.value).toBe("Hesitou");
+    expect(duelCalloutFor(h, "me", "articuno")).toBeNull();
+  });
+
+  it("sem fx, sem balão", () => {
+    expect(duelCalloutFor(null, "me", "articuno")).toBeNull();
+  });
+});
+
+// O marcador do relatório sai dos CAMPOS da linha. A versão antiga lia o texto
+// pronto com regex — mudar uma palavra da frase trocava o ícone em silêncio.
+describe("duelLogMark", () => {
+  function line(over: Partial<DuelLogLine> = {}): DuelLogLine {
+    return {
+      key: "1-0",
+      kind: "attack",
+      actor: "me",
+      text: "usou",
+      subject: "thunderbolt",
+      damage: 18,
+      effectiveness: 1,
+      isCrit: false,
+      missed: false,
+      fainted: false,
+      ...over,
+    };
+  }
+
+  it("o nocaute vence o resto — é o que muda a partida", () => {
+    expect(duelLogMark(line({ fainted: true, isCrit: true })).glyph).toBe("☠");
+  });
+
+  it("errar não é dano fraco: é linha apagada, não vermelha", () => {
+    expect(duelLogMark(line({ missed: true })).tone).toBe("dim");
+  });
+
+  it("efetividade pinta a linha", () => {
+    expect(duelLogMark(line({ effectiveness: 2 })).tone).toBe("bad");
+    expect(duelLogMark(line({ effectiveness: 0.5 })).tone).toBe("dim");
+    expect(duelLogMark(line({ isCrit: true })).tone).toBe("gold");
+  });
+
+  it("rodada e troca têm marcador próprio", () => {
+    expect(duelLogMark(line({ kind: "round", actor: null })).glyph).toBe("◆");
+    expect(duelLogMark(line({ kind: "switch" })).tone).toBe("energy");
   });
 });

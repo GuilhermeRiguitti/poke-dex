@@ -55,9 +55,50 @@ export interface PartyMemberView {
   maxHp: number;
 }
 
+export type DuelLogKind = "round" | "switch" | "attack" | "hesitate";
+
+/**
+ * Uma linha do relatório de combate, já ESTRUTURADA — o componente não lê texto
+ * pra decidir cor nem ícone (antes havia regex em cima da frase pronta, o que
+ * quebrava sozinho ao mexer numa palavra).
+ */
 export interface DuelLogLine {
   key: string;
+  kind: DuelLogKind;
+  /** quem agiu — a etiqueta VOCÊ/OPONENTE. null na linha de rodada. */
+  actor: "me" | "opp" | null;
+  /** a ação SEM a etiqueta e SEM o nome próprio: "usou", "hesitou — turno perdido". */
   text: string;
+  /** o golpe/pokémon que o verbo aponta — a tela desenha em destaque. */
+  subject: string | null;
+  /** dano do golpe, pra coluna da direita. null quando não houve dano. */
+  damage: number | null;
+  /** >1 super eficaz, <1 pouco eficaz, 0 imune. null fora de ataque. */
+  effectiveness: number | null;
+  isCrit: boolean;
+  missed: boolean;
+  /** o alvo caiu NESTE golpe */
+  fainted: boolean;
+}
+
+/** O marcador (glifo + cor) que abre a linha do relatório. Puro, tem teste. */
+export interface DuelLogMark {
+  glyph: string;
+  tone: "flare" | "bad" | "dim" | "energy" | "gold";
+}
+
+export function duelLogMark(line: DuelLogLine): DuelLogMark {
+  if (line.kind === "round") return { glyph: "◆", tone: "dim" };
+  if (line.kind === "switch") return { glyph: "⇄", tone: "energy" };
+  if (line.kind === "hesitate") return { glyph: "…", tone: "dim" };
+  if (line.missed) return { glyph: "✕", tone: "dim" };
+  if (line.fainted) return { glyph: "☠", tone: "bad" };
+  if (line.isCrit) return { glyph: "✦", tone: "gold" };
+  const eff = line.effectiveness ?? 1;
+  if (eff === 0) return { glyph: "○", tone: "dim" };
+  if (eff > 1) return { glyph: "▲", tone: "bad" };
+  if (eff < 1) return { glyph: "▼", tone: "dim" };
+  return { glyph: "✦", tone: "flare" };
 }
 
 // O modo da MINHA vez no round:
@@ -84,6 +125,52 @@ export interface DuelTurnFx {
   isCrit: boolean;
   missed: boolean;
   fainted: boolean;
+}
+
+/**
+ * O balão que aparece EM CIMA de quem sofreu a última ação ("EKANS −18 / SUPER
+ * EFICAZ"). É a mesma DuelTurnFx traduzida em texto — pura e testada aqui,
+ * porque decidir o que o balão diz é regra de apresentação, não costura.
+ * Devolve null pro lado que não foi tocado no turno.
+ */
+export interface DuelCalloutView {
+  /** de quem é a cabeça em que o balão está — a etiqueta pequena */
+  name: string;
+  /** "-18", "Errou", "Imune", "Hesitou" */
+  value: string;
+  /** "Crítico! · Super eficaz" — null quando não há nada a dizer */
+  note: string | null;
+  tone: "damage" | "crit" | "super" | "weak" | "none";
+}
+
+export function duelCalloutFor(
+  fx: DuelTurnFx | null,
+  side: "me" | "opp",
+  name: string,
+): DuelCalloutView | null {
+  if (!fx) return null;
+  const label = prettyName(name);
+
+  // hesitar é do ATOR (ele perdeu o turno); o resto é de quem levou.
+  if (fx.kind === "hesitate") {
+    return fx.actor === side ? { name: label, value: "Hesitou", note: null, tone: "none" } : null;
+  }
+  if (fx.target !== side) return null;
+  if (fx.missed) return { name: label, value: "Errou", note: null, tone: "none" };
+  if (fx.effectiveness === 0) return { name: label, value: "Imune", note: null, tone: "none" };
+
+  const notes: string[] = [];
+  if (fx.isCrit) notes.push("Crítico!");
+  if (fx.effectiveness > 1) notes.push("Super eficaz");
+  else if (fx.effectiveness < 1) notes.push("Pouco eficaz");
+  if (fx.fainted) notes.push("Nocaute!");
+
+  return {
+    name: label,
+    value: `-${fx.damage}`,
+    note: notes.length > 0 ? notes.join(" · ") : null,
+    tone: fx.isCrit ? "crit" : fx.effectiveness > 1 ? "super" : fx.effectiveness < 1 ? "weak" : "damage",
+  };
 }
 
 export interface DuelView {
@@ -137,27 +224,38 @@ function toMonView(m: BattlePokemonDTO): DuelMonView {
   };
 }
 
-function effLabel(eff: number): string {
-  if (eff === 0) return ", sem efeito";
-  if (eff > 1) return ", super eficaz";
-  if (eff > 0 && eff < 1) return ", pouco eficaz";
-  return "";
-}
-
-function eventText(ev: BattleEventDTO, myUserId: string): string | null {
-  if (ev.type === "roundStart") return `— Rodada ${ev.round} —`;
-  const who = ev.userId === myUserId ? "Você" : "Oponente";
-  if (ev.type === "switch") return `${who} enviou ${ev.toName}!`;
-  if (ev.type === "hesitate") return `${who} hesitou (turno perdido).`;
-  // attack
-  if (ev.missed) return `${who} usou ${ev.cardName} — errou!`;
-  const crit = ev.isCrit ? ", crítico" : "";
-  const ko = ev.targetFainted ? " Nocaute!" : "";
-  return `${who} usou ${ev.cardName} (${ev.damage} de dano${effLabel(ev.effectiveness)}${crit}).${ko}`;
-}
-
 function sideOf(userId: string, myUserId: string): "me" | "opp" {
   return userId === myUserId ? "me" : "opp";
+}
+
+function prettyName(name: string): string {
+  return name.replace(/-/g, " ");
+}
+
+function eventLine(ev: BattleEventDTO, myUserId: string, key: string): DuelLogLine {
+  const base = { key, subject: null, damage: null, effectiveness: null, isCrit: false, missed: false, fainted: false };
+  if (ev.type === "roundStart") {
+    return { ...base, kind: "round", actor: null, text: `Rodada ${ev.round}` };
+  }
+  const actor = sideOf(ev.userId, myUserId);
+  if (ev.type === "switch") {
+    return { ...base, kind: "switch", actor, text: "enviou", subject: prettyName(ev.toName) };
+  }
+  if (ev.type === "hesitate") {
+    return { ...base, kind: "hesitate", actor, text: "hesitou — turno perdido" };
+  }
+  return {
+    key,
+    kind: "attack",
+    actor,
+    text: ev.missed ? "errou" : "usou",
+    subject: prettyName(ev.cardName),
+    damage: ev.missed || ev.damage <= 0 ? null : ev.damage,
+    effectiveness: ev.effectiveness,
+    isCrit: ev.isCrit,
+    missed: ev.missed,
+    fainted: ev.targetFainted,
+  };
 }
 
 /**
@@ -276,8 +374,7 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
   const logLines: DuelLogLine[] = [];
   for (const log of [...battle.turnLogs].sort((a, b) => a.turnNumber - b.turnNumber)) {
     log.events.forEach((ev, i) => {
-      const text = eventText(ev, myUserId);
-      if (text) logLines.push({ key: `${log.turnNumber}-${i}`, text });
+      logLines.push(eventLine(ev, myUserId, `${log.turnNumber}-${i}`));
     });
   }
 

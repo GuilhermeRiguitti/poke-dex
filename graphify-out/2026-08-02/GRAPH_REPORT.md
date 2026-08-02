@@ -1,7 +1,7 @@
 # Graph Report - poke-dex-next  (2026-08-02)
 
 ## Corpus Check
-- 237 files · ~106,799 words
+- 237 files · ~106,780 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -15,6 +15,7 @@
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
+- konva
 - resolveTurn.ts
 - packs/index.ts
 - deck/index.ts
@@ -74,7 +75,6 @@
 - @react-three/fiber
 - token/route.ts
 - queue/status/route.ts
-- jose
 - @prisma/client
 - react-hot-toast
 - @react-three/fiber
@@ -167,7 +167,7 @@ Nodes (19): eslint, eslint-config-next, devDependencies, eslint, eslint-config-n
 
 ### Community 17 - "dependencies"
 Cohesion: 0.11
-Nodes (19): better-auth, konva, next, dependencies, better-auth, konva, next, react (+11 more)
+Nodes (19): better-auth, jose, next, dependencies, better-auth, jose, next, react (+11 more)
 
 ### Community 20 - "listPokedexPage.ts"
 Cohesion: 0.06
