@@ -1,6 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
 import { getUnlockedMoveIds } from "@/src/modules/pokedex";
-import { CARDS_PER_SLOT, isDeckFull } from "../domain/rules";
+import { CARDS_PER_SLOT, firstFreeOrder, isDeckFull } from "../domain/rules";
 import { getOrCreateDeck } from "../queries/readDeck";
 import type { DeckSlotDTO } from "../ui/types";
 import { toDeckSlotDTO } from "../queries/toDeckDTO";
@@ -19,7 +19,7 @@ export type AddToDeckResult =
  * Monta um loadout no deck: 1 UserPokemon + suas cartas (skills do learnset).
  *
  * Concorrência (CLAUDE.md regra 6): o jogador pode disparar dois requests juntos
- * (duas abas / duplo-clique). A contagem de slots e o insert vão na MESMA
+ * (duas abas / duplo-clique). A leitura dos slots e o insert vão na MESMA
  * $transaction, então o limite de 6 é checado contra o estado real; e o slot é
  * `upsert` na @@unique([deckId, userPokemonId]), não findFirst+create — montar o
  * mesmo pokémon duas vezes não cria dois slots (o segundo ATUALIZA as cartas).
@@ -53,16 +53,24 @@ export async function addToDeck(userId: string, input: AddToDeckInput): Promise<
   const deck = await getOrCreateDeck(userId);
 
   return prisma.$transaction(async (tx) => {
-    const existing = await tx.deckSlot.findUnique({
-      where: { deckId_userPokemonId: { deckId: deck.id, userPokemonId: input.userPokemonId } },
-      select: { id: true, order: true },
+    // As posições ocupadas, não só quantas são: `removeFromDeck` deixa buraco na
+    // sequência (tirar o slot do meio não renumera o resto), então a posição da
+    // vaga nova sai de firstFreeOrder — contar daria uma posição já ocupada e o
+    // insert morreria na @@unique([deckId, order]).
+    const slots = await tx.deckSlot.findMany({
+      where: { deckId: deck.id },
+      select: { userPokemonId: true, order: true },
     });
+    const existing = slots.find((s) => s.userPokemonId === input.userPokemonId);
 
     let order = existing?.order;
     if (existing == null) {
-      const count = await tx.deckSlot.count({ where: { deckId: deck.id } });
-      if (isDeckFull(count)) return { ok: false as const, error: "deck_full" as const };
-      order = count; // próxima posição livre (0-based)
+      if (isDeckFull(slots.length)) return { ok: false as const, error: "deck_full" as const };
+      const free = firstFreeOrder(slots.map((s) => s.order));
+      // Sem vaga mesmo com menos de 6 slots só acontece se alguma linha tiver
+      // order fora de 0..5 — dado torto. Recusa em vez de escrever por cima.
+      if (free == null) return { ok: false as const, error: "deck_full" as const };
+      order = free;
     }
 
     const slot = await tx.deckSlot.upsert({

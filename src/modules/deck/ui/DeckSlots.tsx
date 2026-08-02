@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SwordsIcon } from "@/src/layout/icons";
-import DeckSlotCard from "./DeckSlotCard";
+import DeckSlotList from "./DeckSlotList";
 import type { DeckBoardView } from "./deckBoardView";
 
 // Server Component: a TRILHA DA DIREITA do workspace da coleção. Montar um
@@ -14,6 +14,9 @@ import type { DeckBoardView } from "./deckBoardView";
 //
 // Não há botão de "limpar deck": não existe command pra isso — o único caminho
 // de saída é o DELETE de uma vaga por vez.
+//
+// A LISTA em si é cliente (DeckSlotList: arrastar pra trocar a ordem do time);
+// cabeçalho e botão de batalhar ficam aqui, no servidor.
 
 export default function DeckSlots({ deck }: { deck: DeckBoardView }) {
   const { slots, count, limit, full, battleLabel } = deck;
@@ -43,23 +46,7 @@ export default function DeckSlots({ deck }: { deck: DeckBoardView }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 p-3 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-        {slots.map((slot, i) =>
-          slot.id === null ? (
-            <div
-              key={i}
-              className="clip-btn flex min-h-14.5 items-center gap-2.5 border border-dashed border-edge px-2.5 text-ink-dim/60"
-            >
-              <span className="flex h-10 w-10 flex-none items-center justify-center border border-edge font-title text-base">
-                {i + 1}
-              </span>
-              <span className="font-title text-xs uppercase tracking-widest">Slot vazio</span>
-            </div>
-          ) : (
-            <DeckSlotCard key={slot.id} slot={slot} />
-          )
-        )}
-      </div>
+      <DeckSlotList slots={slots} />
 
       <div className="flex-none border-t border-edge bg-panel-2/50 p-3.5">
         {count > 0 ? (

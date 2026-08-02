@@ -6,9 +6,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // não podem estourar o deck pra 7 nem montar carta fora do learnset.
 
 const tx = {
-  deckSlot: { findUnique: vi.fn(), count: vi.fn(), upsert: vi.fn(), findUniqueOrThrow: vi.fn() },
+  deckSlot: { findMany: vi.fn(), upsert: vi.fn(), findUniqueOrThrow: vi.fn() },
   deckSlotCard: { createMany: vi.fn() },
 };
+
+/**
+ * Slots de OUTROS pokémon já no deck, do jeito que o command lê. Os ids são
+ * `outro-N` de propósito: `up-1` é o pokémon que está entrando, e se ele
+ * aparecesse aqui o command acharia que já está montado.
+ */
+const slotsAt = (orders: number[]) => orders.map((order) => ({ userPokemonId: `outro-${order}`, order }));
 
 const prismaMock = {
   userPokemon: { findUnique: vi.fn() },
@@ -42,8 +49,7 @@ beforeEach(() => {
   prismaMock.deck.findFirst.mockResolvedValue({ id: "deck-1" });
   prismaMock.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) => fn(tx));
 
-  tx.deckSlot.findUnique.mockResolvedValue(null); // ainda não está no deck
-  tx.deckSlot.count.mockResolvedValue(0);
+  tx.deckSlot.findMany.mockResolvedValue([]); // deck vazio; up-1 ainda não está nele
   tx.deckSlot.upsert.mockResolvedValue({ id: "slot-1" });
   tx.deckSlotCard.createMany.mockResolvedValue({ count: MOVES.length });
   tx.deckSlot.findUniqueOrThrow.mockResolvedValue({
@@ -69,7 +75,7 @@ describe("addToDeck", () => {
   // O CASO QUE IMPORTA: deck cheio. Não basta devolver erro — não pode SOBRAR
   // escrita. Se o upsert rodasse "mesmo assim", o deck iria a 7.
   it("com o deck cheio, recusa e NÃO escreve nada", async () => {
-    tx.deckSlot.count.mockResolvedValue(DECK_LIMIT);
+    tx.deckSlot.findMany.mockResolvedValue(slotsAt([...Array(DECK_LIMIT).keys()]));
 
     const result = await addToDeck("alpha", input);
 
@@ -78,26 +84,55 @@ describe("addToDeck", () => {
     expect(tx.deckSlotCard.createMany).not.toHaveBeenCalled();
   });
 
-  // Contagem e insert na MESMA transação: se a contagem rodasse fora, duas
-  // lambdas leriam "5" ao mesmo tempo e as duas inseririam — deck com 7.
+  // Leitura dos slots e insert na MESMA transação: se a leitura rodasse fora,
+  // duas lambdas leriam "5" ao mesmo tempo e as duas inseririam — deck com 7.
   it("checa o limite e insere dentro da MESMA transação", async () => {
     await addToDeck("alpha", input);
 
     expect(prismaMock.$transaction).toHaveBeenCalledOnce();
-    expect(tx.deckSlot.count).toHaveBeenCalled();
+    expect(tx.deckSlot.findMany).toHaveBeenCalled();
     expect(tx.deckSlot.upsert).toHaveBeenCalled();
   });
 
-  // Remontar um pokémon que JÁ está no deck não esbarra no limite (está só
-  // trocando as cartas do slot existente).
-  it("um pokémon que já está no deck não esbarra no limite", async () => {
-    tx.deckSlot.findUnique.mockResolvedValue({ id: "slot-1", order: 2 });
-    tx.deckSlot.count.mockResolvedValue(DECK_LIMIT);
+  // O BUG DO BURACO: tirar o loadout do MEIO não renumera os outros, então a
+  // sequência fica furada. Se a posição do novo fosse a CONTAGEM (5 aqui), o
+  // insert cairia em cima do slot que já ocupa o 5 — @@unique([deckId, order]),
+  // P2002, 500 no POST. Só passava quando o removido era o último.
+  it("ocupa o buraco deixado por quem saiu do MEIO do time", async () => {
+    tx.deckSlot.findMany.mockResolvedValue(slotsAt([0, 1, 3, 4, 5])); // saiu o 2
 
     const result = await addToDeck("alpha", input);
 
     expect(result.ok).toBe(true);
-    expect(tx.deckSlot.count).not.toHaveBeenCalled();
+    expect(tx.deckSlot.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ order: 2 }) })
+    );
+  });
+
+  it("sem buraco, o novo entra no fim do time", async () => {
+    tx.deckSlot.findMany.mockResolvedValue(slotsAt([0, 1, 2]));
+
+    await addToDeck("alpha", input);
+
+    expect(tx.deckSlot.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ order: 3 }) })
+    );
+  });
+
+  // Remontar um pokémon que JÁ está no deck não esbarra no limite (está só
+  // trocando as cartas do slot existente) e NÃO muda de posição no time.
+  it("um pokémon que já está no deck não esbarra no limite", async () => {
+    tx.deckSlot.findMany.mockResolvedValue([
+      ...slotsAt([0, 1, 3, 4, 5]),
+      { userPokemonId: "up-1", order: 2 },
+    ]);
+
+    const result = await addToDeck("alpha", input);
+
+    expect(result.ok).toBe(true);
+    expect(tx.deckSlot.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ order: 2 }) })
+    );
   });
 
   it("recusa o pokémon de outro dono sem escrever nada", async () => {

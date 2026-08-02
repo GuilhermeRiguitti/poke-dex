@@ -798,6 +798,33 @@ então "sem efeito" continua aparecendo.
     uma imagem lenta apagava a arena inteira e deixava o "Montando arena…" pra
     sempre. Como o palco agora é a tela toda, isso deixou de ser um quadrado
     vazio e virou o jogo sem cenário.
+- **Ordem do time virou arrastável (2026-08-02)** — a vaga 1 é quem começa em
+  campo, e até aqui não havia como escolher quem era: só dava pra montar e tirar.
+  Sem migration. O que mudou:
+  - **Command novo `reorderDeck`** — grava a ordem em **duas passadas na mesma
+    transação** (todo mundo pra posição negativa, depois a final). A
+    `@@unique([deckId, order])` recusa qualquer passo intermediário com duas
+    linhas na mesma posição, e o Postgres checa o índice por comando, não no fim
+    da transação. Rota `PATCH /api/deck/order`, corpo `{ slotIds }`.
+  - **A lista do cliente é validada como conjunto**: tem que ser exatamente os
+    slots do deck. Lista que não bate (a outra aba mexeu no time) responde
+    `stale_order` 409, e o cliente desfaz e recarrega — em vez de gravar um time
+    que o jogador não montou.
+  - **`addToDeck` parou de usar a contagem como posição** — `removeFromDeck` não
+    renumera, então tirar o loadout do meio deixava buraco e a contagem apontava
+    pra uma vaga ocupada (P2002, 500 no POST). Agora a vaga sai de
+    `firstFreeOrder`, que ocupa o buraco.
+  - **`DeckSlots` continua Server Component**; só a lista virou cliente
+    (`DeckSlotList`). Arrasta por **Pointer Events**, não HTML5 drag — `dragstart`
+    não existe no toque. A alça é o número da vaga (`touch-action: none`, pra não
+    rolar a página junto), o ✕ segue clicável, e Alt+setas move sem mouse.
+  - `moveSlot` (domain), `dropTargetIndex`/`slotShift`/`livePosition`
+    (`deckBoardView`) são puras e testadas. `dropTargetIndex` mede o **centro da
+    carta arrastada contra o meio das outras** — incluir o meio dela própria
+    fazia a carta trocar de vaga a cada pixel.
+  - **Konva não entrou.** `konva`/`react-konva` seguem no `package.json` sem
+    nenhum uso desde que o palco virou R3F — reordenar 6 linhas em canvas
+    custaria redesenhar as cartas em primitivas e perder o a11y.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta
