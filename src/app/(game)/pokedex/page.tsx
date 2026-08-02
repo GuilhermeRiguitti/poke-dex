@@ -11,15 +11,12 @@ import CollectionGrid from "@/src/modules/pokedex/ui/CollectionGrid";
 import Pagination from "@/src/modules/pokedex/ui/Pagination";
 import { collectionView } from "@/src/modules/pokedex/ui/pokedexView";
 
-
-
-export default async function CollectionPage({
-   searchParams
-}: {
+type CollectionPageProps = {
    searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-   const filters = parseCollectionFilters(await searchParams);
+}
 
+export default async function CollectionPage({ searchParams }: CollectionPageProps) {
+   const filters = parseCollectionFilters(await searchParams);
    const session = await auth.api.getSession({ headers: await headers() });
    if (!session) redirect("/login");
 
