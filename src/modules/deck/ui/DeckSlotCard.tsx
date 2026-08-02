@@ -5,18 +5,43 @@ import { useRouter } from "next/navigation";
 import { typeColor } from "@/src/lib/typeColors";
 import type { DeckSlotView } from "./deckBoardView";
 
-// Uma vaga PREENCHIDA do deck, na trilha da direita: sprite + nome + Lv +
-// tipos, e o X de remover. É o único ponto de escrita do deck dentro do
-// DeckSlots — a coleção não mostra mais essa carta (buildCollectionWhere exclui
-// quem já tem vaga), então tirar do deck só pode acontecer aqui.
+// Uma vaga PREENCHIDA do deck, na trilha da direita: alça de arrastar + sprite +
+// nome + Lv + tipos, e o X de remover. É o único ponto de escrita do deck dentro
+// do DeckSlots — a coleção não mostra mais essa carta (buildCollectionWhere
+// exclui quem já tem vaga), então tirar do deck só pode acontecer aqui.
+//
+// Quem manda no arrastar é o DeckSlotList (ele conhece as vizinhas); aqui só
+// mora a alça que dispara os eventos e o visual de "pegou".
 
-export default function DeckSlotCard({ slot }: { slot: DeckSlotView }) {
+interface Props {
+  slot: DeckSlotView;
+  /** posição no time, 0-based — a 0 é quem começa em campo */
+  posicao: number;
+  total: number;
+  arrastando: boolean;
+  onPegar: (e: React.PointerEvent) => void;
+  onArrastar: (e: React.PointerEvent) => void;
+  onSoltar: () => void;
+  onTecla: (e: React.KeyboardEvent) => void;
+}
+
+export default function DeckSlotCard({
+  slot,
+  posicao,
+  total,
+  arrastando,
+  onPegar,
+  onArrastar,
+  onSoltar,
+  onTecla,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
 
   const locked = busy || pending;
   const cor = typeColor(slot.accentType ?? "normal");
+  const emCampo = posicao === 0;
 
   const remove = async () => {
     if (!slot.id) return;
@@ -36,23 +61,42 @@ export default function DeckSlotCard({ slot }: { slot: DeckSlotView }) {
     <div
       className={`clip-btn flex min-h-14.5 items-center gap-2.5 p-2 transition-opacity ${
         locked ? "opacity-50" : ""
-      }`}
+      } ${arrastando ? "shadow-lg" : ""}`}
       style={{
         background: `linear-gradient(90deg, color-mix(in srgb, ${cor} 16%, transparent), var(--color-panel-2) 62%)`,
-        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${cor} 40%, transparent)`,
+        boxShadow: arrastando
+          ? `inset 0 0 0 1px ${cor}, 0 8px 20px rgb(0 0 0 / 0.45)`
+          : `inset 0 0 0 1px color-mix(in srgb, ${cor} 40%, transparent)`,
       }}
     >
+      {/* Alça: é ela que arrasta, não a linha toda — assim o ✕ continua clicável
+          e, no celular, o dedo passando pela carta ainda rola a lista.
+          `touch-action: none` só aqui, pelo mesmo motivo. */}
       <span
-        className="clip-btn flex h-10 w-10 flex-none items-center justify-center"
+        role="button"
+        tabIndex={0}
+        aria-label={`${slot.name}, posição ${posicao + 1} de ${total}. Arraste, ou use Alt com as setas, para mudar a ordem do time.`}
+        title={emCampo ? "Começa em campo — arraste para mudar" : "Arraste para mudar a ordem"}
+        onPointerDown={onPegar}
+        onPointerMove={onArrastar}
+        onPointerUp={onSoltar}
+        onPointerCancel={onSoltar}
+        onKeyDown={onTecla}
+        className="clip-btn flex h-10 w-10 flex-none cursor-grab touch-none select-none flex-col items-center justify-center gap-0.5 active:cursor-grabbing"
         style={{ background: `color-mix(in srgb, ${cor} 16%, transparent)` }}
       >
+        <span className="font-title text-sm leading-none" style={{ color: emCampo ? cor : undefined }}>
+          {posicao + 1}
+        </span>
+        <span className="text-[8px] leading-none text-ink-dim" aria-hidden>
+          ⠿
+        </span>
+      </span>
+
+      <span className="clip-btn flex h-10 w-10 flex-none items-center justify-center">
         {slot.iconUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={slot.iconUrl}
-            alt={slot.name ?? ""}
-            className="h-full w-full object-contain"
-          />
+          <img src={slot.iconUrl} alt={slot.name ?? ""} className="h-full w-full object-contain" />
         )}
       </span>
 

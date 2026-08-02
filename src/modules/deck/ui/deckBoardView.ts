@@ -92,3 +92,61 @@ export function deckBoardView(board: DeckBoardDTO): DeckBoardView {
     battleLabel: count === 0 ? "Deck vazio" : full ? "Batalhar agora" : `Batalhar · ${count}`,
   };
 }
+
+// ─── A conta do arrastar (regra 4: a lógica sai do componente e tem teste) ───
+
+/**
+ * Em qual vaga a carta cai: quantas OUTRAS linhas ela já ultrapassou.
+ *
+ * Compara centro com centro, não com a borda: encostar na linha de baixo não
+ * empurra ninguém, a troca só acontece quando a carta passa da metade dela — é
+ * onde a intenção fica clara e é o que impede a ordem de tremer enquanto o dedo
+ * anda.
+ *
+ * O meio da PRÓPRIA carta (`from`) fica de fora da conta. Incluir ele fazia a
+ * carta trocar de vaga assim que andava um pixel: o centro dela passa do
+ * próprio meio imediatamente. Por isso a posição é medida contra as vizinhas.
+ *
+ * `midpoints` vem medido do DOM, na ordem da tela; `draggedCenter` é o meio da
+ * linha arrastada mais o quanto o dedo andou. O resultado fica preso na lista —
+ * arrastar pra fora do painel cai na primeira ou na última vaga.
+ */
+export function dropTargetIndex(midpoints: number[], from: number, draggedCenter: number): number {
+  if (midpoints.length === 0) return 0;
+
+  let vaga = 0;
+  for (let i = 0; i < midpoints.length; i++) {
+    if (i !== from && midpoints[i] < draggedCenter) vaga++;
+  }
+  return Math.min(vaga, midpoints.length - 1);
+}
+
+/**
+ * Pra que lado a linha `index` desliza enquanto a carta de `from` está sendo
+ * arrastada até `to`: -1 sobe uma vaga, 1 desce uma, 0 fica parada.
+ *
+ * É o "abrir espaço" da animação. Quem está sendo arrastado (`index === from`)
+ * segue o dedo e não entra nesta conta.
+ */
+/**
+ * A posição que a linha `index` MOSTRA durante o arrasto — o destino dela, não
+ * de onde saiu.
+ *
+ * O número da vaga é o que diz quem começa em campo (a 1). Deixá-lo preso ao
+ * índice antigo enquanto as cartas deslizam mostra a lista dizendo uma coisa e
+ * os números outra: a carta no topo marcada "2". Aqui o número anda junto, e
+ * soltar não muda mais nada na tela.
+ */
+export function livePosition(index: number, from: number, to: number): number {
+  if (index === from) return to;
+  return index + slotShift(index, from, to);
+}
+
+export function slotShift(index: number, from: number, to: number): -1 | 0 | 1 {
+  if (index === from) return 0;
+  // Descendo: quem está entre a vaga antiga e a nova sobe uma posição.
+  if (from < to) return index > from && index <= to ? -1 : 0;
+  // Subindo: desce uma.
+  if (from > to) return index >= to && index < from ? 1 : 0;
+  return 0;
+}

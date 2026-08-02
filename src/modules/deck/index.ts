@@ -18,6 +18,9 @@ export type {
   LearnsetMoveDTO,
 } from "./ui/types";
 
+// moveSlot NÃO entra aqui: é a conta do arrastar, e quem usa é a UI, que importa
+// de domain/rules direto (o mesmo caminho que deckBoardView faz com DECK_LIMIT).
+// Rota nenhuma precisa dela.
 export { DECK_LIMIT, CARDS_PER_SLOT, isDeckFull } from "./domain/rules";
 
 export { readLearnset } from "./queries/readLearnset";
@@ -37,3 +40,5 @@ export { addToDeck } from "./commands/addToDeck";
 export type { AddToDeckInput, AddToDeckResult } from "./commands/addToDeck";
 export { removeFromDeck } from "./commands/removeFromDeck";
 export type { RemoveFromDeckResult } from "./commands/removeFromDeck";
+export { reorderDeck } from "./commands/reorderDeck";
+export type { ReorderDeckResult } from "./commands/reorderDeck";
