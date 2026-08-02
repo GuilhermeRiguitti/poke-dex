@@ -205,7 +205,7 @@ Toda page/rota é uma **função efêmera**: ela acorda com o request, responde,
 | `setTimeout` pra "terminar depois de responder" | a execução morre com a resposta | faça antes de responder, ou não faça |
 | WebSocket / SSE / conexão longa | função tem teto de duração; não segura conexão | **polling** do cliente (é o que a batalha faz) |
 | `Map`/variável global como cache, fila ou rate-limit | cada invocação pode ser uma instância nova; memória **não sobrevive** | **tabela no banco** (ver `PokeApiCache`, e a fila do matchmaking) |
-| escrever em arquivo / `fs` | filesystem é efêmero e read-only | banco, ou `lib/storage` |
+| escrever em arquivo / `fs` | filesystem é efêmero e read-only | banco (não há storage próprio hoje) |
 | cron pra reparar/limpar estado | **cron no Hobby roda 1x por dia** | não dependa de reparo; ver abaixo |
 | `new PrismaClient()` num módulo qualquer | esgota o pool do Postgres | importe **sempre** o `prisma` de `lib/prisma` |
 
@@ -300,11 +300,23 @@ não há worker pra consertar.
 
 #### Consequência #4: cache tem duas camadas, e uma delas é tabela
 
-O cache de `fetch` do Next morre a cada deploy. Por isso existe `PokeApiCache`
-(tabela): o que o jogador **já capturou** precisa sobreviver ao deploy, e a fair
-use policy da PokéAPI pede cache local de verdade. E porque cache **grava**,
-`lib/pokeapiCache.ts` é dividido: `readCached*` (só lê, seguro em render) vs
-`fetchAndCache*` (grava, **só em command**) — que é a regra 2 aplicada.
+O cache de `fetch` do Next morre a cada deploy. Por isso o que precisa
+sobreviver ao deploy mora em tabela — e a fair use policy da PokéAPI pede cache
+local de verdade.
+
+São **dois mecanismos diferentes**, e confundi-los custa caro:
+
+- **Espelho (`Pokemon`/`Move`)** — o que o jogo CONSULTA. Escrito pelo
+  `syncPokedex`. É tabela relacional porque a coleção precisa filtrar e ordenar
+  por nome/tipo/raridade/nível, coisa que key-value não faz.
+- **`PokeApiCache` (key-value)** — hoje guarda **só `type:<nome>`**, usado pra
+  calcular efetividade no `buildDuelSnapshot`. Ninguém filtra por tipo no banco,
+  então uma linha de Json basta. `fetchAndCacheType` **grava** no miss: é
+  command-only, nunca render (regra 2).
+
+> As funções `readCachedPokemons`/`fetchAndCachePokemon`/`fetchAndCacheMove`
+> foram removidas em 2026-08-02 — ficaram sem consumidor quando o espelho
+> assumiu pokémon e move.
 
 #### Consequência #5: a API PostgREST do Supabase é pública — RLS obrigatória
 
