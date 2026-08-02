@@ -4,7 +4,11 @@ import type { CollectionCardView } from "./pokedexView";
 
 // Server Component. É a MESMA carta do catálogo, com duas diferenças: aqui os
 // dados vêm do nosso banco, então ela leva Lv e as 6 barras de stat (derivadas
-// pelo nível deste pokémon lá no pokedexView); e o rodapé são os botões de deck.
+// pelo nível deste pokémon lá no pokedexView); e o rodapé é o botão de montar.
+//
+// Toda carta aqui está DISPONÍVEL — quem já tem vaga no deck não aparece nesta
+// lista (buildCollectionWhere exclui no banco). Por isso não há moldura
+// destacada nem estado "no deck" pra desenhar.
 
 export default function CollectionGrid({ cards }: { cards: CollectionCardView[] }) {
   return (
@@ -21,16 +25,9 @@ export default function CollectionGrid({ cards }: { cards: CollectionCardView[] 
           rarity={card.rarity}
           size="grid"
           index={i}
-          highlighted={card.inDeck}
           details={{ level: card.level, baseStats: card.baseStats }}
         >
-          <CollectionCardActions
-            userPokemonId={card.userPokemonId}
-            name={card.name}
-            deckSlotId={card.deckSlotId}
-            inDeck={card.inDeck}
-            canToggle={card.canToggle}
-          />
+          <CollectionCardActions userPokemonId={card.userPokemonId} name={card.name} />
         </PokeCard>
       ))}
     </div>

@@ -1,7 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
 import type { BaseStats } from "@/src/modules/progression";
-import type { DeckDTO } from "../ui/types";
-import { toDeckDTO } from "./toDeckDTO";
 
 // ─────────────────────────────────────────────────────────────────────────
 // A DÍVIDA DO Deck.userId, num lugar só.
@@ -14,24 +12,6 @@ import { toDeckDTO } from "./toDeckDTO";
 // ─────────────────────────────────────────────────────────────────────────
 const deckOfUser = (userId: string) =>
   ({ where: { userId }, orderBy: { createdAt: "asc" } }) as const;
-
-const deckInclude = {
-  slots: {
-    include: { cards: { select: { moveId: true, order: true } } },
-    orderBy: { order: "asc" },
-  },
-} as const;
-
-/**
- * O deck do usuário, SÓ LEITURA. Devolve null se ele ainda não tem deck.
- *
- * NÃO cria o deck de propósito: quem chama é o render da coleção, e render de
- * page não escreve (CLAUDE.md regra 2). O deck nasce no command (addToDeck).
- */
-export async function readDeck(userId: string): Promise<DeckDTO | null> {
-  const deck = await prisma.deck.findFirst({ ...deckOfUser(userId), include: deckInclude });
-  return deck ? toDeckDTO(deck) : null;
-}
 
 /**
  * O deck do usuário, criando um vazio se não existir. **ESCREVE** — só de

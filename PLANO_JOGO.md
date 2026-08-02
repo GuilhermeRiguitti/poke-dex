@@ -604,7 +604,8 @@ battle-room) — é o follow-up abaixo.
 - **Coleção** recolada no `CollectionDTO` novo (`userPokemonId`/`level`): card
   mostra o nível; `CollectionCardActions` abre o **`LoadoutBuilder`** (modal) que
   busca o learnset (`GET /api/deck/learnset/[userPokemonId]`) e escolhe até 6
-  cartas → `POST /api/deck {userPokemonId, moveIds}`. "No deck ✓" remove o slot.
+  cartas → `POST /api/deck {userPokemonId, moveIds}`. (O "No deck ✓" que removia
+  o slot daqui saiu em 2026-08-01 — ver o item "Deck separado da listagem".)
 - **Battle-room** reescrito pro duelo alternado em **HTML** (`DuelTable` +
   `battleView.ts` puro/testado + `useBattleRoom` pollando `round`+`activeUserId`):
   mostra de quem é a vez, barra de 6 cartas (PP/tipo/power), HP, log. O canvas
@@ -725,6 +726,26 @@ então "sem efeito" continua aparecendo.
   mostra Lv + as 6 barras de stat derivadas pelo nível; no catálogo (PokéAPI ao
   vivo, sem stats no DTO) ela não mostra, e a rota do catálogo não mudou.
   Sem migration. Spec: `docs/superpowers/specs/2026-07-31-carta-unica-prismatica-design.md`.
+- **Deck separado da coleção (2026-08-01)** — a carta que está numa vaga do deck
+  **não aparece mais** na coleção: `buildCollectionWhere` exclui no banco
+  (`deckSlots: { none: {} }`). Corrige o bug em que a carta sumia da vaga do
+  deck ao cair fora da página/filtro. Sem migration. O que mudou:
+  - **Duas leituras independentes.** `CollectionPageDTO` ficou só com coleção +
+    paginação; o deck ganhou query e DTO próprios (`getDeckBoard` →
+    `DeckBoardDTO`, com o pokémon já resolvido). A page chama as duas em
+    `Promise.all`. `readDeck`/`toDeckDTO`/`DeckDTO`/`CollectionDTO` viraram
+    código morto e foram apagados.
+  - **Duas views.** `collectionView` (cards + paginação + `emptyState`) e
+    `deckBoardView` (as 6 vagas), cada uma com teste. Saíram da coleção
+    `inDeck`/`deckSlotId`/`canToggle`, e `canToggleIntoDeck` foi removido.
+  - **`DeckSlots`/`DeckSlotCard` migraram** de `pokedex/ui/` pra `deck/ui/`.
+  - **Tirar do deck** virou um **X na própria vaga** (`DeckSlotCard`, client) —
+    era o único jeito, já que a carta montada some da coleção.
+  - **Deck cheio não desabilita mais botão**: quem barra é o servidor
+    (`addToDeck` → `deck_full`), respondido com **toast** (`react-hot-toast`,
+    `src/layout/toast.tsx`, no estilo do design system).
+  - Novo vazio `all_in_deck` pra quem montou a coleção inteira — sem ele a tela
+    mandava "limpar filtros" sem filtro nenhum ativo.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta

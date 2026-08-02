@@ -43,17 +43,16 @@ export interface CollectionCardDTO {
   pokemon: PokemonCardDTO | null;
 }
 
-export interface CollectionDTO {
-  cards: CollectionCardDTO[];
-  /** null quando o jogador ainda não tem deck (ele nasce no primeiro loadout) */
-  deck: { id: string; slots: { id: string; userPokemonId: string }[] } | null;
-}
-
-/** Uma PÁGINA da coleção: as 16 cartas, o deck, e o estado da navegação. */
+/**
+ * Uma PÁGINA da coleção: as 16 cartas e o estado da navegação.
+ *
+ * NÃO carrega o deck. O deck tem a query e o DTO dele (`getDeckBoard` →
+ * `DeckBoardDTO`, no módulo `deck`), porque não depende de filtro nem de
+ * página. Foi juntar os dois aqui que fez a carta sumir da vaga do deck quando
+ * ela caía fora da listagem.
+ */
 export interface CollectionPageDTO {
   cards: CollectionCardDTO[];
-  /** null quando o jogador ainda não tem deck (nasce no primeiro loadout) */
-  deck: { id: string; slots: { id: string; userPokemonId: string }[] } | null;
   page: number;
   totalPages: number;
   /** total que o FILTRO encontrou — é o que a tela conta */

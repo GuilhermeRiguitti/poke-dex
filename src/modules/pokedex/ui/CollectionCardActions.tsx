@@ -4,11 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import LoadoutBuilder from "./LoadoutBuilder";
 
-// O rodapé do card da coleção: montar loadout, ou tirar do deck.
+// O rodapé do card da coleção: montar loadout.
 //
-// No jogo novo "pôr no deck" não é um toggle — é montar um loadout (1 pokémon +
-// 6 cartas do learnset), então o botão abre o LoadoutBuilder. Tirar do deck é
-// escrita direta + refresh (quem lê é o servidor).
+// "Pôr no deck" não é um toggle — é montar um loadout (1 pokémon + 6 cartas do
+// learnset), então o botão só abre o LoadoutBuilder. Tirar do deck não mora
+// mais aqui: buildCollectionWhere já exclui da coleção quem está numa vaga do
+// deck (deckSlots: { none: {} }), então esta carta nunca está "no deck" — quem
+// tira é o botão dentro do próprio DeckSlots.
 //
 // O "Soltar" (DELETE /api/cards/[id]) foi TIRADO da carta. A rota e o command
 // `removeCard` continuam existindo, só não têm mais gatilho na UI.
@@ -16,47 +18,22 @@ import LoadoutBuilder from "./LoadoutBuilder";
 export default function CollectionCardActions({
   userPokemonId,
   name,
-  deckSlotId,
-  inDeck,
-  canToggle,
 }: {
   userPokemonId: string;
   name: string;
-  /** id do DeckSlot, quando este pokémon está no deck */
-  deckSlotId: string | null;
-  inDeck: boolean;
-  canToggle: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [busy, setBusy] = useState(false);
   const [building, setBuilding] = useState(false);
-
-  const locked = busy || pending;
-
-  const run = async (action: () => Promise<Response>) => {
-    setBusy(true);
-    try {
-      const res = await action();
-      if (res.ok) startTransition(() => router.refresh());
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const removeFromDeck = () =>
-    deckSlotId && run(() => fetch(`/api/deck/${deckSlotId}`, { method: "DELETE" }));
 
   return (
     <>
       <button
-        onClick={() => (inDeck ? removeFromDeck() : setBuilding(true))}
-        disabled={locked || !canToggle}
-        className={`clip-btn cursor-pointer border-0 px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-          inDeck ? "bg-flare text-white hover:bg-flare-dark" : "bg-panel-2 text-ink-dim hover:text-ink"
-        }`}
+        onClick={() => setBuilding(true)}
+        disabled={pending}
+        className="clip-btn cursor-pointer border-0 bg-panel-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink-dim transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {inDeck ? "No deck ✓" : "Montar"}
+        Montar
       </button>
 
       {building && (
@@ -66,6 +43,9 @@ export default function CollectionCardActions({
           onClose={() => setBuilding(false)}
           onDone={() => {
             setBuilding(false);
+            // A carta some da coleção assim que entra no deck (o WHERE exclui
+            // quem tem vaga) — por isso o refresh aqui não é só "atualizar o
+            // deck", é reconsultar a própria listagem paginada.
             startTransition(() => router.refresh());
           }}
         />

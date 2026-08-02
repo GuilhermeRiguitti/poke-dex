@@ -6,7 +6,6 @@
 // este barrel, toda rota de API que importa um command arrastaria a UI junto.
 
 export type {
-  CollectionDTO,
   CollectionCardDTO,
   CollectionPageDTO,
   PokedexPageDTO,
@@ -31,7 +30,7 @@ export type { RefreshPokedexSummary, RefreshPokedexOptions } from "./commands/re
 // Todas as queries abaixo SÓ LEEM — podem ser chamadas do render de uma page.
 // A escrita (inclusive a do cache da PokéAPI) mora nos commands.
 export { listPokedexPage } from "./queries/listPokedexPage";
-export { getCollectionPage } from "./queries/getCollectionPage";
+export { getCollectionQuery } from "./queries/getCollectionPage";
 export {
   COLLECTION_PAGE_SIZE,
   POKEMON_TYPES,

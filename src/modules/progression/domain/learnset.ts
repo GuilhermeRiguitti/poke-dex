@@ -1,6 +1,6 @@
 // Learnset FIEL À SÉRIE: quem aprende o quê, por qual método, em que nível.
 //
-// A PokéAPI já modela isso inteiro e nós jogávamos fora: `/pokemon/{id}.moves[]`
+// A PokéAPI já modela isso inteiro `/pokemon/{id}.moves[]`
 // traz, por move, um `version_group_details[]` com (nível, método, jogo). O
 // espelho guardava só o par (pokemon, move) — todo pokémon "sabia" o learnset
 // inteiro desde o nível 1. Agora o nível LIBERA cartas, que é como a série

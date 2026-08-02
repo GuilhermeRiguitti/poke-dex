@@ -1,11 +1,7 @@
-// Direto do domain/ do deck, NÃO do barrel (@/src/modules/deck): o barrel é a
-// API de servidor do módulo e reexporta queries/commands, que importam Prisma.
-// Isto aqui é ui/ — se importasse o barrel, o Prisma iria parar no bundle do
-// browser. domain/ é puro, e é a única coisa que ui/ pode puxar de outro módulo.
 import type { BaseStats } from "@/src/modules/progression/domain/leveling";
-import { DECK_LIMIT, canToggleIntoDeck } from "@/src/modules/deck/domain/rules";
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 
+import { hasActiveFilter } from "../domain/collectionFilters";
 import type { CollectionPageDTO, PokemonDetailDTO } from "./types";
 
 // Mapear DTO -> o que a tela desenha é função pura, mora aqui e tem teste.
@@ -32,117 +28,64 @@ export interface CollectionCardView {
   rarity: RarityTier;
   /** base stats da espécie — a carta deriva o número e usa a base na barra */
   baseStats: BaseStats;
-  inDeck: boolean;
-  /** id do DeckSlot, pra remover do deck. null quando não está no deck. */
-  deckSlotId: string | null;
-  /** false = não dá pra montar mais um loadout (deck cheio e este não está nele) */
-  canToggle: boolean;
 }
 
-/** Uma vaga do deck. Preenchida, é uma carta mini; vazia, é a moldura tracejada. */
-export interface DeckSlotView {
-  /** null = vaga vazia (e aí todo o resto também é null) */
-  pokemonId: number | null;
-  dexNumber: string | null;
-  name: string | null;
-  iconUrl: string | null;
-  level: number | null;
-  types: string[];
-  rarity: RarityTier | null;
-  baseStats: BaseStats | null;
-}
-
-export type CollectionEmptyState = "none" | "collection" | "filter";
+export type CollectionEmptyState = "none" | "collection" | "filter" | "all_in_deck";
 
 export interface CollectionView {
   cards: CollectionCardView[];
-  /** sempre DECK_LIMIT vagas, na ordem — as vazias vêm com pokemonId null */
-  deckSlots: DeckSlotView[];
-  deckCount: number;
-  deckLimit: number;
   page: number;
   totalPages: number;
   totalCards: number;
   /**
    * Qual vazio mostrar. "collection" = não tem carta nenhuma (manda capturar);
-   * "filter" = tem cartas, o filtro é que não achou (manda limpar). São telas
-   * diferentes, e sem os dois totais não dá pra distinguir.
+   * "all_in_deck" = tem cartas, mas todas já estão montadas no deck (não manda
+   * nada — é um estado saudável); "filter" = tem cartas disponíveis, o filtro é
+   * que não achou (manda limpar). São telas diferentes, e sem os dois totais +
+   * os filtros não dá pra distinguir.
    */
   emptyState: CollectionEmptyState;
 }
 
+/**
+ * A coleção que a tela desenha. NÃO sabe nada do deck: a listagem nem inclui
+ * quem já está numa vaga (`buildCollectionWhere` exclui no banco), então toda
+ * carta aqui é "disponível pra montar". Quem desenha o deck é o
+ * `deckBoardView`, a partir da query dele. Entrar com o deck cheio é barrado
+ * pelo SERVIDOR (addToDeck → "deck_full"), não pela tela.
+ */
 export function collectionView(page: CollectionPageDTO): CollectionView {
-  const slots = page.deck?.slots ?? [];
-  const deckCount = slots.length;
+  const cards: CollectionCardView[] = page.cards.map((card) => ({
+    userPokemonId: card.userPokemonId,
+    pokemonId: card.pokemonId,
+    dexNumber: dexNumber(card.pokemonId),
+    name: card.pokemon?.name ?? dexNumber(card.pokemonId),
+    artworkUrl: card.pokemon?.artworkUrl ?? null,
+    types: card.pokemon?.types ?? [],
+    accentType: card.pokemon?.types[0] ?? "normal",
+    level: card.level,
+    bst: card.bst,
+    rarity: card.rarity,
+    // passa CRU: a carta precisa da base pra barra (perfil da espécie) e do
+    // nível pro número (derivado). Quem faz as duas contas é o `statBars`,
+    // que é puro e testado (CLAUDE.md, regra 4).
+    baseStats: card.baseStats,
+  }));
 
-  // userPokemonId -> id do DeckSlot. Diz se um pokémon está no deck e com que id
-  // o loadout dele sai.
-  const slotByUserPokemon = new Map(slots.map((s) => [s.userPokemonId, s.id]));
-
-  const cards: CollectionCardView[] = page.cards.map((card) => {
-    const deckSlotId = slotByUserPokemon.get(card.userPokemonId) ?? null;
-    const inDeck = deckSlotId !== null;
-
-    return {
-      userPokemonId: card.userPokemonId,
-      pokemonId: card.pokemonId,
-      dexNumber: dexNumber(card.pokemonId),
-      name: card.pokemon?.name ?? dexNumber(card.pokemonId),
-      artworkUrl: card.pokemon?.artworkUrl ?? null,
-      types: card.pokemon?.types ?? [],
-      accentType: card.pokemon?.types[0] ?? "normal",
-      level: card.level,
-      bst: card.bst,
-      rarity: card.rarity,
-      // passa CRU: a carta precisa da base pra barra (perfil da espécie) e do
-      // nível pro número (derivado). Quem faz as duas contas é o `statBars`,
-      // que é puro e testado (CLAUDE.md, regra 4).
-      baseStats: card.baseStats,
-      inDeck,
-      deckSlotId,
-      canToggle: canToggleIntoDeck(deckCount, inDeck),
-    };
-  });
-
-  const cardByUserPokemonId = new Map(page.cards.map((c) => [c.userPokemonId, c]));
-
-  const deckSlots: DeckSlotView[] = Array.from({ length: DECK_LIMIT }, (_, i) => {
-    const slot = slots[i];
-    const card = slot ? cardByUserPokemonId.get(slot.userPokemonId) : undefined;
-
-    if (!card) {
-      return {
-        pokemonId: null,
-        dexNumber: null,
-        name: null,
-        iconUrl: null,
-        level: null,
-        types: [],
-        rarity: null,
-        baseStats: null,
-      };
-    }
-
-    return {
-      pokemonId: card.pokemonId,
-      dexNumber: dexNumber(card.pokemonId),
-      name: card.pokemon?.name ?? dexNumber(card.pokemonId),
-      iconUrl: card.pokemon?.iconUrl ?? null,
-      level: card.level,
-      types: card.pokemon?.types ?? [],
-      rarity: card.rarity,
-      baseStats: card.baseStats,
-    };
-  });
-
+  // `totalInCollection` conta TUDO que o jogador tem, inclusive o que está no
+  // deck; `cards` já vem sem os do deck. Sem separar "all_in_deck", quem montou
+  // a coleção inteira veria "limpar filtros" sem ter filtro nenhum ativo.
   const emptyState: CollectionEmptyState =
-    page.cards.length > 0 ? "none" : page.totalInCollection === 0 ? "collection" : "filter";
+    page.cards.length > 0
+      ? "none"
+      : page.totalInCollection === 0
+        ? "collection"
+        : hasActiveFilter(page.filters)
+          ? "filter"
+          : "all_in_deck";
 
   return {
     cards,
-    deckSlots,
-    deckCount,
-    deckLimit: DECK_LIMIT,
     page: page.page,
     totalPages: page.totalPages,
     totalCards: page.totalCards,

@@ -68,7 +68,5 @@
   "66": "toPokemonDTO.ts",
   "67": "@tailwindcss/postcss",
   "68": "@react-three/fiber",
-  "69": "three",
-  "70": "token/route.ts",
-  "71": "queue/status/route.ts"
+  "69": "three"
 }

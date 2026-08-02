@@ -4,13 +4,16 @@
 // linha de Deck carrega userId; a de DeckSlot/DeckSlotCard carrega ids cruzados
 // — nada disso precisa (nem deve) chegar no browser.
 
+import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+import type { BaseStats } from "@/src/modules/progression/domain/leveling";
+
 /** Uma carta (skill) escolhida num slot. `moveId` é o Move.id do espelho. */
 export interface DeckSlotCardDTO {
   moveId: string;
   order: number; // 0..5, posição na barra
 }
 
-/** Um loadout do time: 1 UserPokemon + suas cartas. */
+/** Um loadout do time: 1 UserPokemon + suas cartas. É o que o addToDeck devolve. */
 export interface DeckSlotDTO {
   /** id do DeckSlot (é o que o DELETE /api/deck/[id] recebe) */
   id: string;
@@ -19,10 +22,37 @@ export interface DeckSlotDTO {
   cards: DeckSlotCardDTO[];
 }
 
-export interface DeckDTO {
+/**
+ * Uma vaga do deck com o pokémon JÁ RESOLVIDO — o que a tela precisa pra
+ * desenhar a carta, sem consultar a coleção.
+ *
+ * É o que separa o deck da listagem da coleção: as duas telas mostram a mesma
+ * moldura, mas por caminhos independentes. A coleção nem lista quem está aqui
+ * (`buildCollectionWhere` exclui no banco), então cruzar as duas listas pra
+ * achar o nome/sprite da carta do deck era justamente o acoplamento que fazia
+ * a carta sumir da vaga quando caía fora da página/filtro.
+ */
+export interface DeckBoardSlotDTO {
+  /** id do DeckSlot — é o que o DELETE /api/deck/[id] recebe */
   id: string;
+  order: number; // 0..5, posição no time (0 começa em campo)
+  /** id público da PokéAPI (National Dex) */
+  pokemonId: number;
   name: string;
-  slots: DeckSlotDTO[];
+  /** sprite pequeno — é o que a vaga do deck mostra */
+  iconUrl: string | null;
+  level: number;
+  types: string[];
+  rarity: RarityTier;
+  /** base stats da espécie, crus — a carta deriva pelo nível pra desenhar */
+  baseStats: BaseStats;
+}
+
+/** O deck como a TELA precisa dele: as vagas com as cartas prontas. */
+export interface DeckBoardDTO {
+  /** null quando o jogador ainda não tem deck (nasce no primeiro loadout) */
+  id: string | null;
+  slots: DeckBoardSlotDTO[];
 }
 
 /** O deck como a tela da fila precisa dele: só o tamanho, sem os membros. */
