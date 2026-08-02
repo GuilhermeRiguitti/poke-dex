@@ -746,6 +746,34 @@ então "sem efeito" continua aparecendo.
     `src/layout/toast.tsx`, no estilo do design system).
   - Novo vazio `all_in_deck` pra quem montou a coleção inteira — sem ele a tela
     mandava "limpar filtros" sem filtro nenhum ativo.
+- **Coleção virou workspace de 3 colunas (2026-08-02)** — mesma tela, mesmos
+  dados, outro arranjo: **filtros | cartas | deck**, lado a lado. Em `xl` ela
+  ocupa a viewport inteira e cada coluna rola por dentro (o deck fica sempre à
+  vista enquanto se percorre a coleção); abaixo de `xl` empilha na ordem deck →
+  filtros → cartas. Sem migration, sem query nova, sem rota nova. O que mudou:
+  - **A page fura o `max-w-6xl`** do layout de `(game)` (`left-1/2` +
+    `-ml-[50vw]` + `w-screen`, e `-mb-16` pra devolver o `pb-16` do `<main>`).
+    Continua **Server Component**.
+  - **`CollectionFilterBar` virou a coluna da esquerda.** Os filtros são os
+    mesmos; só o **tipo** trocou de `<select>` por **paleta de 19 botões**, cada
+    um na cor do tipo (`typeChips` no `collectionFilterView`, testado). O
+    debounce e o `useTransition` continuam iguais.
+  - **`DeckSlots` virou a coluna da direita** e as vagas viraram **linhas**
+    (sprite + nome + Lv + tipos + X), não mais cartas mini em fileira — em 336px
+    a moldura de 96px não cabia lado a lado. `deckBoardView` ganhou
+    `accentType`, `full` e `battleLabel` (com teste); `count` passou a contar as
+    vagas **desenhadas**, senão um deck com mais linhas que o limite escrevia
+    "8/6".
+  - **Nada do mockup que não existia no jogo entrou**: sem "poder"/PWR, sem
+    cobertura de tipos, sem "limpar deck" (não há command pra isso — só o DELETE
+    de uma vaga por vez) e sem ordenar por poder/nome.
+  - **NavBar**: barra full-bleed (acompanha o workspace), aba ativa com traço
+    ciano. E o **drawer mobile saiu de dentro do `<header>`** — o
+    `backdrop-blur` do header cria bloco contentor pra `fixed`, então o
+    `inset-0` do drawer media os 64px da barra em vez da viewport, e o `z-50`
+    dele ficava preso no contexto de empilhamento `z-40` do header.
+  - O handoff do Claude Design ficou em `docs/design/colecao-deck/` (saiu de
+    `src/`, onde quebrava o `tsc`; `docs` entrou no `exclude` do tsconfig).
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta

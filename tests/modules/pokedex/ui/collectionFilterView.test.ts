@@ -1,12 +1,28 @@
 import { describe, expect, it } from "vitest";
+import { TYPE_COLORS, typeColor } from "@/src/lib/typeColors";
 import { collectionFilterView } from "@/src/modules/pokedex/ui/collectionFilterView";
 import { parseCollectionFilters } from "@/src/modules/pokedex/domain/collectionFilters";
 
 describe("collectionFilterView", () => {
   it("oferece 18 tipos + a opção 'todos'", () => {
     const v = collectionFilterView(parseCollectionFilters({}));
-    expect(v.typeOptions).toHaveLength(19);
-    expect(v.typeOptions[0]).toEqual({ value: "", label: "Todos os tipos" });
+    expect(v.typeChips).toHaveLength(19);
+    expect(v.typeChips[0]).toMatchObject({ value: "", label: "Todos" });
+  });
+
+  it("cada tipo leva a cor dele — é o que pinta o botão da paleta", () => {
+    const v = collectionFilterView(parseCollectionFilters({}));
+    expect(v.typeChips.find((t) => t.value === "fire")?.color).toBe(TYPE_COLORS.fire);
+    // o "todos" não é tipo, então cai no cinza de fallback do typeColor
+    expect(v.typeChips[0].color).toBe(typeColor(""));
+  });
+
+  it("só o tipo filtrado fica ativo; sem filtro, o ativo é o 'todos'", () => {
+    const semFiltro = collectionFilterView(parseCollectionFilters({}));
+    expect(semFiltro.typeChips.filter((t) => t.active).map((t) => t.value)).toEqual([""]);
+
+    const comFogo = collectionFilterView(parseCollectionFilters({ type: "fire" }));
+    expect(comFogo.typeChips.filter((t) => t.active).map((t) => t.value)).toEqual(["fire"]);
   });
 
   it("oferece as 4 raridades + 'todas', com rótulo em português", () => {

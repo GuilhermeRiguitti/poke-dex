@@ -1,6 +1,8 @@
 // O que a barra de filtros DESENHA. Puro e testado — componente é costura
 // (CLAUDE.md, regra 4). Importa só de domain/, nunca de queries/commands.
 
+import { typeColor } from "@/src/lib/typeColors";
+
 import {
   POKEMON_TYPES,
   RARITY_TIERS,
@@ -14,9 +16,22 @@ export interface FilterOption {
   label: string;
 }
 
+/**
+ * Um tipo como BOTÃO da paleta lateral (não como <option> de um select).
+ *
+ * O filtro é o MESMO de antes — muda só o controle: com 18 tipos, o select
+ * escondia a lista atrás de um clique e não deixava ver qual estava ligado. A
+ * paleta mostra os 18 de uma vez, cada um na cor dele, e o ligado fica sólido.
+ */
+export interface TypeChip extends FilterOption {
+  /** a cor do tipo (TYPE_COLORS). O "Todos" cai no cinza de fallback. */
+  color: string;
+  active: boolean;
+}
+
 export interface CollectionFilterView {
   query: string;
-  typeOptions: FilterOption[];
+  typeChips: TypeChip[];
   rarityOptions: FilterOption[];
   sortOptions: FilterOption[];
   selectedType: string;
@@ -60,10 +75,14 @@ const TYPE_LABELS: Record<string, string> = {
 export function collectionFilterView(filters: CollectionFilters): CollectionFilterView {
   return {
     query: filters.q ?? "",
-    typeOptions: [
-      { value: "", label: "Todos os tipos" },
+    typeChips: [
+      { value: "", label: "Todos" },
       ...POKEMON_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] ?? t })),
-    ],
+    ].map((o) => ({
+      ...o,
+      color: typeColor(o.value),
+      active: (filters.type ?? "") === o.value,
+    })),
     rarityOptions: [
       { value: "", label: "Todas as raridades" },
       ...RARITY_TIERS.map((r) => ({ value: r, label: RARITY_LABELS[r] ?? r })),

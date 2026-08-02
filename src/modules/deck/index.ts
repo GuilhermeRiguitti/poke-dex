@@ -26,10 +26,10 @@ export { readLearnset } from "./queries/readLearnset";
 // independente da coleção — nenhum filtro, nenhuma paginação.
 export { getDeckBoardQuery } from "./queries/getDeckBoard";
 
-// countDeckSlots / readDeckSlots só LEEM — podem ser chamadas do render de uma
-// page. getOrCreateDeck e getDeckSummary ESCREVEM (criam o deck vazio no
-// primeiro acesso) — ver o aviso em getDeckSummary.ts.
-export { countDeckSlots, readDeckSlots, getOrCreateDeck } from "./queries/readDeck";
+// readDeckSlots só LÊ — pode ser chamada do render de uma page. getOrCreateDeck
+// e getDeckSummary ESCREVEM (criam o deck vazio no primeiro acesso) — ver o
+// aviso em getDeckSummary.ts.
+export { readDeckSlots, getOrCreateDeck } from "./queries/readDeck";
 export type { DeckLoadoutSlot, DeckLoadoutCard } from "./queries/readDeck";
 export { getDeckSummary } from "./queries/getDeckSummary";
 

@@ -41,65 +41,81 @@ export default function NavBar({ userName }: { userName: string }) {
   const battleActive = pathname.startsWith("/battle");
 
   return (
-    <header className="sticky top-0 z-40 border-b border-edge bg-bg/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-        <Link href="/" className="group flex items-center gap-2.5">
-          <PokeballIcon size={30} />
-          <span className="plate bg-panel-2 border border-edge px-3 py-1 transition-colors group-hover:border-energy/60">
-            <span className="plate-inner font-title text-lg tracking-wide">
-              POKE<span className="text-flare">DEX</span>
+    <>
+      {/* A barra é FULL-BLEED (não segue o max-w-6xl do conteúdo): a coleção é
+          um workspace que ocupa a viewport inteira, e uma barra centrada em
+          6xl flutuaria no meio dela, desalinhada das colunas. */}
+      <header className="sticky top-0 z-40 border-b border-edge bg-bg/90 backdrop-blur">
+        <div className="flex h-16 items-center justify-between gap-4 px-4">
+          <Link href="/" className="group flex items-center gap-2.5">
+            <PokeballIcon size={30} />
+            <span className="plate bg-panel-2 border border-edge px-3 py-1 transition-colors group-hover:border-energy/60">
+              <span className="plate-inner font-title text-lg tracking-wide">
+                POKE<span className="text-flare">DEX</span>
+              </span>
             </span>
-          </span>
-        </Link>
-
-        {/* ── Nav desktop (some no mobile) ─────────────────────────────── */}
-        <nav className="hidden items-center gap-1 sm:flex sm:gap-2">
-          {LINKS.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`clip-btn flex items-center gap-1.5 px-3 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
-                  active ? "bg-panel-2 text-energy" : "text-ink-dim hover:bg-panel-2 hover:text-ink"
-                }`}
-              >
-                <Icon size={15} />
-                <span>{label}</span>
-              </Link>
-            );
-          })}
-          <Link
-            href="/battle"
-            className={`clip-btn flex items-center gap-1.5 px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition-colors ${
-              battleActive ? "bg-flare-dark" : "bg-flare hover:bg-flare-dark"
-            }`}
-          >
-            <SwordsIcon size={15} />
-            <span>Batalhar</span>
           </Link>
-        </nav>
 
-        <div className="hidden items-center gap-3 sm:flex">
-          <span className="hidden max-w-[140px] truncate text-sm font-semibold text-ink-dim md:inline">
-            {userName}
-          </span>
-          <SignOutButton />
+          {/* ── Nav desktop (some no mobile) ───────────────────────────── */}
+          <nav className="hidden items-center gap-1 sm:flex">
+            {LINKS.map(({ href, label, icon: Icon }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={`clip-btn flex items-center gap-1.5 px-3 py-2 font-title text-sm uppercase tracking-wider transition-colors ${
+                    active
+                      ? "bg-panel-2 text-ink shadow-[inset_0_-2px_0_var(--color-energy)]"
+                      : "text-ink-dim hover:bg-panel-2 hover:text-ink"
+                  }`}
+                >
+                  <Icon size={15} />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+            <Link
+              href="/battle"
+              className={`clip-btn ml-1 flex items-center gap-1.5 px-4 py-2 font-title text-sm uppercase tracking-wider text-white transition-colors ${
+                battleActive ? "bg-flare-dark" : "bg-flare hover:bg-flare-dark"
+              }`}
+            >
+              <SwordsIcon size={15} />
+              <span>Batalhar</span>
+            </Link>
+          </nav>
+
+          <div className="hidden items-center gap-3 sm:flex">
+            <span className="hidden max-w-35 truncate text-sm font-semibold text-ink-dim md:inline">
+              {userName}
+            </span>
+            <SignOutButton />
+          </div>
+
+          {/* ── Gatilho mobile (some no desktop) ───────────────────────── */}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Abrir menu"
+            aria-expanded={open}
+            className="clip-btn flex items-center justify-center border border-edge bg-panel-2 p-2.5 text-ink transition-colors hover:border-energy/60 hover:text-energy sm:hidden"
+          >
+            <MenuIcon size={20} />
+          </button>
         </div>
+      </header>
 
-        {/* ── Gatilho mobile (some no desktop) ─────────────────────────── */}
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Abrir menu"
-          aria-expanded={open}
-          className="clip-btn flex items-center justify-center border border-edge bg-panel-2 p-2.5 text-ink transition-colors hover:border-energy/60 hover:text-energy sm:hidden"
-        >
-          <MenuIcon size={20} />
-        </button>
-      </div>
-
-      {/* ── Drawer off-canvas (só mobile) ──────────────────────────────── */}
+      {/* ── Drawer off-canvas (só mobile) ──────────────────────────────────
+          Mora FORA do <header> de propósito, e essa é a correção do drawer
+          que aparecia preso na faixa do topo: o header tem `backdrop-blur`, e
+          backdrop-filter cria bloco contentor pra descendente `fixed` — o
+          `inset-0` daqui media a caixa de 64px do header, não a viewport. O
+          `z-40 + sticky` do header ainda por cima prendia o `z-50` do drawer
+          dentro daquele contexto de empilhamento, então ele passava por baixo
+          de qualquer coisa acima de 40 na página. Sendo irmão, ele volta a
+          medir a viewport e a empilhar na raiz. */}
       <div
         className={`fixed inset-0 z-50 sm:hidden ${open ? "" : "pointer-events-none"}`}
         aria-hidden={!open}
@@ -182,7 +198,7 @@ export default function NavBar({ userName }: { userName: string }) {
           </div>
         </aside>
       </div>
-    </header>
+    </>
   );
 }
 

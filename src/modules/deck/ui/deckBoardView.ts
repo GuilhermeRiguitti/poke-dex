@@ -22,6 +22,8 @@ export interface DeckSlotView {
   iconUrl: string | null;
   level: number | null;
   types: string[];
+  /** tipo que tinge a linha da vaga. null quando vazia. */
+  accentType: string | null;
   rarity: RarityTier | null;
   baseStats: BaseStats | null;
 }
@@ -32,6 +34,10 @@ export interface DeckBoardView {
   /** quantas vagas estão ocupadas */
   count: number;
   limit: number;
+  /** o time bateu o limite — é o que faz o botão de batalhar pulsar */
+  full: boolean;
+  /** o que o botão de batalhar escreve, conforme o time enche */
+  battleLabel: string;
 }
 
 const VAGA_VAZIA: DeckSlotView = {
@@ -42,6 +48,7 @@ const VAGA_VAZIA: DeckSlotView = {
   iconUrl: null,
   level: null,
   types: [],
+  accentType: null,
   rarity: null,
   baseStats: null,
 };
@@ -66,10 +73,22 @@ export function deckBoardView(board: DeckBoardDTO): DeckBoardView {
       iconUrl: slot.iconUrl,
       level: slot.level,
       types: slot.types,
+      accentType: slot.types[0] ?? "normal",
       rarity: slot.rarity,
       baseStats: slot.baseStats,
     };
   });
 
-  return { slots, count: board.slots.length, limit: DECK_LIMIT };
+  // `board.slots` pode vir com mais que o limite (o SLICE é aqui, na
+  // apresentação) — contar por ele mentiria "7/6". Conta as vagas desenhadas.
+  const count = slots.filter((s) => s.pokemonId !== null).length;
+  const full = count >= DECK_LIMIT;
+
+  return {
+    slots,
+    count,
+    limit: DECK_LIMIT,
+    full,
+    battleLabel: count === 0 ? "Deck vazio" : full ? "Batalhar agora" : `Batalhar · ${count}`,
+  };
 }
