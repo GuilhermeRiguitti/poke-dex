@@ -101,7 +101,8 @@ martelar. Cumprimos com folga:
      Cura futura: servir o catálogo do espelho quando todas as gens estiverem
      semeadas.
   2. sprites hotlinkadas do CDN (GitHub) — prática padrão do ecossistema e o
-     browser cacheia; espelhar a imagem (`lib/storage`) é o passo além.
+     browser cacheia; espelhar a imagem num storage próprio é o passo além (não
+     existe hoje: `lib/storage.ts` foi removido em 2026-08-02, sem consumidor).
 
 ## 6. Runbook — operar os crons
 
