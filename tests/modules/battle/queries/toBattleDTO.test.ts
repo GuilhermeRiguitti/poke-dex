@@ -50,8 +50,18 @@ function rowMidTurn() {
       },
     ],
     turnLogs: [{ turnNumber: 3, events: [{ type: "hesitate", userId: "zeta" }] }],
-    // O oponente da vez já escolheu a carta dele neste round.
-    actions: [{ id: "act1", battleId: "b1", userId: "zeta", round: 3, cardSlot: 2 }],
+    // O oponente da vez já escolheu a carta dele neste round — e, se for troca,
+    // a barra de skills com que o pokémon dele vai entrar.
+    actions: [
+      {
+        id: "act1",
+        battleId: "b1",
+        userId: "zeta",
+        round: 3,
+        cardSlot: 2,
+        loadout: ["move-flamethrower", "move-earthquake"],
+      },
+    ],
   };
 }
 
@@ -66,9 +76,21 @@ describe("toBattleDTO", () => {
     expect(JSON.stringify(dto)).not.toContain("cardSlot");
   });
 
+  // Mesma classe de vazamento que o cardSlot, e ela nasceu quando a escolha de
+  // skills virou decisão de batalha: a barra que o oponente montou pro pokémon
+  // que vai entrar é segredo até ele entrar. Vazar aqui entregaria o repertório
+  // dele com um round de antecedência — dava pra escolher o counter perfeito.
+  it("não vaza o `loadout` — a barra escolhida pro pokémon que vai entrar", () => {
+    const dto = toBattleDTO(rowMidTurn());
+
+    expect(JSON.stringify(dto)).not.toContain("loadout");
+    expect(JSON.stringify(dto)).not.toContain("flamethrower");
+    expect(JSON.stringify(dto)).not.toContain("earthquake");
+  });
+
   it("diz QUEM já escolheu, e só do round atual", () => {
     const row = rowMidTurn();
-    row.actions.push({ id: "act0", battleId: "b1", userId: "alpha", round: 2, cardSlot: 5 });
+    row.actions.push({ id: "act0", battleId: "b1", userId: "alpha", round: 2, cardSlot: 5, loadout: [] });
     const dto = toBattleDTO(row);
 
     // zeta jogou no round 3 (atual); a linha de alpha é do round 2 e não conta.

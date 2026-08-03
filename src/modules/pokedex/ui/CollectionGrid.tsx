@@ -1,5 +1,6 @@
 import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
 import CollectionCardActions from "./CollectionCardActions";
+import CollectionCardDrag from "./CollectionCardDrag";
 import type { CollectionCardView } from "./pokedexView";
 
 // Server Component. É a MESMA carta do catálogo, com duas diferenças: aqui os
@@ -17,19 +18,30 @@ export default function CollectionGrid({ cards }: { cards: CollectionCardView[] 
     // que é a largura da carta — abaixo disso o texto do handoff fica ilegível.
     <div className="grid content-start justify-items-center gap-5 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
       {cards.map((card, i) => (
-        <PokeCard
+        // A carta segue renderizada no SERVIDOR — o CollectionCardDrag só põe
+        // uma casca cliente por volta pra ela poder ser arrastada até o deck.
+        <CollectionCardDrag
           key={card.userPokemonId}
-          dexNumber={card.dexNumber}
+          userPokemonId={card.userPokemonId}
           name={card.name}
-          artworkUrl={card.artworkUrl}
-          types={card.types}
-          rarity={card.rarity}
-          size="grid"
-          index={i}
-          details={{ level: card.level, baseStats: card.baseStats }}
         >
-          <CollectionCardActions userPokemonId={card.userPokemonId} name={card.name} />
-        </PokeCard>
+          <PokeCard
+            dexNumber={card.dexNumber}
+            name={card.name}
+            artworkUrl={card.artworkUrl}
+            types={card.types}
+            rarity={card.rarity}
+            size="grid"
+            index={i}
+            details={{ level: card.level, baseStats: card.baseStats }}
+          >
+            <CollectionCardActions
+              userPokemonId={card.userPokemonId}
+              name={card.name}
+              level={card.level}
+            />
+          </PokeCard>
+        </CollectionCardDrag>
       ))}
     </div>
   );

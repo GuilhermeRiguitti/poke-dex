@@ -30,6 +30,9 @@ export { readBattleState } from "./queries/readBattleState";
 export { getBattleStatus } from "./queries/getBattleStatus";
 export { getQueueStatus } from "./queries/getQueueStatus";
 export { getQueueDeck } from "./queries/getQueueDeck";
+// As skills que EU posso montar num pokémon do meu time. Rota própria pra não
+// pendurar o learnset no BattleDTO, que leva os DOIS lados.
+export { getLoadoutOptions } from "./queries/getLoadoutOptions";
 
 export { submitAction } from "./commands/submitAction";
 export type { SubmitActionInput } from "./commands/submitAction";

@@ -2,7 +2,7 @@ import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 
 import { hasActiveFilter } from "../domain/collectionFilters";
-import type { CollectionPageDTO, PokemonDetailDTO } from "./types";
+import type { CollectionPageDTO, PokemonDetailDTO } from "../types";
 
 // Mapear DTO -> o que a tela desenha é função pura, mora aqui e tem teste.
 // Componente é costura. (CLAUDE.md, regra 4 — ver battle/ui/battleView.ts.)

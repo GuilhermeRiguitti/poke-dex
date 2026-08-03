@@ -12,7 +12,7 @@ export type {
   PokemonCardDTO,
   PokemonDetailDTO,
   PokemonStatDTO,
-} from "./ui/types";
+} from "./types";
 
 export { PAGE_SIZE, MAX_POKEMON, TOTAL_PAGES, clampPage, pageRange } from "./domain/pagination";
 

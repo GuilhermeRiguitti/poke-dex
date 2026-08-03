@@ -130,12 +130,35 @@ function executeAttack(
  * entra. Emite o evento. Troca inválida (alvo inexistente, desmaiado, ou é o
  * próprio ativo) é ignorada — o command já valida; isto é a rede de baixo.
  */
-function applyVoluntarySwitch(side: DuelSide, targetSlot: number, events: DuelEvent[]): void {
+function applyVoluntarySwitch(
+  side: DuelSide,
+  targetSlot: number,
+  events: DuelEvent[],
+  moves?: BattleMoveDef[]
+): void {
   const from = activeOf(side);
   const target = side.team.find((m) => m.slot === targetSlot);
   if (!target || target.fainted || target.slot === side.activeSlot) return;
   side.activeSlot = targetSlot;
+  equipOnEntry(target, moves);
   events.push({ type: "switch", userId: side.userId, fromName: from.name, toName: target.name });
+}
+
+/**
+ * Monta a barra de skills de quem ENTRA em campo.
+ *
+ * A escolha é do jogador e chega junto com a troca. Só troca a barra se veio
+ * escolha: no auto-promover por timeout não vem nada, e aí o pokémon entra com a
+ * barra que já tinha — nunca em campo sem golpe nenhum.
+ *
+ * O PP é o do momento da ENTRADA, não zerado: quem volta pra reserva e retorna
+ * mantém o que gastou. Reentrar com PP cheio faria da troca uma recarga infinita.
+ */
+export function equipOnEntry(mon: BattlePokemonState, moves?: BattleMoveDef[]): void {
+  if (!moves || moves.length === 0) return;
+
+  const ppAnterior = new Map(mon.moves.map((m) => [m.id, m.currentPp]));
+  mon.moves = moves.map((m) => ({ ...m, currentPp: ppAnterior.get(m.id) ?? m.currentPp }));
 }
 
 /** Desfecho da partida a partir das reservas vivas: quem zerou o time perdeu. */
@@ -179,7 +202,7 @@ export function resolveRound(params: ResolveRoundParams): DuelResult {
   // 1) TROCAS primeiro (fiel à série): mudam o ativo antes de qualquer ataque.
   for (const side of [state.sideA, state.sideB]) {
     const action = actionOf[side.userId];
-    if (action.type === "SWITCH") applyVoluntarySwitch(side, action.targetSlot, events);
+    if (action.type === "SWITCH") applyVoluntarySwitch(side, action.targetSlot, events, action.moves);
   }
 
   // Hesitação (NONE) vira evento; troca e golpe não hesitam.
@@ -225,6 +248,40 @@ export interface ForcedSwitchParams {
   /** slot escolhido por cada lado; null/inválido → auto-promove o 1º vivo. */
   choiceA: number | null;
   choiceB: number | null;
+  /**
+   * A barra de skills que cada lado montou pro substituto. Ausente quando o
+   * tempo estourou e o motor auto-promoveu — aí o pokémon entra com a barra que
+   * já tinha, e é por isso que o `equipOnEntry` não zera nada sem escolha.
+   */
+  movesA?: BattleMoveDef[];
+  movesB?: BattleMoveDef[];
+}
+
+export interface LeadRoundParams {
+  state: DuelState;
+  movesA?: BattleMoveDef[];
+  movesB?: BattleMoveDef[];
+}
+
+/**
+ * Resolve o ROUND 0 (preparação): monta a barra do pokémon que abre a partida
+ * pra cada lado e passa pro round 1.
+ *
+ * O líder é o único que entra em campo sem uma ação de troca — daí precisar de
+ * um round só dele. Quem não escolheu a tempo entra com a barra que o snapshot
+ * já trouxe, então ninguém começa a partida sem golpe.
+ *
+ * Não gera evento: um log de turno vazio no round 0 só poluiria o relatório de
+ * combate, que conta o que ACONTECEU em campo.
+ */
+export function applyLeadLoadout(params: LeadRoundParams): DuelResult {
+  const state = cloneState(params.state);
+
+  equipOnEntry(activeOf(state.sideA), params.movesA);
+  equipOnEntry(activeOf(state.sideB), params.movesB);
+
+  state.round += 1;
+  return { state, events: [], winnerId: null, finished: false };
 }
 
 /** Slot do substituto na troca forçada: a escolha (se válida) ou o 1º vivo. */
@@ -249,12 +306,17 @@ export function applyForcedSwitch(params: ForcedSwitchParams): DuelResult {
 
   for (const side of [state.sideA, state.sideB]) {
     if (!needsForcedSwitch(side)) continue;
-    const choice = side.userId === state.sideA.userId ? params.choiceA : params.choiceB;
+    const ehA = side.userId === state.sideA.userId;
+    const choice = ehA ? params.choiceA : params.choiceB;
     const target = forcedTarget(side, choice);
     if (target == null) continue; // sem reserva viva (não deveria: needsForcedSwitch garante)
     const from = activeOf(side);
     side.activeSlot = target;
     const to = side.team.find((m) => m.slot === target)!;
+    // A barra só é montada quando o SUBSTITUTO ESCOLHIDO é o que entrou. Se o
+    // motor auto-promoveu outro (escolha inválida ou vencida), a barra escolhida
+    // era pra outro pokémon e aplicá-la aqui poria golpe alheio na carta errada.
+    if (choice === target) equipOnEntry(to, ehA ? params.movesA : params.movesB);
     events.push({ type: "switch", userId: side.userId, fromName: from.name, toName: to.name });
   }
 

@@ -135,8 +135,8 @@
     "semantic_hash": ""
   },
   "src/app/(game)/page.tsx": {
-    "mtime": 1785657314.5900245,
-    "ast_hash": "ce9de2b00d0d51749683df23fae9f5b0",
+    "mtime": 1785718476.223562,
+    "ast_hash": "26579ca89254a989e9131172bac3e7b5",
     "semantic_hash": ""
   },
   "src/app/(game)/pokemon/[id]/page.tsx": {
@@ -200,8 +200,8 @@
     "semantic_hash": ""
   },
   "src/app/api/deck/route.ts": {
-    "mtime": 1785604067.1388657,
-    "ast_hash": "896aeb0cf62d1891e35449feda6772ef",
+    "mtime": 1785718258.3992271,
+    "ast_hash": "d94b26f7247c547b1f4fe0a6bc698125",
     "semantic_hash": ""
   },
   "src/app/api/packs/checkin/route.ts": {
@@ -430,8 +430,8 @@
     "semantic_hash": ""
   },
   "src/modules/deck/commands/addToDeck.ts": {
-    "mtime": 1785697341.7006457,
-    "ast_hash": "cc95c43430e895abaebfc5d851e07cf1",
+    "mtime": 1785718629.8845778,
+    "ast_hash": "57c657c29c311be7a36e40438e0cbde1",
     "semantic_hash": ""
   },
   "src/modules/deck/commands/removeFromDeck.ts": {
@@ -440,13 +440,13 @@
     "semantic_hash": ""
   },
   "src/modules/deck/domain/rules.ts": {
-    "mtime": 1785697448.4469047,
-    "ast_hash": "cadec6714c737d1819ad28d732eeb5d0",
+    "mtime": 1785701351.132272,
+    "ast_hash": "b18b59eea685a499d86edc7614eb6310",
     "semantic_hash": ""
   },
   "src/modules/deck/index.ts": {
-    "mtime": 1785642674.692401,
-    "ast_hash": "eb2f618f06837c3616e27e77b7822a15",
+    "mtime": 1785701351.1332765,
+    "ast_hash": "b7da0a57844cc7fcd7cc5336c352dfc4",
     "semantic_hash": ""
   },
   "src/modules/deck/queries/getDeckSummary.ts": {
@@ -570,13 +570,13 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/index.ts": {
-    "mtime": 1785642294.9790967,
-    "ast_hash": "8a614aed5629fb741660a99e78443018",
+    "mtime": 1785718171.679738,
+    "ast_hash": "b51fbbe069a2c7d92d6fe590ce02b3e8",
     "semantic_hash": ""
   },
   "src/modules/pokedex/queries/getPokemonDetail.ts": {
-    "mtime": 1783999498.2157712,
-    "ast_hash": "b933c1a92632564fb85a49597fca313b",
+    "mtime": 1785718171.7175355,
+    "ast_hash": "8d4deea55527979b270906e4a9b0aad0",
     "semantic_hash": ""
   },
   "src/modules/pokedex/queries/getUnlockedMoveIds.ts": {
@@ -585,13 +585,13 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/queries/listPokedexPage.ts": {
-    "mtime": 1784265056.1900895,
-    "ast_hash": "74998a37736769b6a904fdde6c2ae43b",
+    "mtime": 1785718171.7170253,
+    "ast_hash": "3fdd87f15cb439a61de457f38e8cbcd6",
     "semantic_hash": ""
   },
   "src/modules/pokedex/queries/toPokemonDTO.ts": {
-    "mtime": 1783999498.2207887,
-    "ast_hash": "818763abfe24f38f3087b385919d64bd",
+    "mtime": 1785718171.7170253,
+    "ast_hash": "0d0eb2a19f30eba67f8804d23c563752",
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/CollectionCardActions.tsx": {
@@ -600,8 +600,8 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/CollectionGrid.tsx": {
-    "mtime": 1785642674.6974201,
-    "ast_hash": "51708847179754a3189237ccc6469610",
+    "mtime": 1785718411.0906448,
+    "ast_hash": "5eed77eb6bb99476baeb1b0cfbfa6fcd",
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/DetailPanel.tsx": {
@@ -620,8 +620,8 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/PokedexGrid.tsx": {
-    "mtime": 1785604067.177969,
-    "ast_hash": "482374a78f6a940eaaf9a63e024b8c29",
+    "mtime": 1785718171.7215538,
+    "ast_hash": "85290d1de6358871f213551bf04374da",
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/PokemonMoves.tsx": {
@@ -640,13 +640,8 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/pokedexView.ts": {
-    "mtime": 1785642294.9841273,
-    "ast_hash": "12c47fd63408406805d5d28ff054e706",
-    "semantic_hash": ""
-  },
-  "src/modules/pokedex/ui/types.ts": {
-    "mtime": 1785642294.9851255,
-    "ast_hash": "7da992285e77638b8a2fcaf3d80af157",
+    "mtime": 1785718171.7215538,
+    "ast_hash": "92057edb2a13243ebb6c2487ce3584eb",
     "semantic_hash": ""
   },
   "src/modules/progression/domain/evolution.ts": {
@@ -785,13 +780,13 @@
     "semantic_hash": ""
   },
   "tests/modules/deck/commands/addToDeck.test.ts": {
-    "mtime": 1785697424.6939626,
-    "ast_hash": "88255e3faeff74e5c9817271dd6dbbf1",
+    "mtime": 1785718596.2618895,
+    "ast_hash": "bf9a55c021056c665d4793e275cc73fe",
     "semantic_hash": ""
   },
   "tests/modules/deck/domain/rules.test.ts": {
-    "mtime": 1785697397.0171492,
-    "ast_hash": "786a811645063dc72ae8725ac7c621d9",
+    "mtime": 1785701351.1392992,
+    "ast_hash": "52ed2bfd19c3b914197b1d66ca1e7a34",
     "semantic_hash": ""
   },
   "tests/modules/packs/commands/checkInLogin.test.ts": {
@@ -955,8 +950,8 @@
     "semantic_hash": ""
   },
   "PLANO_JOGO.md": {
-    "mtime": 1785696674.0489798,
-    "ast_hash": "9becef1c2ead4a53d2e05f826a657cac",
+    "mtime": 1785718810.5707755,
+    "ast_hash": "1487229a3b3607f4d93f3ca48b0bb123",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1080,13 +1075,13 @@
     "semantic_hash": ""
   },
   "src/modules/pokedex/queries/getCollectionPage.ts": {
-    "mtime": 1785642294.9806092,
-    "ast_hash": "8dd92d4b98fa3d90e909b2524bb9a777",
+    "mtime": 1785718171.7155132,
+    "ast_hash": "37d78a0836f5d803f7f65e5f898c879c",
     "semantic_hash": ""
   },
   "src/modules/pokedex/queries/toCollectionPageDTO.ts": {
-    "mtime": 1785622779.571244,
-    "ast_hash": "3b39b7efed909d3455fadd098467638e",
+    "mtime": 1785718171.7170253,
+    "ast_hash": "5575d3d34bc6cb0c9292e2e258d25c58",
     "semantic_hash": ""
   },
   "src/modules/pokedex/ui/CollectionFilterBar.tsx": {
@@ -1155,8 +1150,8 @@
     "semantic_hash": ""
   },
   "tests/modules/pokedex/ui/pokedexView.test.ts": {
-    "mtime": 1785642294.990138,
-    "ast_hash": "c6fdb987bc40fd73bbccefdb8a119379",
+    "mtime": 1785718171.7215538,
+    "ast_hash": "d84a5628d69780f0ee157566f7bd8742",
     "semantic_hash": ""
   },
   "src/layout/toast.tsx": {
@@ -1175,23 +1170,23 @@
     "semantic_hash": ""
   },
   "src/modules/deck/ui/DeckSlotCard.tsx": {
-    "mtime": 1785642674.694418,
-    "ast_hash": "4f4297d7819f88722b72e8d10da2bc7d",
+    "mtime": 1785718276.9192243,
+    "ast_hash": "08791a31213b48281c8e043b60f13d19",
     "semantic_hash": ""
   },
   "src/modules/deck/ui/DeckSlots.tsx": {
-    "mtime": 1785642674.6949184,
-    "ast_hash": "53aa7a65d0c9975e964096e5b8f14c2d",
+    "mtime": 1785701351.135789,
+    "ast_hash": "cbf2a9be36026487627e9f26730addfe",
     "semantic_hash": ""
   },
   "src/modules/deck/ui/deckBoardView.ts": {
-    "mtime": 1785642674.695916,
-    "ast_hash": "401f6ebf5278547dcc91f29b995df422",
+    "mtime": 1785701351.1367977,
+    "ast_hash": "98238ba6ac68dd799c69948b329e842f",
     "semantic_hash": ""
   },
   "tests/modules/deck/ui/deckBoardView.test.ts": {
-    "mtime": 1785642674.6989145,
-    "ast_hash": "5efe1c8008fdc10a026f50be1c85d0ed",
+    "mtime": 1785701351.1402984,
+    "ast_hash": "0e52b0bc5ef02bd7588a44b940c4a99a",
     "semantic_hash": ""
   },
   "src/app/(game)/streak/page.tsx": {
@@ -1217,6 +1212,51 @@
   "src/modules/battle/ui/ReserveDrawer.tsx": {
     "mtime": 1785696674.0876408,
     "ast_hash": "aaeb8e75886293b6f6bd1421312b6052",
+    "semantic_hash": ""
+  },
+  "src/app/api/deck/order/route.ts": {
+    "mtime": 1785701351.129774,
+    "ast_hash": "d4aaeef30f681aaff149dcc9a82665b5",
+    "semantic_hash": ""
+  },
+  "src/modules/deck/commands/reorderDeck.ts": {
+    "mtime": 1785701351.1317718,
+    "ast_hash": "50a65e265a84c47f2d5944c4e129c781",
+    "semantic_hash": ""
+  },
+  "src/modules/deck/ui/DeckSlotList.tsx": {
+    "mtime": 1785718450.8227367,
+    "ast_hash": "71f4db9ea019f14c6047c8075e22e5c4",
+    "semantic_hash": ""
+  },
+  "tests/modules/deck/commands/reorderDeck.test.ts": {
+    "mtime": 1785701351.1382937,
+    "ast_hash": "d54f2c1240a49670b4c964771479a3d2",
+    "semantic_hash": ""
+  },
+  "src/modules/deck/domain/defaultLoadout.ts": {
+    "mtime": 1785718169.3469448,
+    "ast_hash": "23c6fcb9dab3e798b96d5171530f66fd",
+    "semantic_hash": ""
+  },
+  "src/modules/deck/ui/DeckDropZone.tsx": {
+    "mtime": 1785718739.5453396,
+    "ast_hash": "80646b9ae109e42eaaccb5e338ddf95b",
+    "semantic_hash": ""
+  },
+  "src/modules/pokedex/types.ts": {
+    "mtime": 1785718171.7155132,
+    "ast_hash": "170750f4162043c64c16bfc1e63e4337",
+    "semantic_hash": ""
+  },
+  "src/modules/pokedex/ui/CollectionCardDrag.tsx": {
+    "mtime": 1785718395.6357362,
+    "ast_hash": "3ea3f5b8edf51e28480b2aa2084d2dc5",
+    "semantic_hash": ""
+  },
+  "tests/modules/deck/domain/defaultLoadout.test.ts": {
+    "mtime": 1785718187.0007606,
+    "ast_hash": "9120c9736345a0409e9dcf9e86c53a98",
     "semantic_hash": ""
   }
 }

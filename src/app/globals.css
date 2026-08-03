@@ -171,6 +171,23 @@ a { color: inherit; text-decoration: none; }
 /* enquanto o ponteiro corre, a carta acompanha rápido; ao sair, volta suave */
 .holo-card[data-active="true"] { transition: transform 0.07s linear; }
 
+/* Arrastando a carta pro deck: o tilt DESLIGA e ela fica reta.
+   Duas coisas brigavam. A inclinação segue o ponteiro, então a carta girava
+   enquanto era arrastada; e o HoloCard escreve as custom properties INLINE no
+   nó (de propósito — um grid de 20 cartas não pode re-renderizar a cada
+   mousemove), então só `!important` ganha delas. Zerar aqui evita ter que
+   passar estado de cliente pra dentro do PokeCard, que é do servidor. */
+[data-dragging="true"] .holo-card,
+[data-dragging="true"] .holo-card[data-active="true"] {
+  --holo-rx: 0deg !important;
+  --holo-ry: 0deg !important;
+  --holo-mx: 50% !important;
+  --holo-my: 50% !important;
+  --holo-mx-n: 0 !important;
+  --holo-my-n: 0 !important;
+  transition: transform 0.12s var(--ease-snap) !important;
+}
+
 /* ══════════════════════════════════════════════════════════════
    PokeCard — a carta ÚNICA do jogo (spec: carta-unica-prismatica).
    Geometria TODA em função de --card-w, então a mesma moldura serve de

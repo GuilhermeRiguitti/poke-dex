@@ -1,5 +1,5 @@
 import { fetchPokemon } from "@/src/lib/pokeapi";
-import type { PokemonDetailDTO } from "../ui/types";
+import type { PokemonDetailDTO } from "../types";
 import { toPokemonDetailDTO } from "./toPokemonDTO";
 
 /**

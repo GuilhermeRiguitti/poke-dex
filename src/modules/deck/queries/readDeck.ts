@@ -23,24 +23,13 @@ export async function getOrCreateDeck(userId: string) {
   return prisma.deck.create({ data: { userId }, select: { id: true } });
 }
 
-// ─── Loadout completo pro battle montar o snapshot (lê o espelho local) ─────
+// ─── O time pro battle montar o snapshot (lê o espelho local) ───────────────
+//
+// As CARTAS saíram daqui (2026-08-02): o deck é o time, e a barra de skills é
+// escolhida na batalha, ao pôr o pokémon em campo. Quem monta a barra inicial do
+// snapshot é o buildDuelSnapshot, a partir do learnset.
 
-/** Uma carta do loadout já resolvida no Move do espelho. */
-export interface DeckLoadoutCard {
-  order: number;
-  move: {
-    moveApiId: number;
-    name: string;
-    type: string;
-    power: number | null;
-    accuracy: number | null;
-    damageClass: string;
-    priority: number;
-    pp: number;
-  };
-}
-
-/** Um slot do deck com o UserPokemon (nível + espécie) e suas cartas. */
+/** Um slot do deck com o UserPokemon (nível + espécie). */
 export interface DeckLoadoutSlot {
   order: number;
   userPokemon: {
@@ -54,14 +43,13 @@ export interface DeckLoadoutSlot {
       spriteUrl: string | null;
     };
   };
-  cards: DeckLoadoutCard[];
 }
 
 /**
- * Os loadouts do deck, na ordem dos slots, limitado ao tamanho do time. É o que
- * o battle usa pra montar o snapshot da partida — já com o pokémon (nível +
- * base stats do espelho) e as cartas (Move do espelho) resolvidos. `types`/
- * `baseStats` são colunas Json; o cast é o contrato do espelho (syncPokedex).
+ * O time do deck, na ordem dos slots, limitado ao tamanho do time. É o que o
+ * battle usa pra montar o snapshot da partida — com o pokémon (nível + base
+ * stats do espelho) resolvido. `types`/`baseStats` são colunas Json; o cast é o
+ * contrato do espelho (syncPokedex).
  */
 export async function readDeckSlots(
   userId: string,
@@ -81,23 +69,6 @@ export async function readDeckSlots(
               level: true,
               pokemon: {
                 select: { pokemonApiId: true, name: true, types: true, baseStats: true, spriteUrl: true },
-              },
-            },
-          },
-          cards: {
-            orderBy: { order: "asc" },
-            include: {
-              move: {
-                select: {
-                  moveApiId: true,
-                  name: true,
-                  type: true,
-                  power: true,
-                  accuracy: true,
-                  damageClass: true,
-                  priority: true,
-                  pp: true,
-                },
               },
             },
           },
@@ -121,18 +92,5 @@ export async function readDeckSlots(
         spriteUrl: slot.userPokemon.pokemon.spriteUrl,
       },
     },
-    cards: slot.cards.map((c) => ({
-      order: c.order,
-      move: {
-        moveApiId: c.move.moveApiId,
-        name: c.move.name,
-        type: c.move.type,
-        power: c.move.power,
-        accuracy: c.move.accuracy,
-        damageClass: c.move.damageClass,
-        priority: c.move.priority,
-        pp: c.move.pp,
-      },
-    })),
   }));
 }

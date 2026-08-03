@@ -13,7 +13,6 @@ export type {
   DeckBoardDTO,
   DeckBoardSlotDTO,
   DeckSlotDTO,
-  DeckSlotCardDTO,
   DeckSummaryDTO,
   LearnsetMoveDTO,
 } from "./ui/types";
@@ -22,6 +21,9 @@ export type {
 // de domain/rules direto (o mesmo caminho que deckBoardView faz com DECK_LIMIT).
 // Rota nenhuma precisa dela.
 export { DECK_LIMIT, CARDS_PER_SLOT, isDeckFull } from "./domain/rules";
+// A barra com que o pokémon ENTRA quando o jogador não escolhe a tempo. Vive no
+// deck (é regra de "qual barra montar"), mas quem usa hoje é a batalha.
+export { defaultLoadout } from "./domain/defaultLoadout";
 
 export { readLearnset } from "./queries/readLearnset";
 
@@ -33,7 +35,7 @@ export { getDeckBoardQuery } from "./queries/getDeckBoard";
 // e getDeckSummary ESCREVEM (criam o deck vazio no primeiro acesso) — ver o
 // aviso em getDeckSummary.ts.
 export { readDeckSlots, getOrCreateDeck } from "./queries/readDeck";
-export type { DeckLoadoutSlot, DeckLoadoutCard } from "./queries/readDeck";
+export type { DeckLoadoutSlot } from "./queries/readDeck";
 export { getDeckSummary } from "./queries/getDeckSummary";
 
 export { addToDeck } from "./commands/addToDeck";

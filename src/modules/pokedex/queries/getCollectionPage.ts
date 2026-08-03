@@ -1,6 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
 import { COLLECTION_PAGE_SIZE, type CollectionFilters } from "../domain/collectionFilters";
-import type { CollectionPageDTO } from "../ui/types";
+import type { CollectionPageDTO } from "../types";
 import { buildCollectionWhere, orderByFor } from "./collectionWhere";
 import { COLLECTION_CARD_SELECT, toCollectionCardDTO } from "./toCollectionPageDTO";
 

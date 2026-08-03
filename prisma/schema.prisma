@@ -106,9 +106,8 @@ model DeckSlot {
   userPokemonId String
   order         Int
 
-  deck        Deck           @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  userPokemon UserPokemon    @relation(fields: [userPokemonId], references: [id], onDelete: Cascade)
-  cards       DeckSlotCard[]
+  deck        Deck        @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  userPokemon UserPokemon @relation(fields: [userPokemonId], references: [id], onDelete: Cascade)
 
   @@unique([deckId, order])
   @@unique([deckId, userPokemonId]) // um pokémon não ocupa dois slots do mesmo deck
@@ -117,18 +116,14 @@ model DeckSlot {
 // As 6 skills escolhidas do learnset do pokémon do slot. `order` é a posição na
 // barra de golpes (0..5). A PK lógica é (deckSlotId, order) e (deckSlotId,
 // moveId) — não dá pra repetir carta nem pular posição.
-model DeckSlotCard {
-  id         String @id @default(cuid())
-  deckSlotId String
-  moveId     String
-  order      Int
-
-  deckSlot DeckSlot @relation(fields: [deckSlotId], references: [id], onDelete: Cascade)
-  move     Move     @relation(fields: [moveId], references: [id], onDelete: Cascade)
-
-  @@unique([deckSlotId, order])
-  @@unique([deckSlotId, moveId])
-}
+// DeckSlotCard SAIU (2026-08-02). A barra de skills deixou de ser guardada no
+// deck: ela é escolhida na BATALHA, no momento em que o pokémon entra em campo
+// (BattleAction.loadout). O deck voltou a ser o que o nome diz — o TIME, seis
+// pokémon em ordem.
+//
+// O que sumiu junto: a poda de cartas órfãs depois da evolução. Não há mais
+// carta guardada pra ficar órfã quando a espécie muda — a escolha é sempre
+// feita contra o learnset da espécie ATUAL, na hora.
 
 // ──────────────────────────────────────────────
 // Espelho da PokéAPI (PLANO_JOGO.md §5 e §7) — Fase 0.
@@ -196,7 +191,6 @@ model Move {
   fetchedAt   DateTime @default(now())
 
   learnedBy    PokemonMove[]
-  deckCards    DeckSlotCard[]
   unlockedByUsers UserPokemonMove[]
 }
 
@@ -327,7 +321,15 @@ enum BattleStatus {
 model Battle {
   id            String       @id @default(cuid())
   status        BattleStatus @default(IN_PROGRESS)
-  round         Int          @default(1)
+  // 0 = PREPARAÇÃO: os dois escolhem as skills do pokémon que abre a partida
+  // (BattleAction type LEAD) e ninguém ataca ainda. Vira 1 quando as duas
+  // escolhas estão na mesa, ou quando o tempo estoura.
+  //
+  // Round 0 em vez de um BattleStatus novo DE PROPÓSITO: a preparação herda de
+  // graça o timeout, a contagem de faltas, a trava otimista por (round, status),
+  // o polling e o backstop do pg_cron. Um status a mais obrigaria a revisar cada
+  // `status !== "IN_PROGRESS"` espalhado pelo módulo.
+  round         Int          @default(0)
   turnStartedAt DateTime     @default(now())
   winnerId      String?
   createdAt     DateTime     @default(now())
@@ -382,6 +384,10 @@ model BattlePokemon {
 enum BattleActionType {
   MOVE
   SWITCH
+  // A escolha de skills do pokémon que ABRE a partida, submetida no round 0
+  // (o round de preparação). O líder é o único que entra em campo sem uma ação
+  // de troca, então precisa do próprio tipo.
+  LEAD
 }
 
 // A jogada de um jogador no round atual — SEGREDO até o turno resolver. No
@@ -395,7 +401,18 @@ model BattleAction {
   userId    String
   round     Int
   type      BattleActionType @default(MOVE)
-  cardSlot  Int // MOVE: índice do golpe 0..5 | SWITCH: slot do pokémon alvo 1..6
+  cardSlot  Int // MOVE: índice do golpe 0..5 | SWITCH: slot do pokémon alvo 1..6 | LEAD: não usado (0)
+  // Os Move.id escolhidos pra quem ENTRA em campo (LEAD e SWITCH). null em MOVE.
+  //
+  // A escolha das skills virou decisão de batalha, não de deck — e ela viaja
+  // JUNTO com a ação porque não dá pra pausar o turno pra perguntar: a resolução
+  // acontece dentro de um request (CLAUDE.md regra 5), e a troca forçada resolve
+  // no meio do turno do oponente. "Troco pro #3 com estas skills" é uma
+  // submissão só, às cegas, e o motor aplica numa passada.
+  //
+  // É SEGREDO igual ao cardSlot: fica aqui até o turno resolver, e o DTO nunca
+  // o expõe (toBattleDTO só manda quem já jogou, não o quê).
+  loadout   Json?
   createdAt DateTime         @default(now())
 
   battle Battle @relation(fields: [battleId], references: [id], onDelete: Cascade)

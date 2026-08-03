@@ -1,15 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
-import { CARDS_PER_SLOT } from "@/src/modules/deck";
 import {
   applyXp,
   evolutionTargetFor,
   LOSER_XP_SHARE,
-  mergePlayableMoveIds,
-  PLAYABLE_LEARN_METHOD,
   progressionFromXp,
-  pruneLoadout,
-  refillLoadout,
   xpFromDefeat,
 } from "@/src/modules/progression";
 
@@ -153,67 +148,20 @@ async function maybeEvolve(
     });
     if (!next) return; // alvo fora do espelho
 
+    // Evoluir é só trocar a espécie. Não há loadout guardado pra podar depois —
+    // ver o bloco no fim deste arquivo.
     await tx.userPokemon.update({ where: { id: userPokemonId }, data: { pokemonId: next.id } });
-    await pruneLoadoutForSpecies(tx, userPokemonId, next.id, level);
 
     current = { evolvesToApiId: next.evolvesToApiId, evolvesToLevel: next.evolvesToLevel };
   }
 }
 
-/**
- * Poda os loadouts do UserPokemon depois da evolução: apaga as DeckSlotCard cujo
- * move a NOVA espécie não conhece por level-up já destravado no nível atual, e
- * REPÕE o slot que a poda tiver esvaziado. As duas decisões são puras
- * (progression/domain/evolution: pruneLoadout + refillLoadout); aqui é só o I/O.
- *
- * A reposição não é enfeite: slot vazio deixa o pokémon INJOGÁVEL
- * (`buildDuelSnapshot` lança) e derrubava o matchmaking — ver refillLoadout.
- *
- * Slots podem ficar com buracos na `order` (só apagamos) — a batalha lê as
- * cartas por ordem crescente, então buraco não quebra nada.
- */
-async function pruneLoadoutForSpecies(
-  tx: Prisma.TransactionClient,
-  userPokemonId: string,
-  newSpeciesId: string,
-  level: number,
-): Promise<void> {
-  const slots = await tx.deckSlot.findMany({
-    where: { userPokemonId },
-    select: { id: true, cards: { select: { moveId: true } } },
-  });
-  if (slots.length === 0) return;
-
-  // Válidas = level-up da NOVA espécie já destravadas ∪ as CONCEDIDAS por fora
-  // (TM/tutor/ovo). As concedidas persistem na evolução (são do UserPokemon, não
-  // da espécie) — como na série, evoluir não apaga golpe já sabido. Sem juntá-las
-  // aqui, um egg/TM suado sumiria do loadout ao evoluir.
-  const [valid, granted] = await Promise.all([
-    tx.pokemonMove.findMany({
-      where: { pokemonId: newSpeciesId, learnMethod: PLAYABLE_LEARN_METHOD, levelLearnedAt: { lte: level } },
-      select: { moveId: true, levelLearnedAt: true },
-    }),
-    tx.userPokemonMove.findMany({ where: { userPokemonId }, select: { moveId: true } }),
-  ]);
-  const validSet = mergePlayableMoveIds(valid.map((v) => v.moveId), granted.map((g) => g.moveId));
-
-  for (const slot of slots) {
-    const currentIds = slot.cards.map((c) => c.moveId);
-    const kept = new Set(pruneLoadout(currentIds, validSet));
-    const orphans = currentIds.filter((id) => !kept.has(id));
-    if (orphans.length > 0) {
-      await tx.deckSlotCard.deleteMany({ where: { deckSlotId: slot.id, moveId: { in: orphans } } });
-    }
-
-    // Só entra quando a poda zerou o slot; senão `refillLoadout` devolve o que
-    // sobreviveu e não há nada a criar. As candidatas são as level-up da espécie
-    // nova (se o slot tivesse uma carta de TM, ela teria sobrevivido — as
-    // concedidas estão no validSet — e o slot não estaria vazio).
-    const added = refillLoadout([...kept], valid, CARDS_PER_SLOT).filter((id) => !kept.has(id));
-    if (added.length > 0) {
-      await tx.deckSlotCard.createMany({
-        data: added.map((moveId, order) => ({ deckSlotId: slot.id, moveId, order })),
-      });
-    }
-  }
-}
+// A PODA DE LOADOUT PÓS-EVOLUÇÃO SAIU (2026-08-02).
+//
+// Ela existia porque o deck guardava a barra de skills (DeckSlotCard): evoluir
+// trocava a espécie, e as cartas que a espécie nova não conhecia viravam órfãs —
+// era preciso apagá-las e repor o slot pra o pokémon não ficar injogável.
+//
+// Com a escolha movida pra dentro da batalha, não há barra guardada pra ficar
+// órfã: o jogador monta contra o learnset da espécie ATUAL toda vez que põe o
+// pokémon em campo. O problema deixou de existir em vez de ser resolvido.

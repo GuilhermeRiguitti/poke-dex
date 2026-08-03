@@ -825,6 +825,88 @@ então "sem efeito" continua aparecendo.
   - **Konva não entrou.** `konva`/`react-konva` seguem no `package.json` sem
     nenhum uso desde que o palco virou R3F — reordenar 6 linhas em canvas
     custaria redesenhar as cartas em primitivas e perder o a11y.
+- **Arrastar da coleção pro deck (2026-08-02)** — soltar a carta na coluna do
+  deck MONTA o loadout, sem abrir modal. Sem migration. É a 1ª de duas entregas;
+  a 2ª leva a escolha de skills pra dentro da batalha (ver abaixo). O que mudou:
+  - **`addToDeck` aceita `moveIds` ausente**: aí o SERVIDOR monta a barra
+    (`domain/defaultLoadout`, puro e testado — ordena por poder, depois por
+    nível de aprendizado, e desempata por id pra a escolha ser sempre a mesma).
+    "As primeiras desbloqueadas" sairia tackle + growl; o deck montado por
+    arrasto tem que ser jogável. O caminho passa pelo MESMO gating de
+    desbloqueio do `LoadoutBuilder` — arrastar não monta o que o nível não
+    liberou.
+  - **`DeckDropProvider`** (`deck/ui/DeckDropZone.tsx`) envolve as duas colunas
+    em `(game)/page.tsx` porque o gesto atravessa coleção e deck, que eram
+    subárvores irmãs sem estado em comum. **A page continua Server Component**:
+    as colunas entram no provider como `children` e seguem renderizadas no
+    servidor. Pôr `"use client"` na page levaria `getCollectionQuery`/
+    `getDeckBoardQuery` (com Prisma) pro bundle do browser.
+  - **`CollectionCardDrag`** é só uma casca cliente por volta do `PokeCard`, que
+    continua vindo do servidor — o mesmo truque que o `HoloCard` já usava.
+  - **O que segue o cursor é a CARTA em miniatura** (45%), não um chip com nome e
+    sprite: o `children` (a carta já renderizada no servidor) é passado pro
+    provider e desenhado escalado. Elemento React é descritor, então reusá-lo não
+    duplica dado nem busca nada — e a miniatura fica idêntica à carta de origem.
+    Inclinação fixa de −4° e sombra pra dar peso de carta física; **sem texto de
+    instrução** (quem diz onde vai cair é a vaga do deck, que acende).
+  - **O tilt 3D desliga durante o arrasto** (`[data-dragging]` no globals.css,
+    com `!important` porque o HoloCard escreve as custom properties inline). Sem
+    isso a carta girava atrás do cursor no meio do gesto.
+  - **Só no mouse.** No toque o gesto vertical é rolar a coleção; no celular o
+    caminho continua sendo o botão "Montar".
+  - A posição do drop é a primeira vaga livre (`firstFreeOrder`); pra escolher
+    quem começa em campo, o arrasto DENTRO do deck já resolve.
+- **Skills escolhidas na BATALHA (2026-08-02)** ✅ — a escolha do loadout saiu do
+  deck e virou decisão de **quando o pokémon entra em campo**. O deck voltou a
+  ser o que o nome diz: o time. Duas migrations. O que mudou:
+  - **A escolha viaja JUNTO com a ação** (`BattleAction.loadout`), porque não dá
+    pra pausar o turno pra perguntar: a resolução acontece dentro de um request
+    (regra 5) e a troca forçada resolve no meio do turno do oponente. "Troco pro
+    #3 com estas skills" é uma submissão só, às cegas.
+  - **Round 0 = preparação**, e não um `BattleStatus` novo: o líder é o único que
+    entra sem ação de troca, e o round 0 herda de graça o timeout, as faltas, a
+    trava otimista por (round, status), o polling e o backstop do `pg_cron`. Um
+    status a mais obrigaria a revisar cada `status !== "IN_PROGRESS"` do módulo.
+  - **É segredo, como o `cardSlot`.** O `toBattleDTO` nunca toca `action.loadout`
+    — a barra que o oponente montou só aparece quando o pokémon entra. Travado
+    por teste (`not.toContain("loadout")`).
+  - **As opções vêm de rota própria** (`GET /api/battle/[id]/loadout?slot=N`), e
+    não do `BattleDTO`: o DTO leva os dois lados, então pendurar o learnset nele
+    entregaria o repertório possível do meu time inteiro ao adversário. O filtro
+    usa o nível **congelado no snapshot** — subir de nível em outra aba não
+    destrava carta na partida em andamento.
+  - **`equipOnEntry` preserva o PP já gasto.** Reentrar com PP cheio faria da
+    troca uma recarga infinita. E sem escolha (auto-promover no timeout) o
+    pokémon mantém a barra que tinha — nunca entra em campo sem golpe.
+  - **`DeckSlotCard` SAIU do schema** (`20260803..._drop_deck_slot_card`). Com
+    ele foi embora a **poda de loadout pós-evolução** do `awardBattleXp`: não há
+    mais carta guardada pra ficar órfã quando a espécie muda. O problema deixou
+    de existir em vez de ser resolvido.
+  - **`buildDuelSnapshot` monta a barra inicial pelo `defaultLoadout`** (as mais
+    fortes já liberadas). Não é o loadout do deck — é o **fallback** de quem não
+    escolher a tempo.
+  - **`LoadoutBuilder` e `GET /api/deck/learnset/[id]` foram removidos.** O botão
+    "Montar" da coleção virou POST direto; não há mais o que escolher lá.
+  - **`SkillSheet` (training/ui) recuperou o ENSINO de TM**, que tinha ido junto
+    com o LoadoutBuilder por engano — a batalha só oferece o que já está
+    liberado, então sem ele não havia onde ver o que falta nem onde gastar um
+    token. Mostra as três situações: já sabe · ensinar por TM (1 token) ·
+    aprende no nv. X. Rota nova `GET /api/training/skills/[userPokemonId]` —
+    mora em `training` porque ensinar é treino, não montagem de time.
+  - **O rodapé da carta virou dois botões ÍCONE iguais**, lado a lado: `☰` abre
+    o SkillSheet, `✓` põe no time (era o texto "Montar"). Sem rótulo porque o
+    rodapé é estreito e qualquer palavra ali disputa atenção com o nome e os
+    stats.
+  - **O `✓` NÃO tem estado "marcado", e isso é decisão consciente** (03/08): a
+    carta montada não aparece na coleção (`deckSlots: { none: {} }` em
+    `collectionWhere`), então não há o que marcar. Marcar exigiria a coleção
+    voltar a listar quem está no deck — desfazendo a separação de 01/08 que
+    consertou a carta sumindo da vaga ao filtrar/paginar. Fica como está.
+  - **O painel vai pro `document.body` por PORTAL.** A carta tem `transform` (o
+    tilt do HoloCard), e ancestral com `transform` é bloco contentor pra
+    `position: fixed` — sem o portal o `inset-0` media a CARTA, e o painel
+    aparecia preso dentro dela com a arte por cima. Mesma armadilha do
+    `backdrop-blur` do header no drawer do NavBar.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta

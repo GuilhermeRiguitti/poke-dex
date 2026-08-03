@@ -57,11 +57,24 @@ export default function DeckSlotCard({
     }
   };
 
+  // No MOUSE a carta inteira arrasta — pegar a linha pelo corpo é o gesto que a
+  // pessoa tenta primeiro, e exigir mira num quadradinho de 40px fazia parecer
+  // que a tela não arrastava. Menos o ✕: ali o gesto é clicar, não arrastar.
+  const pegarPelaCarta = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse") return; // no toque, só pela alça (ver abaixo)
+    if ((e.target as HTMLElement).closest("button")) return;
+    onPegar(e);
+  };
+
   return (
     <div
-      className={`clip-btn flex min-h-14.5 items-center gap-2.5 p-2 transition-opacity ${
+      onPointerDown={pegarPelaCarta}
+      onPointerMove={onArrastar}
+      onPointerUp={onSoltar}
+      onPointerCancel={onSoltar}
+      className={`clip-btn flex min-h-14.5 select-none items-center gap-2.5 p-2 transition-opacity ${
         locked ? "opacity-50" : ""
-      } ${arrastando ? "shadow-lg" : ""}`}
+      } ${arrastando ? "cursor-grabbing shadow-lg" : "cursor-grab"}`}
       style={{
         background: `linear-gradient(90deg, color-mix(in srgb, ${cor} 16%, transparent), var(--color-panel-2) 62%)`,
         boxShadow: arrastando
@@ -69,18 +82,33 @@ export default function DeckSlotCard({
           : `inset 0 0 0 1px color-mix(in srgb, ${cor} 40%, transparent)`,
       }}
     >
-      {/* Alça: é ela que arrasta, não a linha toda — assim o ✕ continua clicável
-          e, no celular, o dedo passando pela carta ainda rola a lista.
-          `touch-action: none` só aqui, pelo mesmo motivo. */}
+      {/* A alça segue existindo pro TOQUE e pro teclado. No dedo ela não pode ser
+          a carta toda: `touch-action: none` na linha inteira impediria rolar a
+          página com o dedo em cima do deck. Aqui o alvo é pequeno de propósito. */}
       <span
         role="button"
         tabIndex={0}
         aria-label={`${slot.name}, posição ${posicao + 1} de ${total}. Arraste, ou use Alt com as setas, para mudar a ordem do time.`}
         title={emCampo ? "Começa em campo — arraste para mudar" : "Arraste para mudar a ordem"}
-        onPointerDown={onPegar}
-        onPointerMove={onArrastar}
-        onPointerUp={onSoltar}
-        onPointerCancel={onSoltar}
+        // stopPropagation: sem isso o evento sobe pra carta, que também escuta,
+        // e o arrasto começaria DUAS vezes — a segunda zerando a medida da
+        // primeira.
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onPegar(e);
+        }}
+        onPointerMove={(e) => {
+          e.stopPropagation();
+          onArrastar(e);
+        }}
+        onPointerUp={(e) => {
+          e.stopPropagation();
+          onSoltar();
+        }}
+        onPointerCancel={(e) => {
+          e.stopPropagation();
+          onSoltar();
+        }}
         onKeyDown={onTecla}
         className="clip-btn flex h-10 w-10 flex-none cursor-grab touch-none select-none flex-col items-center justify-center gap-0.5 active:cursor-grabbing"
         style={{ background: `color-mix(in srgb, ${cor} 16%, transparent)` }}
