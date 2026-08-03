@@ -1,14 +1,12 @@
 import { prisma } from "@/src/lib/prisma";
-import { getUnlockedMoveIds } from "@/src/modules/pokedex";
-import { CARDS_PER_SLOT, firstFreeOrder, isDeckFull } from "../domain/rules";
+import { firstFreeOrder, isDeckFull } from "../domain/rules";
+import { readLearnset } from "../queries/readLearnset";
 import { getOrCreateDeck } from "../queries/readDeck";
 import type { DeckSlotDTO } from "../ui/types";
 import { toDeckSlotDTO } from "../queries/toDeckDTO";
 
 export type AddToDeckInput = {
   userPokemonId: string;
-  /** Move.ids escolhidos do learnset, na ordem da barra (0..5). Até CARDS_PER_SLOT. */
-  moveIds: string[];
 };
 
 export type AddToDeckResult =
@@ -16,39 +14,33 @@ export type AddToDeckResult =
   | { ok: false; error: "not_found" | "deck_full" | "invalid_cards" };
 
 /**
- * Monta um loadout no deck: 1 UserPokemon + suas cartas (skills do learnset).
+ * Põe um pokémon no time. Só isso — o deck é o TIME, não a barra de golpes.
+ *
+ * As skills saíram daqui (2026-08-02): são escolhidas na BATALHA, no momento em
+ * que o pokémon entra em campo. Por isso não há mais `moveIds`, nem modal, nem
+ * `DeckSlotCard` — soltar a carta na coluna do deck é um gesto só.
+ *
+ * O que sobrou de trava: o pokémon precisa ter ao menos UMA skill liberada. Sem
+ * nenhuma ele entraria em campo sem ação possível, e `buildDuelSnapshot` lança —
+ * longe daqui, no meio do matchmaking, sem pista do porquê.
  *
  * Concorrência (CLAUDE.md regra 6): o jogador pode disparar dois requests juntos
  * (duas abas / duplo-clique). A leitura dos slots e o insert vão na MESMA
  * $transaction, então o limite de 6 é checado contra o estado real; e o slot é
- * `upsert` na @@unique([deckId, userPokemonId]), não findFirst+create — montar o
- * mesmo pokémon duas vezes não cria dois slots (o segundo ATUALIZA as cartas).
+ * `upsert` na @@unique([deckId, userPokemonId]), não findFirst+create — pôr o
+ * mesmo pokémon duas vezes não cria dois slots.
  */
 export async function addToDeck(userId: string, input: AddToDeckInput): Promise<AddToDeckResult> {
-  const moveIds = [...new Set(input.moveIds)];
-  if (moveIds.length === 0 || moveIds.length > CARDS_PER_SLOT) {
-    return { ok: false, error: "invalid_cards" };
-  }
-
   // O pokémon é do jogador? (id de outro dono responde igual a inexistente — não
   // vira oráculo de "esse id existe".)
   const userPokemon = await prisma.userPokemon.findUnique({
     where: { id: input.userPokemonId },
-    select: { id: true, userId: true, pokemonId: true, level: true },
+    select: { id: true, userId: true },
   });
   if (!userPokemon || userPokemon.userId !== userId) return { ok: false, error: "not_found" };
 
-  // Toda carta escolhida tem que estar DESBLOQUEADA pra este pokémon: de
-  // level-up já liberada pelo nível OU concedida por fora (TM/tutor/ovo). É aqui
-  // que o gating vale de verdade: o modal já esconde as travadas, mas o POST é
-  // público — sem esta checagem, um `curl` montaria hyper-beam num pokémon nv.5,
-  // ou uma TM que o jogador não ensinou.
-  const unlocked = await getUnlockedMoveIds({
-    userPokemonId: userPokemon.id,
-    pokemonId: userPokemon.pokemonId,
-    level: userPokemon.level,
-  });
-  if (!moveIds.every((id) => unlocked.has(id))) return { ok: false, error: "invalid_cards" };
+  const learnset = await readLearnset(userId, userPokemon.id);
+  if (!learnset?.some((c) => c.unlocked)) return { ok: false, error: "invalid_cards" };
 
   const deck = await getOrCreateDeck(userId);
 
@@ -75,20 +67,11 @@ export async function addToDeck(userId: string, input: AddToDeckInput): Promise<
 
     const slot = await tx.deckSlot.upsert({
       where: { deckId_userPokemonId: { deckId: deck.id, userPokemonId: input.userPokemonId } },
-      update: { cards: { deleteMany: {} } }, // remonta a barra de cartas
+      update: {}, // já está no time: pôr de novo não muda nada
       create: { deckId: deck.id, userPokemonId: input.userPokemonId, order: order! },
-      select: { id: true },
+      select: { id: true, userPokemonId: true, order: true },
     });
 
-    await tx.deckSlotCard.createMany({
-      data: moveIds.map((moveId, i) => ({ deckSlotId: slot.id, moveId, order: i })),
-    });
-
-    const full = await tx.deckSlot.findUniqueOrThrow({
-      where: { id: slot.id },
-      select: { id: true, userPokemonId: true, order: true, cards: { select: { moveId: true, order: true } } },
-    });
-
-    return { ok: true as const, slot: toDeckSlotDTO(full) };
+    return { ok: true as const, slot: toDeckSlotDTO(slot) };
   });
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
 import { bstOf, rarityTier } from "@/src/modules/packs/domain/rarity";
 import { dexNumber } from "./pokedexView";
-import type { PokemonCardDTO } from "./types";
+import type { PokemonCardDTO } from "../types";
 
 // Server Component. É o CATÁLOGO: view-only, pra consultar informação. O
 // "Capturar" morreu — a única forma de obter pokémon é abrir pacote. Cada card

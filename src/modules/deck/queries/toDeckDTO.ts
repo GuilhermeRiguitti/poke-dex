@@ -1,13 +1,15 @@
 import type { DeckSlotDTO, DeckSummaryDTO } from "../ui/types";
 
 // Whitelist explícita, campo a campo. A linha do Prisma vem com userId no Deck e
-// com deckId/ids cruzados em cada DeckSlot/DeckSlotCard — nada disso é do jogador.
+// com deckId cruzado em cada DeckSlot — nada disso é do jogador.
+//
+// As `cards` sumiram daqui junto com o DeckSlotCard: a barra de skills não mora
+// mais no deck, é escolhida na batalha ao pôr o pokémon em campo.
 
 interface DeckSlotRow {
   id: string;
   userPokemonId: string;
   order: number;
-  cards: { moveId: string; order: number }[];
 }
 
 export function toDeckSlotDTO(row: DeckSlotRow): DeckSlotDTO {
@@ -15,9 +17,6 @@ export function toDeckSlotDTO(row: DeckSlotRow): DeckSlotDTO {
     id: row.id,
     userPokemonId: row.userPokemonId,
     order: row.order,
-    cards: row.cards
-      .map((c) => ({ moveId: c.moveId, order: c.order }))
-      .sort((a, b) => a.order - b.order),
   };
 }
 

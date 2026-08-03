@@ -104,7 +104,12 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
   // Envio da jogada — golpe (MOVE) ou troca (SWITCH). O servidor guarda o
   // segredo e resolve o turno se o outro lado também já jogou.
   const submit = useCallback(
-    async (body: { type: "MOVE"; cardSlot: number } | { type: "SWITCH"; targetSlot: number }) => {
+    async (
+      body:
+        | { type: "MOVE"; cardSlot: number }
+        | { type: "SWITCH"; targetSlot: number; loadout?: string[] }
+        | { type: "LEAD"; loadout: string[] }
+    ) => {
       setSubmitting(true);
       setError("");
       try {
@@ -127,7 +132,14 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
   );
 
   const playCard = useCallback((cardSlot: number) => submit({ type: "MOVE", cardSlot }), [submit]);
-  const playSwitch = useCallback((targetSlot: number) => submit({ type: "SWITCH", targetSlot }), [submit]);
+  // A troca leva a barra de skills de quem ENTRA: montar o loadout virou parte
+  // de pôr o pokémon em campo, e viaja na mesma submissão às cegas.
+  const playSwitch = useCallback(
+    (targetSlot: number, loadout?: string[]) => submit({ type: "SWITCH", targetSlot, loadout }),
+    [submit]
+  );
+  /** Round 0: a barra do pokémon que abre a partida. */
+  const playLead = useCallback((loadout: string[]) => submit({ type: "LEAD", loadout }), [submit]);
 
-  return { battle, error, submitting, playCard, playSwitch, live };
+  return { battle, error, submitting, playCard, playSwitch, playLead, live };
 }

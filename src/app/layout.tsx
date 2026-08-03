@@ -34,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={`${anton.variable} ${rajdhani.variable} ${cinzel.variable}`}>
+    <html lang="pt-BR" className={`${anton.variable} ${rajdhani.variable} ${cinzel.variable} select-none`}>
       <body>
         {children}
         <AppToaster />

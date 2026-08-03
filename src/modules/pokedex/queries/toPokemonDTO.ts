@@ -1,5 +1,5 @@
 import type { NormalizedPokemon } from "@/src/lib/pokeapi";
-import type { PokemonCardDTO, PokemonDetailDTO } from "../ui/types";
+import type { PokemonCardDTO, PokemonDetailDTO } from "../types";
 
 /** Quantos moves a página de detalhe mostra (o movepool inteiro não vai pro cliente). */
 export const DETAIL_MOVES_SHOWN = 12;

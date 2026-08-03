@@ -3,7 +3,7 @@
 
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 import type { BaseStats } from "@/src/modules/progression";
-import type { CollectionCardDTO } from "../ui/types";
+import type { CollectionCardDTO } from "../types";
 
 /** O recorte que a query pede — e tudo que o mapper tem direito de ver. */
 export const COLLECTION_CARD_SELECT = {

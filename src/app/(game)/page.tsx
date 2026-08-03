@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/src/modules/auth/auth";
 import { getDeckBoardQuery } from "@/src/modules/deck";
+import DeckDropProvider from "@/src/modules/deck/ui/DeckDropZone";
 import DeckSlots from "@/src/modules/deck/ui/DeckSlots";
 import { deckBoardView } from "@/src/modules/deck/ui/deckBoardView";
 import { collectionHref, getCollectionQuery, parseCollectionFilters } from "@/src/modules/pokedex";
@@ -24,6 +25,12 @@ import { collectionView } from "@/src/modules/pokedex/ui/pokedexView";
 //
 // Continua Server Component: quem busca é o servidor, e o único cliente é a
 // barra de filtros (debounce) + o X da vaga do deck.
+//
+// O DeckDropProvider (cliente) envolve as duas colunas porque arrastar a carta
+// da coleção pro deck atravessa as duas — e ele recebe as colunas como
+// `children`, que continuam vindo do servidor. É o que permite ter o arrasto
+// SEM tornar esta page cliente: se ela levasse "use client", getCollectionQuery
+// e getDeckBoardQuery (que importam Prisma) iriam parar no bundle do browser.
 
 type CollectionPageProps = {
    searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -44,6 +51,7 @@ export default async function HomePage({ searchParams }: CollectionPageProps) {
 
    return (
       <div className="xl:relative xl:left-1/2 xl:-mb-16 xl:ml-[-50vw] xl:w-screen">
+       <DeckDropProvider>
          <div className="grid grid-cols-1 xl:h-[calc(100vh-4rem)] xl:grid-cols-[248px_minmax(0,1fr)_336px]">
             <div className="order-2 xl:order-0 xl:contents">
                <CollectionFilterBar filters={filters} />
@@ -124,6 +132,7 @@ export default async function HomePage({ searchParams }: CollectionPageProps) {
                <DeckSlots deck={deck} />
             </div>
          </div>
+       </DeckDropProvider>
       </div>
    );
 }

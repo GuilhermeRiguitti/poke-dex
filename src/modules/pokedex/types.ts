@@ -8,7 +8,7 @@
 
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 import type { BaseStats } from "@/src/modules/progression/domain/leveling";
-import type { CollectionFilters } from "../domain/collectionFilters";
+import type { CollectionFilters } from "./domain/collectionFilters";
 
 /** Um pokémon como um CARD precisa dele. Nada além do que a moldura desenha. */
 export interface PokemonCardDTO {

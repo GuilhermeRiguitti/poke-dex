@@ -1,5 +1,7 @@
 import { prisma } from "@/src/lib/prisma";
-import { applyForcedSwitch, resolveRound, type DuelResult } from "../domain/duelEngine";
+import { applyForcedSwitch, applyLeadLoadout, resolveRound, type DuelResult } from "../domain/duelEngine";
+import { loadMoveDefs } from "../queries/loadMoveDefs";
+import type { BattleMoveDef } from "../domain/types";
 import { rowToBattlePokemonState } from "../domain/rowToBattlePokemonState";
 import {
   activeOf,
@@ -108,10 +110,36 @@ function toDuelSide(participant: ParticipantRow): DuelSide {
   };
 }
 
+/** Os Move.id que a jogada carrega pra quem entra em campo (LEAD/SWITCH). */
+function loadoutIdsOf(row: ActionRow | undefined): string[] {
+  if (!row || row.loadout == null) return [];
+  return Array.isArray(row.loadout) ? (row.loadout as string[]).filter((x) => typeof x === "string") : [];
+}
+
+/**
+ * As barras de skills das duas jogadas, já resolvidas em BattleMoveDef.
+ *
+ * Uma leitura só pros dois lados, e FORA da transação — junto do buildTypeChart,
+ * pelo mesmo motivo (regra 5: I/O lento não pode segurar transação aberta).
+ */
+async function loadoutsOf(
+  rowA: ActionRow | undefined,
+  rowB: ActionRow | undefined
+): Promise<{ movesA?: BattleMoveDef[]; movesB?: BattleMoveDef[] }> {
+  const [movesA, movesB] = await Promise.all([
+    loadMoveDefs(loadoutIdsOf(rowA)),
+    loadMoveDefs(loadoutIdsOf(rowB)),
+  ]);
+  return {
+    movesA: movesA.length > 0 ? movesA : undefined,
+    movesB: movesB.length > 0 ? movesB : undefined,
+  };
+}
+
 /** Traduz a linha da jogada (BattleAction) pra ação do motor. */
-function toDuelAction(userId: string, row: ActionRow | undefined): DuelAction {
+function toDuelAction(userId: string, row: ActionRow | undefined, moves?: BattleMoveDef[]): DuelAction {
   if (!row) return { userId, type: "NONE" };
-  if (row.type === "SWITCH") return { userId, type: "SWITCH", targetSlot: row.cardSlot };
+  if (row.type === "SWITCH") return { userId, type: "SWITCH", targetSlot: row.cardSlot, moves };
   return { userId, type: "MOVE", cardSlot: row.cardSlot };
 }
 
@@ -228,6 +256,13 @@ export async function resolveIfDue(battle: BattleForResolve) {
   const rowB = rowOf(pB.userId);
   const expiredWindows = expiredTurnWindows(battle.turnStartedAt);
 
+  // ROUND 0 = PREPARAÇÃO: antes de qualquer golpe, cada um monta a barra de
+  // skills do pokémon que abre a partida. É o único que entra em campo sem uma
+  // ação de troca pra carregar a escolha junto.
+  if (battle.round === 0) {
+    return resolveLeadRound({ battle, pA, pB, sideA, sideB, state, rowA, rowB, expiredWindows });
+  }
+
   // TROCA FORÇADA tem prioridade sobre o round normal: se o ativo de alguém
   // desmaiou (com reserva viva), o jogo espera a escolha do substituto antes de
   // seguir. Só o dono do desmaio age; o outro apenas aguarda.
@@ -250,6 +285,29 @@ interface RoundParams {
   expiredWindows: number;
 }
 
+/**
+ * Round 0: espera os DOIS montarem a barra do líder e passa pro round 1.
+ *
+ * Quem não escolher a tempo não leva falta — a preparação não é jogada, e o
+ * pokémon entra com a barra que o snapshot já trouxe. Punir aqui faria alguém
+ * que só demorou a abrir a aba começar a partida devendo.
+ */
+async function resolveLeadRound(p: RoundParams) {
+  const { battle, pA, pB, sideA, sideB, state, rowA, rowB, expiredWindows } = p;
+
+  const escolheu = (row: ActionRow | undefined) => row?.type === "LEAD";
+  if (!(escolheu(rowA) && escolheu(rowB)) && expiredWindows === 0) return battle;
+
+  const { movesA, movesB } = await loadoutsOf(
+    escolheu(rowA) ? rowA : undefined,
+    escolheu(rowB) ? rowB : undefined
+  );
+
+  const result = applyLeadLoadout({ state, movesA, movesB });
+
+  return commit({ battle, pA, pB, sideA, sideB, result, finalStatus: null, winnerId: null });
+}
+
 async function resolveNormalRound(p: RoundParams) {
   const { battle, pA, pB, sideA, sideB, state, rowA, rowB, expiredWindows } = p;
   const playedA = Boolean(rowA);
@@ -264,12 +322,15 @@ async function resolveNormalRound(p: RoundParams) {
   // qualquer escrita: se a função morrer aqui, a partida fica intacta. Basta o
   // tipo do golpe do atacante estar na matriz — ele cobre qualquer tipo de alvo,
   // inclusive um pokémon que acabou de entrar por troca.
-  const typeChart = await buildTypeChart([activeOf(sideA), activeOf(sideB)]);
+  const [typeChart, { movesA, movesB }] = await Promise.all([
+    buildTypeChart([activeOf(sideA), activeOf(sideB)]),
+    loadoutsOf(rowA, rowB),
+  ]);
 
   const result = resolveRound({
     state,
-    actionA: toDuelAction(pA.userId, rowA),
-    actionB: toDuelAction(pB.userId, rowB),
+    actionA: toDuelAction(pA.userId, rowA, movesA),
+    actionB: toDuelAction(pB.userId, rowB, movesB),
     typeChart,
     rng: Math.random,
   });
@@ -325,7 +386,17 @@ async function resolveForcedSwitchRound(p: RoundParams) {
 
   const choiceOf = (row: ActionRow | undefined) => (row && row.type === "SWITCH" ? row.cardSlot : null);
 
-  const result = applyForcedSwitch({ state, choiceA: choiceOf(rowA), choiceB: choiceOf(rowB) });
+  // A barra do substituto vem junto da escolha, como em qualquer entrada em
+  // campo. Fora da transação, pelo mesmo motivo do buildTypeChart.
+  const { movesA, movesB } = await loadoutsOf(rowA, rowB);
+
+  const result = applyForcedSwitch({
+    state,
+    choiceA: choiceOf(rowA),
+    choiceB: choiceOf(rowB),
+    movesA,
+    movesB,
+  });
 
   // A troca forçada não gera vencedor (só entra quando há reserva viva) e não
   // conta falta — o auto-promover já mantém o jogo andando sem abandono.

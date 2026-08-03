@@ -11,7 +11,7 @@
 // TROCA FORÇADA — o dono do pokémon que caiu escolhe quem entra (ou o motor
 // auto-promove o 1º vivo no timeout). Só zerar o time é derrota.
 
-import type { BattlePokemonState } from "./types";
+import type { BattleMoveDef, BattlePokemonState } from "./types";
 
 // Um lado do duelo: o jogador e o TIME dele. `activeSlot` é o slot (1-based) do
 // pokémon em campo; `team` traz todos (até 6) com HP/PP/fainted vivos — o motor
@@ -33,9 +33,16 @@ export interface DuelState {
 //  - MOVE: uma das cartas da barra do ativo (0..5).
 //  - SWITCH: troca o ativo pelo pokémon do slot alvo (1..6), gastando o turno.
 //  - NONE: o tempo estourou e o lado passou em branco ("hesitação").
+//
+// `moves` na TROCA é a barra de skills escolhida pra quem está ENTRANDO. As
+// skills deixaram de morar no deck e passaram a ser decisão de batalha: o
+// jogador monta a barra no momento em que põe o pokémon em campo. Vem já
+// traduzida em BattleMoveDef (o motor é puro — quem lê a tabela Move é o
+// resolveTurn, fora da transação). Ausente = mantém a barra que o pokémon já
+// tinha, que é o caso do auto-promover no timeout.
 export type DuelAction =
   | { userId: string; type: "MOVE"; cardSlot: number }
-  | { userId: string; type: "SWITCH"; targetSlot: number }
+  | { userId: string; type: "SWITCH"; targetSlot: number; moves?: BattleMoveDef[] }
   | { userId: string; type: "NONE" };
 
 // Log descritivo do turno (renderização + BattleTurnLog). Chaveado por userId,

@@ -1,25 +1,21 @@
 // Contrato de dados entre o servidor e a UI, pro deck (jogo novo: loadouts).
 //
 // Espelho ESTREITO das linhas do Prisma: nada daqui pode ser a linha crua. A
-// linha de Deck carrega userId; a de DeckSlot/DeckSlotCard carrega ids cruzados
-// — nada disso precisa (nem deve) chegar no browser.
+// linha de Deck carrega userId; a de DeckSlot carrega deckId — nada disso
+// precisa (nem deve) chegar no browser.
+//
+// O `DeckSlotCardDTO` saiu junto com a tabela: a barra de skills não é mais do
+// deck, é escolhida na batalha ao pôr o pokémon em campo.
 
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 
-/** Uma carta (skill) escolhida num slot. `moveId` é o Move.id do espelho. */
-export interface DeckSlotCardDTO {
-  moveId: string;
-  order: number; // 0..5, posição na barra
-}
-
-/** Um loadout do time: 1 UserPokemon + suas cartas. É o que o addToDeck devolve. */
+/** Uma vaga do time: 1 UserPokemon numa posição. É o que o addToDeck devolve. */
 export interface DeckSlotDTO {
   /** id do DeckSlot (é o que o DELETE /api/deck/[id] recebe) */
   id: string;
   userPokemonId: string;
   order: number; // 0..5, posição no time
-  cards: DeckSlotCardDTO[];
 }
 
 /**

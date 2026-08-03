@@ -13,11 +13,11 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await req.json()) as Partial<AddToDeckInput>;
-  if (!body.userPokemonId || !Array.isArray(body.moveIds)) {
-    return NextResponse.json({ error: "userPokemonId e moveIds são obrigatórios" }, { status: 400 });
+  if (!body.userPokemonId) {
+    return NextResponse.json({ error: "userPokemonId é obrigatório" }, { status: 400 });
   }
 
-  const result = await addToDeck(session.user.id, { userPokemonId: body.userPokemonId, moveIds: body.moveIds });
+  const result = await addToDeck(session.user.id, { userPokemonId: body.userPokemonId });
 
   if (!result.ok) {
     // deck_full é 409 (conflito com o estado atual). invalid_cards é 400 (pedido

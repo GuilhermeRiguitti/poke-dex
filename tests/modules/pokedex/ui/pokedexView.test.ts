@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { collectionView, dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
 import { parseCollectionFilters } from "@/src/modules/pokedex/domain/collectionFilters";
-import type { CollectionPageDTO } from "@/src/modules/pokedex/ui/types";
+import type { CollectionPageDTO } from "@/src/modules/pokedex/types";
 
 const BASE_STATS = { hp: 39, atk: 52, def: 43, spa: 60, spd: 50, spe: 65 };
 

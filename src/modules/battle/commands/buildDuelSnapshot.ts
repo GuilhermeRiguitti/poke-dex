@@ -1,6 +1,7 @@
 import { fetchAndCacheType } from "@/src/lib/pokeapiCache";
-import { DECK_LIMIT, readDeckSlots, type DeckLoadoutSlot } from "@/src/modules/deck";
+import { DECK_LIMIT, defaultLoadout, readDeckSlots, readLearnset, type DeckLoadoutSlot } from "@/src/modules/deck";
 import { deriveStats } from "@/src/modules/progression";
+import { loadMoveDefs } from "../queries/loadMoveDefs";
 import type { BattleMoveDef, BattlePokemonState } from "../domain/types";
 import type { TypeEffectivenessMap } from "../domain/typeChart";
 
@@ -12,27 +13,7 @@ import type { TypeEffectivenessMap } from "../domain/typeChart";
 // deriveStats (não mais nível 50 fixo), e as cartas são o loadout escolhido
 // (DeckSlotCard → Move), não os "4 primeiros moves de dano" da API.
 
-const DAMAGE_CLASSES = new Set(["physical", "special", "status"]);
-
-function toBattleMove(card: DeckLoadoutSlot["cards"][number]): BattleMoveDef {
-  const { move } = card;
-  const damageClass = DAMAGE_CLASSES.has(move.damageClass)
-    ? (move.damageClass as BattleMoveDef["damageClass"])
-    : "physical";
-  return {
-    id: move.moveApiId,
-    name: move.name,
-    type: move.type,
-    power: move.power,
-    accuracy: move.accuracy,
-    damageClass,
-    priority: move.priority,
-    maxPp: move.pp,
-    currentPp: move.pp,
-  };
-}
-
-function toPokemonState(slot: DeckLoadoutSlot, index: number): BattlePokemonState {
+function toPokemonState(slot: DeckLoadoutSlot, index: number, moves: BattleMoveDef[]): BattlePokemonState {
   const { pokemon } = slot.userPokemon;
   const derived = deriveStats(pokemon.baseStats, slot.userPokemon.level);
   return {
@@ -53,8 +34,25 @@ function toPokemonState(slot: DeckLoadoutSlot, index: number): BattlePokemonStat
     maxHp: derived.hp,
     currentHp: derived.hp,
     fainted: false,
-    moves: slot.cards.map(toBattleMove),
+    moves,
   };
+}
+
+/**
+ * A barra com que cada pokémon ENTRA no snapshot: as skills mais fortes já
+ * desbloqueadas (`defaultLoadout`).
+ *
+ * Não é mais o loadout do deck — o deck não guarda skill nenhuma desde que a
+ * escolha virou decisão de batalha. Isto aqui é o **fallback**: é com esta barra
+ * que o pokémon entra quando o jogador não escolhe a tempo (o round 0 vence, ou
+ * a troca forçada auto-promove). Quem escolhe sobrescreve na entrada.
+ *
+ * Roda uma vez por partida, na criação — fora de qualquer transação.
+ */
+async function defaultMovesFor(userId: string, slot: DeckLoadoutSlot): Promise<BattleMoveDef[]> {
+  const learnset = await readLearnset(userId, slot.userPokemon.id);
+  const ids = defaultLoadout((learnset ?? []).filter((c) => c.unlocked));
+  return loadMoveDefs(ids);
 }
 
 export interface BattleTeamMember {
@@ -72,12 +70,20 @@ export async function buildDuelSnapshot(userId: string, deckId: string): Promise
   const slots = await readDeckSlots(userId, deckId, DECK_LIMIT);
   if (slots.length === 0) throw new Error("Deck vazio ou não encontrado");
 
-  return slots.map((slot, index) => {
-    if (slot.cards.length === 0) {
-      throw new Error(`Loadout do slot ${index} sem cartas`);
-    }
-    return { state: toPokemonState(slot, index), spriteUrl: slot.userPokemon.pokemon.spriteUrl };
-  });
+  return Promise.all(
+    slots.map(async (slot, index) => {
+      const moves = await defaultMovesFor(userId, slot);
+      // Sem NENHUMA skill liberada o pokémon não teria ação nenhuma em campo.
+      // O addToDeck já barra isso na entrada do deck; aqui é a rede de baixo.
+      if (moves.length === 0) {
+        throw new Error(`${slot.userPokemon.pokemon.name} não tem nenhuma skill liberada`);
+      }
+      return {
+        state: toPokemonState(slot, index, moves),
+        spriteUrl: slot.userPokemon.pokemon.spriteUrl,
+      };
+    })
+  );
 }
 
 // Matriz de efetividade cobrindo os tipos (de corpo e de carta) presentes no

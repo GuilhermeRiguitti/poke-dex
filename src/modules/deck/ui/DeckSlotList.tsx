@@ -3,7 +3,8 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toastWarn } from "@/src/layout/toast";
-import { moveSlot } from "../domain/rules";
+import { DECK_LIMIT, moveSlot } from "../domain/rules";
+import { useDeckDrop } from "./DeckDropZone";
 import DeckSlotCard from "./DeckSlotCard";
 import { dropTargetIndex, livePosition, slotShift, type DeckSlotView } from "./deckBoardView";
 
@@ -36,8 +37,15 @@ export default function DeckSlotList({ slots }: { slots: DeckSlotView[] }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
+  // Esta lista é o alvo do arrasto que vem da coleção. Ela se REGISTRA no
+  // provider (que mora acima das duas colunas) em vez de o provider procurá-la
+  // no DOM — assim quem sabe onde o alvo está é quem o desenha.
+  const drop = useDeckDrop();
+
   const preenchidas = slots.filter((s) => s.id !== null);
   const vazias = slots.length - preenchidas.length;
+  const recebendo = !!drop?.carta;
+  const vaiCair = recebendo && drop!.sobreOAlvo && vazias > 0;
 
   // Ordem otimista: a carta fica onde foi solta na hora, sem esperar o servidor.
   // Sem isso ela volta pro lugar antigo e pula de volta quando o refresh chega.
@@ -134,7 +142,12 @@ export default function DeckSlotList({ slots }: { slots: DeckSlotView[] }) {
   }
 
   return (
-    <ul className="flex flex-col gap-1.5 p-3 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+    <ul
+      ref={drop?.registrarAlvo}
+      className={`flex flex-col gap-1.5 p-3 transition-colors xl:min-h-0 xl:flex-1 xl:overflow-y-auto ${
+        vaiCair ? "bg-energy/10" : ""
+      }`}
+    >
       {ordem.map((slot, i) => {
         const arrastando = arrasto?.ativo && arrasto.from === i;
         const desloca = arrasto?.ativo ? slotShift(i, arrasto.from, arrasto.to) : 0;
@@ -169,17 +182,39 @@ export default function DeckSlotList({ slots }: { slots: DeckSlotView[] }) {
         );
       })}
 
-      {Array.from({ length: vazias }, (_, i) => (
-        <li
-          key={`vazia-${i}`}
-          className="clip-btn flex min-h-14.5 items-center gap-2.5 border border-dashed border-edge px-2.5 text-ink-dim/60"
-        >
-          <span className="flex h-10 w-10 flex-none items-center justify-center border border-edge font-title text-base">
-            {ordem.length + i + 1}
-          </span>
-          <span className="font-title text-xs uppercase tracking-widest">Slot vazio</span>
+      {Array.from({ length: vazias }, (_, i) => {
+        // A PRIMEIRA vaga vazia é onde a carta arrastada vai cair (o servidor
+        // usa firstFreeOrder). Só ela acende — acender todas não diria nada.
+        const alvo = i === 0 && vaiCair;
+
+        return (
+          <li
+            key={`vazia-${i}`}
+            className={`clip-btn flex min-h-14.5 items-center gap-2.5 border border-dashed px-2.5 transition-colors ${
+              alvo ? "border-energy bg-energy/10 text-energy" : "border-edge text-ink-dim/60"
+            }`}
+          >
+            <span
+              className={`flex h-10 w-10 flex-none items-center justify-center border font-title text-base ${
+                alvo ? "border-energy" : "border-edge"
+              }`}
+            >
+              {ordem.length + i + 1}
+            </span>
+            <span className="font-title text-xs uppercase tracking-widest">
+              {alvo ? `Soltar ${drop?.carta?.name ?? ""} aqui` : "Slot vazio"}
+            </span>
+          </li>
+        );
+      })}
+
+      {/* Deck cheio e alguém arrastando: dizer por que nada vai acontecer é
+          melhor do que a carta sumir de volta pra coleção sem explicação. */}
+      {recebendo && vazias === 0 && (
+        <li className="clip-btn flex min-h-14.5 items-center justify-center border border-dashed border-bad px-2.5 text-center font-title text-xs uppercase tracking-widest text-bad">
+          Time completo ({DECK_LIMIT})
         </li>
-      ))}
+      )}
     </ul>
   );
 }

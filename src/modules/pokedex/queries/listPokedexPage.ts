@@ -1,7 +1,7 @@
 import { extractIdFromUrl, fetchPokemon, fetchPokemonIndex } from "@/src/lib/pokeapi";
 import { prisma } from "@/src/lib/prisma";
 import { TOTAL_PAGES, pageRange } from "../domain/pagination";
-import type { PokedexPageDTO } from "../ui/types";
+import type { PokedexPageDTO } from "../types";
 import { toPokemonCardDTO } from "./toPokemonDTO";
 
 /**
