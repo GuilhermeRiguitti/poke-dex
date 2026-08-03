@@ -86,8 +86,12 @@ export default function DeckDropProvider({ children }: { children: React.ReactNo
   const posicionarMiniatura = useCallback(() => {
     const el = miniaturaRef.current;
     if (!el) return;
-    el.style.left = `${posRef.current.x + 14}px`;
-    el.style.top = `${posRef.current.y + 14}px`;
+    // Sem folga: o ponto é o CENTRO da carta (ver o transform lá embaixo). A
+    // carta fica em volta do cursor, e não pendurada abaixo dele — o alvo do
+    // drop é medido pelo cursor, então qualquer distância entre os dois faz
+    // parecer que a carta cai fora da vaga.
+    el.style.left = `${posRef.current.x}px`;
+    el.style.top = `${posRef.current.y}px`;
   }, []);
 
   const comecar = useCallback(
