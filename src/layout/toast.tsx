@@ -11,9 +11,9 @@ export function AppToaster() {
 }
 
 /**
- * Aviso não-bloqueante no estilo do jogo. Ex.: deck cheio ao tentar montar um
- * loadout a mais — a checagem de verdade é do SERVIDOR (addToDeck retorna
- * "deck_full"), isto aqui só mostra a resposta dele.
+ * Aviso não-bloqueante no estilo do jogo. Ex.: um pokémon do time sem golpe
+ * liberado ao salvar o deck — a checagem de verdade é do SERVIDOR (saveDeck),
+ * isto aqui só mostra a resposta dele.
  */
 export function toastWarn(message: string) {
   toast.custom(

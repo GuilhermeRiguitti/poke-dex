@@ -140,11 +140,11 @@ export function isUnlockedAt(entry: { learnMethod: string; levelLearnedAt: numbe
  * As cartas jogáveis de um Pokémon do jogador = as de LEVEL-UP já destravadas
  * pelo nível ∪ as CONCEDIDAS por fora (TM/tutor/ovo — UserPokemonMove).
  *
- * Pura, e é a ÚNICA fonte da verdade dessa união: deck (addToDeck/readLearnset)
+ * Pura, e é a ÚNICA fonte da verdade dessa união: deck (saveDeck/readLearnset)
  * e battle (poda pós-evolução) todos passam por aqui, cada um fazendo o próprio
  * I/O e entregando os dois conjuntos de moveId. Sem isto, cada consumidor
  * reimplementaria o "OU concedido" e um deles esqueceria — reabrindo o buraco
- * de uma carta concedida sumir na evolução, ou o addToDeck recusar uma TM.
+ * de uma carta concedida sumir na evolução, ou o saveDeck recusar uma TM.
  */
 export function mergePlayableMoveIds(
   levelUpUnlockedIds: Iterable<string>,

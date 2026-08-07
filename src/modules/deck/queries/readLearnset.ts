@@ -19,7 +19,7 @@ const DAMAGE_CLASSES = new Set(["physical", "special", "status"]);
  *
  * Devolvemos os TRAVADOS de propósito (ver "aprende no nv. 22" / "ensinável por
  * TM" é metade da progressão). Quem impede de montar não é esta query e sim
- * addToDeck — a UI é conveniência, a regra é do servidor.
+ * saveDeck — a UI é conveniência, a regra é do servidor.
  *
  * Ordena: level-up antes de TM; dentro, por nível de aprendizado e, empatando,
  * pelo mais forte.

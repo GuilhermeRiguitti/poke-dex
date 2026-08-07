@@ -292,9 +292,11 @@ Agora gravamos isso (`domain/learnset.ts` decide, `syncPokedex` grava):
   (TM), `ovo` e `tutor` **não** pedem nível — ficam gravados no espelho e viram
   carta só quando o jogador as GANHA por fora (ver §7.2). No começo (antes do
   §7.2) só o level-up estava ligado.
-- A trava é do **servidor** (`addToDeck`), não da UI: o `POST /api/deck` é
-  público. O modal mostra as travadas com o nível exigido — ver o que vem é
-  metade da progressão.
+- A trava é do **servidor** (`saveDeck`), não da UI: o `PUT /api/deck` é público.
+  Um pokémon sem NENHUMA carta liberada não entra no time — ele iria a campo sem
+  ação possível e o `buildDuelSnapshot` lançaria lá no matchmaking. O
+  `SkillSheet` mostra as travadas com o nível exigido — ver o que vem é metade da
+  progressão.
 
 **Consequência que muda o começo do jogo:** um pokémon novo tem ~3-4 cartas, não
 6. `CARDS_PER_SLOT` virou **teto**, não obrigação.
@@ -306,8 +308,10 @@ O nível libera o learnset base; **TM/tutor/ovo** são as formas de ganhar carta
 `UserPokemonMove` (§5): "este Pokémon do jogador desbloqueou o golpe X", com
 `source` dizendo de onde veio. A regra combinada "jogável = level-up destravado ∪
 concedido" é pura (`progression/domain/learnset.mergePlayableMoveIds`) e lida por
-`pokedex/queries/getUnlockedMoveIds` — consumida por `addToDeck`, `readLearnset` e
-pela poda de evolução (uma carta concedida **sobrevive** à evolução).
+`pokedex/queries/getUnlockedMoveIds` — consumida por `readLearnset` e pela poda de
+evolução (uma carta concedida **sobrevive** à evolução). O `saveDeck` aplica a
+mesma união em lote (duas queries pro time todo), porque só precisa saber se ela
+é vazia, não quais cartas são.
 
 Estado:
 - **TM (Máquina Técnica): ✅ FEITO** (módulo `training`). Token genérico de TM
@@ -731,6 +735,10 @@ então "sem efeito" continua aparecendo.
   **não aparece mais** na coleção: `buildCollectionWhere` exclui no banco
   (`deckSlots: { none: {} }`). Corrige o bug em que a carta sumia da vaga do
   deck ao cair fora da página/filtro. Sem migration. O que mudou:
+  > **Revisto em 06/08:** a **exclusão** caiu (a coleção lista tudo de novo,
+  > marcando quem está no time), mas a **separação** — que é o que consertou o
+  > bug — ficou: o deck continua com query e DTO próprios. Ver a entrada de
+  > 2026-08-06.
   - **Duas leituras independentes.** `CollectionPageDTO` ficou só com coleção +
     paginação; o deck ganhou query e DTO próprios (`getDeckBoard` →
     `DeckBoardDTO`, com o pokémon já resolvido). A page chama as duas em
@@ -746,7 +754,8 @@ então "sem efeito" continua aparecendo.
     (`addToDeck` → `deck_full`), respondido com **toast** (`react-hot-toast`,
     `src/layout/toast.tsx`, no estilo do design system).
   - Novo vazio `all_in_deck` pra quem montou a coleção inteira — sem ele a tela
-    mandava "limpar filtros" sem filtro nenhum ativo.
+    mandava "limpar filtros" sem filtro nenhum ativo. *(Removido em 06/08: a
+    grade lista as cartas montadas, então ela não esvazia mais.)*
 - **Coleção virou workspace de 3 colunas (2026-08-02)** — mesma tela, mesmos
   dados, outro arranjo: **filtros | cartas | deck**, lado a lado. Em `xl` ela
   ocupa a viewport inteira e cada coluna rola por dentro (o deck fica sempre à
@@ -801,6 +810,10 @@ então "sem efeito" continua aparecendo.
 - **Ordem do time virou arrastável (2026-08-02)** — a vaga 1 é quem começa em
   campo, e até aqui não havia como escolher quem era: só dava pra montar e tirar.
   Sem migration. O que mudou:
+  > **Substituído em 06/08.** O `reorderDeck`, o `PATCH /api/deck/order`, o
+  > `stale_order` e as contas de empurrar a lista (`moveSlot`, `dropTargetIndex`,
+  > `slotShift`, `livePosition`) foram apagados: as vagas viraram posicionais e a
+  > ordem é gravada junto com o resto do time, num save só. Ver 2026-08-06.
   - **Command novo `reorderDeck`** — grava a ordem em **duas passadas na mesma
     transação** (todo mundo pra posição negativa, depois a final). A
     `@@unique([deckId, order])` recusa qualquer passo intermediário com duas
@@ -828,6 +841,9 @@ então "sem efeito" continua aparecendo.
 - **Arrastar da coleção pro deck (2026-08-02)** — soltar a carta na coluna do
   deck MONTA o loadout, sem abrir modal. Sem migration. É a 1ª de duas entregas;
   a 2ª leva a escolha de skills pra dentro da batalha (ver abaixo). O que mudou:
+  > **Revisto em 06/08:** o gesto ficou, o POST por gesto não. Soltar mexe no
+  > rascunho de cliente, e **cada vaga é o próprio alvo** (o `DeckDropProvider`
+  > virou `DeckEditorProvider`). Ver 2026-08-06.
   - **`addToDeck` aceita `moveIds` ausente**: aí o SERVIDOR monta a barra
     (`domain/defaultLoadout`, puro e testado — ordena por poder, depois por
     nível de aprendizado, e desempata por id pra a escolha ser sempre a mesma).
@@ -902,11 +918,77 @@ então "sem efeito" continua aparecendo.
     `collectionWhere`), então não há o que marcar. Marcar exigiria a coleção
     voltar a listar quem está no deck — desfazendo a separação de 01/08 que
     consertou a carta sumindo da vaga ao filtrar/paginar. Fica como está.
+    > **Revertido em 06/08**, e pelo motivo que a decisão previa: a coleção
+    > **voltou** a listar quem está no deck. O que não voltou foi o acoplamento —
+    > o deck continua com query própria, então filtrar/paginar não esvazia vaga
+    > nenhuma. Hoje a carta montada aparece marcada com a vaga, e o `✓` vira `✕`.
   - **O painel vai pro `document.body` por PORTAL.** A carta tem `transform` (o
     tilt do HoloCard), e ancestral com `transform` é bloco contentor pra
     `position: fixed` — sem o portal o `inset-0` media a CARTA, e o painel
     aparecia preso dentro dela com a arte por cima. Mesma armadilha do
     `backdrop-blur` do header no drawer do NavBar.
+- **Montar deck virou RASCUNHO com botão de salvar (2026-08-06)** ✅ — as vagas
+  viraram **posicionais** (soltar na 3 fica na 3) e a montagem inteira virou
+  **cliente**: uma escrita só, no fim. Sem migration. O que mudou:
+  - **Uma escrita no lugar de três.** `saveDeck` + `PUT /api/deck` (corpo
+    `{ slots: [{userPokemonId, order}] }`) substituíram `addToDeck` /
+    `removeFromDeck` / `reorderDeck` e as rotas `POST /api/deck`,
+    `DELETE /api/deck/[id]` e `PATCH /api/deck/order`, todos apagados. A
+    gravação é **apagar tudo + inserir** dentro de UMA `$transaction` — o que
+    dispensa as duas passadas do `reorderDeck` (mandar todos pra `order`
+    negativa antes da final, porque a `@@unique([deckId, order])` recusava os
+    estados intermediários) e o `firstFreeOrder` do `addToDeck`.
+  - **Vaga é ENDEREÇO, não posição numa fila** (`domain/deckDraft.ts`, puro e
+    testado). `placeInSlot` cobre os dois gestos: da coleção **ocupa** a vaga
+    (quem estava lá volta pra coleção), de outra vaga **troca** as duas. Não
+    empurra — `moveSlot`/`dropTargetIndex`/`slotShift`/`livePosition` foram
+    apagados junto com a lista compacta. O buraco no meio é dado: um time em 0 e
+    4 é gravado em 0 e 4.
+  - **Cada vaga é o próprio alvo de drop.** As vagas se registram no provider e
+    ele testa o retângulo de cada uma contra o ponteiro. Antes o alvo era a lista
+    inteira e o servidor escolhia a posição (a primeira livre), então soltar em
+    cima da 3 caía na 5.
+  - **A coleção também é alvo, e significa TIRAR DO TIME** (`CollectionDropZone`,
+    a área rolável inteira). Arrastar a carta da vaga de volta pra grade já
+    parecia que ia fazer alguma coisa e não fazia nada — a carta voltava pro
+    lugar sem explicação. Só vale pra carta que veio de uma VAGA (da coleção pra
+    coleção não é nada, e a área não acende), e a vaga ganha da coleção quando as
+    duas pegam (abaixo de `xl` o painel empilha sobre a grade). Soltar **fora dos
+    dois alvos cancela** o gesto: um movimento impreciso na barra de cima não
+    pode desmontar o time.
+  - **A validação é UMA função pura nos dois lados** (`domain/validateDeckSlots`,
+    recebe `unknown`): quantidade ≤ 6, posições em 0..5, nenhum pokémon repetido,
+    nenhuma vaga repetida. No cliente ela decide o botão de salvar; no servidor é
+    a trava — o corpo do PUT vem da rede. O que só o servidor pode checar fica no
+    command: **dono** de cada carta (uma query pro time todo) e **ao menos uma
+    skill liberada** (duas queries pro time todo, não duas por pokémon).
+  - **Editar / salvar / cancelar, e batalha travada em edição.** `canBattle` é do
+    `deckBoardView` (testado): em edição o botão vira o motivo. O que a batalha
+    usa é o time **gravado** — entrar na fila vendo seis cartas na tela e lutar
+    com as três antigas seria uma derrota sem explicação. Deck vazio abre já em
+    edição (não há time pra proteger).
+  - **A coleção voltou a listar TUDO**, inclusive quem está no deck
+    (`deckSlots: { none: {} }` saiu do `collectionWhere`) — e isso NÃO desfaz a
+    separação de 01/08: o deck continua com query e DTO próprios, então a carta
+    montada segue independente de filtro e paginação. Um WHERE que consulta o
+    deck GRAVADO não sabe nada do rascunho: a carta tirada da vaga sumiria da
+    grade até salvar, sem como recolocá-la. Quem está no time aparece **marcado
+    com o número da vaga** — o "✓ sem estado marcado" de 03/08 caiu com o motivo
+    dele. O vazio `all_in_deck` sumiu (a grade não esvazia mais).
+  - **`DeckSlots`+`DeckSlotList`+`DeckDropZone` viraram `DeckPanel`+
+    `DeckEditorProvider`.** O painel do deck é cliente inteiro agora: com o time
+    virando rascunho, a contagem, as marcas de progresso, as seis vagas e o botão
+    de batalhar dependem todos dele. **A page continua Server Component** — é o
+    que importa (regra 1): as colunas entram no provider como `children` e o
+    Prisma não vai pro bundle.
+  - **`DeckBoardSlotDTO` troca o id do DeckSlot pelo `userPokemonId`.** O id do
+    slot existia pro DELETE, que morreu; e como o save apaga e reinsere, ele muda
+    a cada gravação — não identificava nada. `DeckSlotDTO`/`toDeckSlotDTO` foram
+    apagados. `DeckCardDTO` é o contrato compartilhado entre a carta da coleção e
+    a vaga do deck, pra soltar desenhar na hora sem ida ao servidor.
+  - **Nenhum `router.refresh()` no caminho.** O PUT devolve o board gravado e a
+    tela troca o rascunho por ele; a coleção ao lado não precisa recarregar
+    porque não depende mais do deck.
 
 **Aviso honesto sobre a Fase A:** com energia + reação já no MVP, ela é grande e o
 **balanceamento** (custo de energia × poder de carta × janela de reação) só se acerta

@@ -1,5 +1,16 @@
-// Mapear DTO -> o que a tela desenha é função pura, mora aqui e tem teste.
-// Componente é costura. (CLAUDE.md, regra 4 — ver battle/ui/battleView.ts.)
+// Mapear o rascunho -> o que a tela desenha é função pura, mora aqui e tem
+// teste. Componente é costura. (CLAUDE.md, regra 4 — ver battle/ui/battleView.ts.)
+//
+// Mudou de fonte junto com a arquitetura: antes recebia o DeckBoardDTO (o deck
+// GRAVADO) e empacotava as vagas cheias no começo da fileira. Agora recebe o
+// RASCUNHO, que já é posicional e já tem DECK_LIMIT posições — a vaga 3 é a
+// vaga 3, cheia ou vazia, e ninguém é empurrado.
+//
+// Saíram daqui `dropTargetIndex`, `slotShift` e `livePosition`: eram a conta de
+// uma lista que se reordena EMPURRANDO os vizinhos (medir os meios das linhas,
+// decidir quem desliza pra que lado). Com vaga como endereço fixo, soltar é
+// ocupar ou trocar duas posições — quem sabe onde o ponteiro está é o retângulo
+// de cada vaga, no DeckEditorProvider, e não uma conta de deslocamento.
 
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 import type { BaseStats } from "@/src/modules/progression/domain/leveling";
@@ -8,14 +19,20 @@ import type { BaseStats } from "@/src/modules/progression/domain/leveling";
 // pro mesmo "#0025".
 import { dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
 
+import type { DeckDraft } from "../domain/deckDraft";
 import { DECK_LIMIT } from "../domain/rules";
-import type { DeckBoardDTO } from "./types";
+import type { DeckCardDTO } from "./types";
 
-/** Uma vaga do deck. Preenchida, é uma carta mini; vazia, é a moldura tracejada. */
+/** Uma vaga do deck. Preenchida, é a linha da carta; vazia, é a moldura tracejada. */
 export interface DeckSlotView {
-  /** id do DeckSlot, pro X de tirar do deck. null quando a vaga está vazia. */
-  id: string | null;
+  /** a posição, 0-based. É o ENDEREÇO da vaga, não a ordem de desenho. */
+  index: number;
+  /** o número que a vaga mostra (1-based) */
+  numero: number;
+  /** a vaga 0 é quem começa em campo */
+  emCampo: boolean;
   /** null = vaga vazia (e aí todo o resto também é null) */
+  userPokemonId: string | null;
   pokemonId: number | null;
   dexNumber: string | null;
   name: string | null;
@@ -29,124 +46,100 @@ export interface DeckSlotView {
 }
 
 export interface DeckBoardView {
-  /** sempre DECK_LIMIT vagas, na ordem — as vazias vêm com pokemonId null */
+  /** sempre DECK_LIMIT vagas, na ordem das posições — as vazias vêm com pokemonId null */
   slots: DeckSlotView[];
   /** quantas vagas estão ocupadas */
   count: number;
   limit: number;
   /** o time bateu o limite — é o que faz o botão de batalhar pulsar */
   full: boolean;
-  /** o que o botão de batalhar escreve, conforme o time enche */
+  /** dá pra entrar na fila agora? */
+  canBattle: boolean;
+  /** o que o botão de batalhar escreve */
   battleLabel: string;
+  /** por que não dá pra batalhar (null quando dá) */
+  battleBlockedReason: string | null;
 }
 
-const VAGA_VAZIA: DeckSlotView = {
-  id: null,
-  pokemonId: null,
-  dexNumber: null,
-  name: null,
-  iconUrl: null,
-  level: null,
-  types: [],
-  accentType: null,
-  rarity: null,
-  baseStats: null,
-};
+export interface DeckBoardStatus {
+  /** o jogador está mexendo no time */
+  editing: boolean;
+  /** o rascunho difere do que está gravado */
+  dirty: boolean;
+}
 
 /**
- * O tabuleiro do deck: sempre DECK_LIMIT vagas, na ordem, com as vazias no fim.
+ * O tabuleiro do deck: DECK_LIMIT vagas, cada uma no seu endereço.
  *
- * Completar até o limite é decisão de APRESENTAÇÃO (a fileira precisa ter
- * sempre o mesmo tamanho, senão ela dança de largura conforme o time cresce) —
- * por isso mora aqui, e não na query.
+ * O rascunho já vem com o tamanho certo; se vier torto (mais ou menos que
+ * DECK_LIMIT), a fileira é normalizada aqui — a coluna não pode dançar de
+ * largura conforme o time cresce, e isso é decisão de APRESENTAÇÃO.
  */
-export function deckBoardView(board: DeckBoardDTO): DeckBoardView {
-  const slots = Array.from({ length: DECK_LIMIT }, (_, i) => {
-    const slot = board.slots[i];
-    if (!slot) return VAGA_VAZIA;
+export function deckBoardView(
+  draft: DeckDraft<DeckCardDTO>,
+  status: DeckBoardStatus
+): DeckBoardView {
+  const slots: DeckSlotView[] = Array.from({ length: DECK_LIMIT }, (_, index) => {
+    const base = { index, numero: index + 1, emCampo: index === 0 };
+    const card = draft[index] ?? null;
+
+    if (!card) {
+      return {
+        ...base,
+        userPokemonId: null,
+        pokemonId: null,
+        dexNumber: null,
+        name: null,
+        iconUrl: null,
+        level: null,
+        types: [],
+        accentType: null,
+        rarity: null,
+        baseStats: null,
+      };
+    }
 
     return {
-      id: slot.id,
-      pokemonId: slot.pokemonId,
-      dexNumber: dexNumber(slot.pokemonId),
-      name: slot.name,
-      iconUrl: slot.iconUrl,
-      level: slot.level,
-      types: slot.types,
-      accentType: slot.types[0] ?? "normal",
-      rarity: slot.rarity,
-      baseStats: slot.baseStats,
+      ...base,
+      userPokemonId: card.userPokemonId,
+      pokemonId: card.pokemonId,
+      dexNumber: dexNumber(card.pokemonId),
+      name: card.name,
+      iconUrl: card.iconUrl,
+      level: card.level,
+      types: card.types,
+      accentType: card.types[0] ?? "normal",
+      rarity: card.rarity,
+      baseStats: card.baseStats,
     };
   });
 
-  // `board.slots` pode vir com mais que o limite (o SLICE é aqui, na
-  // apresentação) — contar por ele mentiria "7/6". Conta as vagas desenhadas.
-  const count = slots.filter((s) => s.pokemonId !== null).length;
+  // Conta as vagas DESENHADAS, não o rascunho recebido: um rascunho maior que o
+  // limite escreveria "8/6" na tela que só mostra 6.
+  const count = slots.filter((s) => s.userPokemonId !== null).length;
   const full = count >= DECK_LIMIT;
+
+  // ── A trava da batalha ───────────────────────────────────────────────────
+  // Deck EM EDIÇÃO não batalha. Não é capricho de UI: o que a batalha usa é o
+  // que está GRAVADO, e a tela estaria mostrando outro time. Entrar na fila
+  // vendo seis cartas arrumadas e batalhar com as três antigas é a pior versão
+  // disso — o jogador não teria como saber que perdeu por um deck que não é o
+  // que ele montou. Ou salva, ou cancela.
+  const battleBlockedReason = status.editing
+    ? status.dirty
+      ? "Salve o time para batalhar"
+      : "Termine a edição para batalhar"
+    : count === 0
+      ? "Monte um time para batalhar"
+      : null;
 
   return {
     slots,
     count,
     limit: DECK_LIMIT,
     full,
+    canBattle: battleBlockedReason === null,
     battleLabel: count === 0 ? "Deck vazio" : full ? "Batalhar agora" : `Batalhar · ${count}`,
+    battleBlockedReason,
   };
-}
-
-// ─── A conta do arrastar (regra 4: a lógica sai do componente e tem teste) ───
-
-/**
- * Em qual vaga a carta cai: quantas OUTRAS linhas ela já ultrapassou.
- *
- * Compara centro com centro, não com a borda: encostar na linha de baixo não
- * empurra ninguém, a troca só acontece quando a carta passa da metade dela — é
- * onde a intenção fica clara e é o que impede a ordem de tremer enquanto o dedo
- * anda.
- *
- * O meio da PRÓPRIA carta (`from`) fica de fora da conta. Incluir ele fazia a
- * carta trocar de vaga assim que andava um pixel: o centro dela passa do
- * próprio meio imediatamente. Por isso a posição é medida contra as vizinhas.
- *
- * `midpoints` vem medido do DOM, na ordem da tela; `draggedCenter` é o meio da
- * linha arrastada mais o quanto o dedo andou. O resultado fica preso na lista —
- * arrastar pra fora do painel cai na primeira ou na última vaga.
- */
-export function dropTargetIndex(midpoints: number[], from: number, draggedCenter: number): number {
-  if (midpoints.length === 0) return 0;
-
-  let vaga = 0;
-  for (let i = 0; i < midpoints.length; i++) {
-    if (i !== from && midpoints[i] < draggedCenter) vaga++;
-  }
-  return Math.min(vaga, midpoints.length - 1);
-}
-
-/**
- * Pra que lado a linha `index` desliza enquanto a carta de `from` está sendo
- * arrastada até `to`: -1 sobe uma vaga, 1 desce uma, 0 fica parada.
- *
- * É o "abrir espaço" da animação. Quem está sendo arrastado (`index === from`)
- * segue o dedo e não entra nesta conta.
- */
-/**
- * A posição que a linha `index` MOSTRA durante o arrasto — o destino dela, não
- * de onde saiu.
- *
- * O número da vaga é o que diz quem começa em campo (a 1). Deixá-lo preso ao
- * índice antigo enquanto as cartas deslizam mostra a lista dizendo uma coisa e
- * os números outra: a carta no topo marcada "2". Aqui o número anda junto, e
- * soltar não muda mais nada na tela.
- */
-export function livePosition(index: number, from: number, to: number): number {
-  if (index === from) return to;
-  return index + slotShift(index, from, to);
-}
-
-export function slotShift(index: number, from: number, to: number): -1 | 0 | 1 {
-  if (index === from) return 0;
-  // Descendo: quem está entre a vaga antiga e a nova sobe uma posição.
-  if (from < to) return index > from && index <= to ? -1 : 0;
-  // Subindo: desce uma.
-  if (from > to) return index >= to && index < from ? 1 : 0;
-  return 0;
 }

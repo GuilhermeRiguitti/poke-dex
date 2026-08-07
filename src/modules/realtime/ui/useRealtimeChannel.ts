@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { getSupabaseBrowser } from "./supabaseBrowser";
+import { getSupabaseClient} from "./supabaseClient";
 
 // Assina um canal privado do Supabase Realtime e chama `onMessage` a cada
 // broadcast de QUALQUER um dos `events` no `topic`. Devolve `live`: true só
@@ -40,7 +40,7 @@ export function useRealtimeChannel(
 
   useEffect(() => {
     if (!enabled) return;
-    const supabase = getSupabaseBrowser();
+    const supabase = getSupabaseClient();
     if (!supabase) return; // sem env do Supabase → quem consome fica no polling
 
     let cancelled = false;

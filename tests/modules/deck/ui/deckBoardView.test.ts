@@ -1,171 +1,127 @@
 import { describe, expect, it } from "vitest";
-import {
-  deckBoardView,
-  dropTargetIndex,
-  livePosition,
-  slotShift,
-} from "@/src/modules/deck/ui/deckBoardView";
+import { deckBoardView } from "@/src/modules/deck/ui/deckBoardView";
+import { draftFrom, emptyDraft, type DeckDraft } from "@/src/modules/deck/domain/deckDraft";
 import { DECK_LIMIT } from "@/src/modules/deck/domain/rules";
-import type { DeckBoardDTO } from "@/src/modules/deck/ui/types";
+import type { DeckCardDTO } from "@/src/modules/deck/ui/types";
 
 const BASE_STATS = { hp: 39, atk: 52, def: 43, spa: 60, spd: 50, spe: 65 };
 
-const vaga = (id: string, order: number, pokemonId: number) => ({
-  id,
-  order,
+const carta = (id: string, pokemonId: number): DeckCardDTO => ({
+  userPokemonId: id,
   pokemonId,
   name: "charmander",
   iconUrl: "i.png",
   level: 10,
   types: ["fire"],
-  rarity: "common" as const,
+  rarity: "common",
   baseStats: BASE_STATS,
 });
 
-const board = (over: Partial<DeckBoardDTO> = {}): DeckBoardDTO => ({
-  id: "d1",
-  slots: [vaga("slot-1", 0, 4)],
-  ...over,
-});
+/** O rascunho como a tela o tem. `order` posiciona — é o mesmo caminho da page. */
+const rascunho = (...slots: { card: DeckCardDTO; order: number }[]): DeckDraft<DeckCardDTO> =>
+  draftFrom(slots.map(({ card, order }) => ({ ...card, order })));
 
-describe("deckBoardView", () => {
-  it("completa até DECK_LIMIT vagas", () => {
-    expect(deckBoardView(board()).slots).toHaveLength(DECK_LIMIT);
+/** Estado padrão: deck salvo, ninguém editando. */
+const PARADO = { editing: false, dirty: false };
+
+describe("deckBoardView — a fileira", () => {
+  it("são sempre DECK_LIMIT vagas", () => {
+    expect(deckBoardView(emptyDraft(), PARADO).slots).toHaveLength(DECK_LIMIT);
   });
 
   it("sem deck nenhum, são DECK_LIMIT vagas vazias", () => {
-    const v = deckBoardView({ id: null, slots: [] });
-    expect(v.slots).toHaveLength(DECK_LIMIT);
+    const v = deckBoardView(emptyDraft(), PARADO);
     expect(v.slots.every((s) => s.pokemonId === null)).toBe(true);
     expect(v.count).toBe(0);
   });
 
-  it("a vaga preenchida leva o id do slot — é o que o X manda pro DELETE", () => {
-    const v = deckBoardView(board());
-    expect(v.slots[0].id).toBe("slot-1");
-    expect(v.slots[0].dexNumber).toBe("#0004");
+  // O CORAÇÃO DA MUDANÇA: a vaga é um ENDEREÇO. Uma carta na posição 3 é
+  // desenhada na 3, com as vagas 0..2 vazias — antes a fileira era compactada e
+  // ela apareceria no topo.
+  it("a carta fica na vaga onde foi posta, com buraco antes", () => {
+    const v = deckBoardView(rascunho({ card: carta("up-1", 4), order: 3 }), PARADO);
+
+    expect(v.slots[0].userPokemonId).toBeNull();
+    expect(v.slots[3].userPokemonId).toBe("up-1");
+    expect(v.slots[3].numero).toBe(4);
+    expect(v.slots[3].dexNumber).toBe("#0004");
     expect(v.count).toBe(1);
   });
 
-  it("vaga vazia não tem id", () => {
-    expect(deckBoardView(board()).slots[1].id).toBeNull();
+  it("o buraco no meio continua buraco", () => {
+    const v = deckBoardView(
+      rascunho({ card: carta("up-1", 4), order: 0 }, { card: carta("up-2", 7), order: 4 }),
+      PARADO
+    );
+    expect(v.slots.map((s) => s.userPokemonId)).toEqual(["up-1", null, null, null, "up-2", null]);
+    expect(v.count).toBe(2);
   });
 
-  // O bug que originou a separação: o deck se resolve SOZINHO, a partir da
-  // query dele. Não existe mais cruzamento com a listagem da coleção, então
-  // filtro e paginação não têm como esvaziar uma vaga montada.
-  it("desenha a vaga sem depender de nada da coleção", () => {
-    const v = deckBoardView(board({ slots: [vaga("slot-1", 0, 6)] }));
-    expect(v.slots[0].pokemonId).toBe(6);
+  // Só a vaga 0 começa em campo — é o que o número em destaque diz.
+  it("só a primeira vaga é a de campo", () => {
+    const v = deckBoardView(emptyDraft(), PARADO);
+    expect(v.slots.map((s) => s.emCampo)).toEqual([true, false, false, false, false, false]);
+  });
+
+  it("a vaga preenchida leva o tipo que tinge a linha; a vazia não tem nenhum", () => {
+    const v = deckBoardView(rascunho({ card: carta("up-1", 4), order: 0 }), PARADO);
+    expect(v.slots[0].accentType).toBe("fire");
+    expect(v.slots[1].accentType).toBeNull();
+  });
+
+  it("a vaga desenha a carta inteira, sem consultar a coleção", () => {
+    const v = deckBoardView(rascunho({ card: carta("up-1", 6), order: 0 }), PARADO);
     expect(v.slots[0].name).toBe("charmander");
     expect(v.slots[0].baseStats).toEqual(BASE_STATS);
+    expect(v.slots[0].level).toBe(10);
   });
 
-  it("mais vagas do que o limite não estouram a fileira nem a contagem", () => {
-    const cheio = Array.from({ length: DECK_LIMIT + 2 }, (_, i) =>
-      vaga(`slot-${i}`, i, 4 + i)
-    );
-    const v = deckBoardView(board({ slots: cheio }));
+  it("rascunho maior que o limite não estoura a fileira nem a contagem", () => {
+    const grande = Array.from({ length: DECK_LIMIT + 2 }, (_, i) => carta(`up-${i}`, 4 + i));
+    const v = deckBoardView(grande, PARADO);
     expect(v.slots).toHaveLength(DECK_LIMIT);
-    // conta as vagas DESENHADAS — contar o que veio da query escreveria "8/6"
+    // conta as vagas DESENHADAS — contar o rascunho escreveria "8/6"
     expect(v.count).toBe(DECK_LIMIT);
-  });
-
-  it("a vaga preenchida leva o tipo que tinge a linha", () => {
-    expect(deckBoardView(board()).slots[0].accentType).toBe("fire");
-    expect(deckBoardView(board()).slots[1].accentType).toBeNull();
-  });
-
-  it("o rótulo de batalhar acompanha o time enchendo", () => {
-    expect(deckBoardView({ id: null, slots: [] }).battleLabel).toBe("Deck vazio");
-    expect(deckBoardView({ id: null, slots: [] }).full).toBe(false);
-
-    expect(deckBoardView(board()).battleLabel).toBe("Batalhar · 1");
-
-    const cheio = Array.from({ length: DECK_LIMIT }, (_, i) => vaga(`slot-${i}`, i, 4 + i));
-    const v = deckBoardView(board({ slots: cheio }));
     expect(v.full).toBe(true);
+  });
+});
+
+describe("deckBoardView — a trava da batalha", () => {
+  const cheio = Array.from({ length: DECK_LIMIT }, (_, i) => carta(`up-${i}`, 4 + i));
+
+  it("deck salvo e com time: dá pra batalhar", () => {
+    const v = deckBoardView(cheio, PARADO);
+    expect(v.canBattle).toBe(true);
+    expect(v.battleBlockedReason).toBeNull();
     expect(v.battleLabel).toBe("Batalhar agora");
   });
-});
 
-// Três linhas de 40px começando em y=0: meios em 20, 60 e 100.
-const MEIOS = [20, 60, 100];
-
-describe("dropTargetIndex", () => {
-  // O CASO QUE PEGOU O BUG: parada no lugar, a carta tem que continuar na vaga
-  // dela. Contando o próprio meio (20 < 20 é falso, mas 20 < 20.1 não), qualquer
-  // tremida do dedo já mandava ela pra vaga seguinte.
-  it("parada no lugar, fica na mesma vaga", () => {
-    expect(dropTargetIndex(MEIOS, 0, 20)).toBe(0);
-    expect(dropTargetIndex(MEIOS, 1, 60)).toBe(1);
-    expect(dropTargetIndex(MEIOS, 2, 100)).toBe(2);
+  it("deck vazio não batalha", () => {
+    const v = deckBoardView(emptyDraft(), PARADO);
+    expect(v.canBattle).toBe(false);
+    expect(v.battleBlockedReason).toBe("Monte um time para batalhar");
   });
 
-  it("desce uma vaga só depois de passar da metade da vizinha", () => {
-    expect(dropTargetIndex(MEIOS, 0, 59)).toBe(0); // encostou, não passou
-    expect(dropTargetIndex(MEIOS, 0, 61)).toBe(1); // passou
-    expect(dropTargetIndex(MEIOS, 0, 101)).toBe(2);
+  // A REGRA QUE O JOGO PEDE: em edição não se entra em batalha. O que a batalha
+  // usa é o time GRAVADO — lutar com o time antigo enquanto a tela mostra outro
+  // seria uma derrota sem explicação possível.
+  it("EM EDIÇÃO não batalha, mesmo com o time cheio", () => {
+    const v = deckBoardView(cheio, { editing: true, dirty: true });
+    expect(v.canBattle).toBe(false);
+    expect(v.battleBlockedReason).toBe("Salve o time para batalhar");
   });
 
-  it("subindo vale a mesma metade", () => {
-    expect(dropTargetIndex(MEIOS, 2, 61)).toBe(2); // ainda abaixo do meio da 2ª
-    expect(dropTargetIndex(MEIOS, 2, 59)).toBe(1);
-    expect(dropTargetIndex(MEIOS, 2, 19)).toBe(0);
+  it("em edição SEM mudança pendente, o aviso é outro — mas ainda não batalha", () => {
+    const v = deckBoardView(cheio, { editing: true, dirty: false });
+    expect(v.canBattle).toBe(false);
+    expect(v.battleBlockedReason).toBe("Termine a edição para batalhar");
   });
 
-  it("arrastar pra fora do painel prende na primeira e na última", () => {
-    expect(dropTargetIndex(MEIOS, 1, -5000)).toBe(0);
-    expect(dropTargetIndex(MEIOS, 1, 5000)).toBe(2);
-  });
-
-  it("lista vazia não estoura", () => {
-    expect(dropTargetIndex([], 0, 42)).toBe(0);
-  });
-});
-
-describe("slotShift", () => {
-  it("quem está sendo arrastado não desliza (ele segue o dedo)", () => {
-    expect(slotShift(1, 1, 3)).toBe(0);
-  });
-
-  it("descendo, quem está entre a vaga antiga e a nova sobe uma", () => {
-    expect(slotShift(1, 0, 2)).toBe(-1);
-    expect(slotShift(2, 0, 2)).toBe(-1); // o destino também abre espaço
-    expect(slotShift(3, 0, 2)).toBe(0); // fora do caminho, fica parado
-  });
-
-  it("subindo, quem está no caminho desce uma", () => {
-    expect(slotShift(1, 3, 1)).toBe(1);
-    expect(slotShift(2, 3, 1)).toBe(1);
-    expect(slotShift(0, 3, 1)).toBe(0);
-  });
-
-  it("sem movimento, ninguém desliza", () => {
-    expect(slotShift(0, 2, 2)).toBe(0);
-    expect(slotShift(3, 2, 2)).toBe(0);
-  });
-});
-
-describe("livePosition", () => {
-  // Arrastando a 1ª carta (índice 0) até a 3ª (índice 2): os números têm que
-  // acompanhar. Sem isso a carta que subiu pro topo continua marcada "2" — o
-  // número é justamente o que diz quem começa em campo.
-  it("os quatro números batem com o que a tela mostra", () => {
-    expect([0, 1, 2, 3].map((i) => livePosition(i, 0, 2))).toEqual([2, 0, 1, 3]);
-  });
-
-  it("a carta arrastada mostra o destino", () => {
-    expect(livePosition(3, 3, 0)).toBe(0);
-  });
-
-  it("subindo, quem foi empurrado ganha uma posição", () => {
-    expect([0, 1, 2, 3].map((i) => livePosition(i, 3, 1))).toEqual([0, 2, 3, 1]);
-  });
-
-  // Toda posição aparece uma vez só: dois "1" na tela seria a lista mentindo.
-  it("nunca repete um número", () => {
-    const posicoes = [0, 1, 2, 3].map((i) => livePosition(i, 1, 3));
-    expect(new Set(posicoes).size).toBe(4);
+  it("o rótulo acompanha o time enchendo", () => {
+    expect(deckBoardView(emptyDraft(), PARADO).battleLabel).toBe("Deck vazio");
+    expect(deckBoardView(emptyDraft(), PARADO).full).toBe(false);
+    expect(deckBoardView(rascunho({ card: carta("up-1", 4), order: 0 }), PARADO).battleLabel).toBe(
+      "Batalhar · 1"
+    );
   });
 });

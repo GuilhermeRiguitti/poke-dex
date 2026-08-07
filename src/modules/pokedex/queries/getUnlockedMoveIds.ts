@@ -9,7 +9,7 @@ import { PLAYABLE_LEARN_METHOD, mergePlayableMoveIds } from "@/src/modules/progr
  * checar o dono), então não relê a linha à toa. A união é decidida pela regra
  * pura mergePlayableMoveIds — aqui é só o I/O das duas fontes.
  *
- * Usado por deck/addToDeck (trava do servidor) e battle/pruneLoadoutForSpecies
+ * Usado por battle/pruneLoadoutForSpecies
  * (poda pós-evolução). readLearnset NÃO usa esta função porque precisa dos
  * flags por-carta (destravada? ensinável por TM?), não só do conjunto.
  */

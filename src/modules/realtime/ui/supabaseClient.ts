@@ -10,7 +10,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 // Singleton de módulo: 1 socket por aba, não 1 por componente montado.
 let client: SupabaseClient | null = null;
 
-export function getSupabaseBrowser(): SupabaseClient | null {
+export function getSupabaseClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   // Sem env → sem Realtime; quem consome trata null caindo pro polling.

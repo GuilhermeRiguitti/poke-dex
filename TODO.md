@@ -21,11 +21,18 @@
   ficaria sem ação e perderia por abandono.
 - [x] **IDOR** — auditado, nenhum encontrado. Toda escrita escopa o dono no
   PRÓPRIO `where` (não num findUnique antes, que seria corrida):
-  `removeCard` -> `deleteMany({ id, userId })`; `removeFromDeck` ->
-  `deleteMany({ id, deck: { userId } })`; `addToDeck` compara `userCard.userId`
-  e devolve `not_found` (não vira oráculo de "esse id existe"); o `deckId` que o
-  cliente manda no POST /api/battle/queue passa por `readDeckRoster`, que filtra
+  `removeCard` -> `deleteMany({ id, userId })`; o `deckId` que o cliente manda no
+  POST /api/battle/queue passa por `readDeckRoster`, que filtra
   `where: { id: deckId, userId }`.
+  - **Reauditado em 2026-08-06**, quando `addToDeck`/`removeFromDeck`/
+    `reorderDeck` viraram um `saveDeck` só (`PUT /api/deck`, corpo com o time
+    inteiro). O padrão não mudou: o `findMany` do time filtra `{ id: { in },
+    userId }` no PRÓPRIO where e exige que a contagem BATA — uma carta de outro
+    dono derruba o save inteiro com `not_found` (não vira oráculo de "esse id
+    existe") e **nada é escrito**. O deck alvo continua sendo o do próprio
+    usuário (`getOrCreateDeck(userId)`), então o `deleteMany` do save não alcança
+    deck alheio. A forma do corpo (quantidade, posições, repetidos) é validada
+    por função pura ANTES de qualquer ida ao banco (`validateDeckSlots`).
 - [x] **Escrita antes da autorização** (achado NOVO, não estava nesta lista).
   `getBattleState`/`getBattleStatus` chamavam `tryResolveTurn` — que ESCREVE e
   pode bater na PokéAPI — e só DEPOIS checavam se o usuário era participante. O

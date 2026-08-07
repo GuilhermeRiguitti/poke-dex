@@ -1,5 +1,11 @@
 // Mapper da linha crua -> DTO da vaga do deck. Whitelist EXPLÍCITA, campo a
 // campo: linha de Prisma não vai crua pro browser (CLAUDE.md, regra 3).
+//
+// O id do DeckSlot NÃO sai daqui. Ele existia pro DELETE /api/deck/[id], que
+// morreu com o rascunho de cliente; e como o save apaga e reinsere as linhas, o
+// id muda a cada gravação — mandá-lo seria dar pro browser um identificador que
+// não identifica nada. Quem identifica a carta é o `userPokemonId`, que a tela
+// precisa de verdade (é a chave do rascunho e o que marca a carta na coleção).
 
 import type { RarityTier } from "@/src/modules/packs/domain/rarity";
 import type { BaseStats } from "@/src/modules/progression/domain/leveling";
@@ -7,10 +13,10 @@ import type { DeckBoardSlotDTO } from "../ui/types";
 
 /** O recorte que a query pede — e tudo que o mapper tem direito de ver. */
 export const DECK_BOARD_SLOT_SELECT = {
-  id: true,
   order: true,
   userPokemon: {
     select: {
+      id: true,
       level: true,
       pokemon: {
         select: {
@@ -27,9 +33,9 @@ export const DECK_BOARD_SLOT_SELECT = {
 } as const;
 
 interface DeckBoardSlotRow {
-  id: string;
   order: number;
   userPokemon: {
+    id: string;
     level: number;
     pokemon: {
       pokemonApiId: number;
@@ -45,8 +51,8 @@ interface DeckBoardSlotRow {
 export function toDeckBoardSlotDTO(row: DeckBoardSlotRow): DeckBoardSlotDTO {
   const { pokemon } = row.userPokemon;
   return {
-    id: row.id,
     order: row.order,
+    userPokemonId: row.userPokemon.id,
     pokemonId: pokemon.pokemonApiId,
     name: pokemon.name,
     iconUrl: pokemon.spriteUrl,

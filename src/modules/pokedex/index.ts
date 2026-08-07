@@ -41,7 +41,7 @@ export {
 } from "./domain/collectionFilters";
 export type { CollectionFilters, CollectionSort } from "./domain/collectionFilters";
 // Conjunto de moveId jogáveis de um UserPokemon (level-up destravado ∪ concedidos).
-// Consumido por deck (addToDeck) e battle (poda pós-evolução).
+// Consumido por deck (readLearnset) e battle (poda pós-evolução).
 export { getUnlockedMoveIds } from "./queries/getUnlockedMoveIds";
 export { getPokemonDetail } from "./queries/getPokemonDetail";
 // Mapper puro NormalizedPokemon → card. Exposto pro módulo packs montar a DTO

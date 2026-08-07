@@ -44,14 +44,22 @@ describe("collectionView", () => {
     expect(collectionView(pagina()).cards[0].accentType).toBe("fire");
   });
 
-  // A coleção deixou de saber qualquer coisa de deck: quem está numa vaga nem
-  // é listado (buildCollectionWhere exclui no banco), então não há "inDeck",
-  // "deckSlotId" nem "canToggle" pra vazar de volta pra cá.
+  // A coleção continua sem saber nada de deck — mesmo agora que ela LISTA quem
+  // está montado. Quem sabe o que está no time é o rascunho, que vive no
+  // cliente; esta função é pura e roda no servidor. Um "inDeck" aqui seria o
+  // deck GRAVADO, que durante a edição não é o que a tela mostra.
   it("a carta não carrega nada sobre deck", () => {
     const card = collectionView(pagina()).cards[0];
     expect(card).not.toHaveProperty("inDeck");
     expect(card).not.toHaveProperty("deckSlotId");
     expect(card).not.toHaveProperty("canToggle");
+  });
+
+  // O sprite pequeno viaja com a carta porque arrastá-la até uma vaga tem que
+  // desenhá-la lá NA HORA (o deck é rascunho de cliente). Sem ele a vaga ficaria
+  // sem imagem até salvar e recarregar.
+  it("a carta leva o sprite que a VAGA DO DECK desenha", () => {
+    expect(collectionView(pagina()).cards[0].iconUrl).toBe("i.png");
   });
 
   it("sem carta e sem coleção, o vazio é de COLEÇÃO", () => {
@@ -73,12 +81,12 @@ describe("collectionView", () => {
     expect(v.emptyState).toBe("filter");
   });
 
-  it("sem carta, COM coleção e SEM filtro, o vazio é 'tudo no deck'", () => {
-    // A coleção não lista mais quem está no deck. Quem montou tudo tem `cards`
-    // vazio sem filtro nenhum — mandar "limpar filtros" aí seria pedir pra
-    // limpar o que não existe.
-    const v = collectionView(pagina({ cards: [], totalCards: 0, totalInCollection: 6 }));
-    expect(v.emptyState).toBe("all_in_deck");
+  // O vazio "all_in_deck" SUMIU: a coleção lista tudo agora, inclusive quem
+  // está montado. Quem montou o time inteiro continua vendo as cartas
+  // (marcadas), então a grade não fica vazia e não há esse vazio pra explicar.
+  it("montar o time inteiro não esvazia mais a listagem", () => {
+    const v = collectionView(pagina({ cards: [carta("up-1", 4)], totalCards: 6, totalInCollection: 6 }));
+    expect(v.emptyState).toBe("none");
   });
 
   it("com carta, não há vazio", () => {

@@ -12,15 +12,21 @@
 export type {
   DeckBoardDTO,
   DeckBoardSlotDTO,
-  DeckSlotDTO,
+  DeckCardDTO,
   DeckSummaryDTO,
   LearnsetMoveDTO,
 } from "./ui/types";
 
-// moveSlot NÃO entra aqui: é a conta do arrastar, e quem usa é a UI, que importa
-// de domain/rules direto (o mesmo caminho que deckBoardView faz com DECK_LIMIT).
-// Rota nenhuma precisa dela.
+// As contas do RASCUNHO (deckDraft) não entram aqui: quem usa é a UI, que
+// importa de domain/deckDraft direto — o mesmo caminho que o deckBoardView faz
+// com DECK_LIMIT. Rota nenhuma precisa delas; o servidor recebe o time já
+// achatado em { userPokemonId, order }.
 export { DECK_LIMIT, CARDS_PER_SLOT, isDeckFull } from "./domain/rules";
+// A validação do time é a MESMA nos dois lados (o botão de salvar e o PUT), por
+// isso ela é pública: o cliente importa de domain/validateDeckSlots direto, o
+// command importa daqui.
+export { validateDeckSlots, deckSlotsIssueMessage } from "./domain/validateDeckSlots";
+export type { DeckSlotInput, DeckSlotsIssue } from "./domain/validateDeckSlots";
 // A barra com que o pokémon ENTRA quando o jogador não escolhe a tempo. Vive no
 // deck (é regra de "qual barra montar"), mas quem usa hoje é a batalha.
 export { defaultLoadout } from "./domain/defaultLoadout";
@@ -38,9 +44,7 @@ export { readDeckSlots, getOrCreateDeck } from "./queries/readDeck";
 export type { DeckLoadoutSlot } from "./queries/readDeck";
 export { getDeckSummary } from "./queries/getDeckSummary";
 
-export { addToDeck } from "./commands/addToDeck";
-export type { AddToDeckInput, AddToDeckResult } from "./commands/addToDeck";
-export { removeFromDeck } from "./commands/removeFromDeck";
-export type { RemoveFromDeckResult } from "./commands/removeFromDeck";
-export { reorderDeck } from "./commands/reorderDeck";
-export type { ReorderDeckResult } from "./commands/reorderDeck";
+// A ÚNICA escrita do deck: o time inteiro de uma vez (PUT /api/deck). Substituiu
+// addToDeck / removeFromDeck / reorderDeck — ver saveDeck.ts.
+export { saveDeck } from "./commands/saveDeck";
+export type { SaveDeckResult } from "./commands/saveDeck";
