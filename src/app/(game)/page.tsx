@@ -2,35 +2,25 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/src/modules/auth/auth";
-import { getDeckBoardQuery } from "@/src/modules/deck";
-import DeckDropProvider from "@/src/modules/deck/ui/DeckDropZone";
-import DeckSlots from "@/src/modules/deck/ui/DeckSlots";
-import { deckBoardView } from "@/src/modules/deck/ui/deckBoardView";
+import { DECK_LIMIT, getDeckBoardQuery } from "@/src/modules/deck";
+import DeckEditorProvider from "@/src/modules/deck/ui/DeckEditorProvider";
+import DeckPanel from "@/src/modules/deck/ui/DeckPanel";
 import { collectionHref, getCollectionQuery, parseCollectionFilters } from "@/src/modules/pokedex";
+import CollectionDropZone from "@/src/modules/pokedex/ui/CollectionDropZone";
 import CollectionFilterBar from "@/src/modules/pokedex/ui/CollectionFilterBar";
 import CollectionGrid from "@/src/modules/pokedex/ui/CollectionGrid";
 import Pagination from "@/src/modules/pokedex/ui/Pagination";
 import { collectionView } from "@/src/modules/pokedex/ui/pokedexView";
 
-// A coleção é um WORKSPACE de três colunas: filtros | cartas | deck.
+// O DeckEditorProvider (cliente) envolve as duas colunas porque montar o time
+// atravessa as duas: a carta que se arrasta está na coleção e a vaga que a
+// recebe está no painel do deck. Ele recebe as colunas como `children`, que
+// continuam vindo do servidor — é o que permite ter o arrasto SEM tornar esta
+// page cliente: se ela levasse "use client", getCollectionQuery e
+// getDeckBoardQuery (que importam Prisma) iriam parar no bundle do browser.
 //
-// Em telas largas (xl) ela ocupa a viewport inteira e cada coluna rola por
-// dentro — assim o deck fica sempre à vista enquanto se percorre a coleção, que
-// é a única coisa que a tela faz. Pra isso ela precisa furar o container
-// `max-w-6xl` do layout de (game): daí o `left-1/2 / -ml-[50vw] / w-screen`, e o
-// `-mb-16` que devolve o `pb-16` do <main> (senão sobra uma faixa de scroll).
-//
-// Abaixo de xl vira empilhamento normal, na ordem deck → filtros → cartas, e a
-// página volta a rolar inteira.
-//
-// Continua Server Component: quem busca é o servidor, e o único cliente é a
-// barra de filtros (debounce) + o X da vaga do deck.
-//
-// O DeckDropProvider (cliente) envolve as duas colunas porque arrastar a carta
-// da coleção pro deck atravessa as duas — e ele recebe as colunas como
-// `children`, que continuam vindo do servidor. É o que permite ter o arrasto
-// SEM tornar esta page cliente: se ela levasse "use client", getCollectionQuery
-// e getDeckBoardQuery (que importam Prisma) iriam parar no bundle do browser.
+// O deck lido aqui é o GRAVADO. Daqui pra frente ele é só o ponto de partida do
+// rascunho — o provider é quem manda no que a tela mostra, até o save.
 
 type CollectionPageProps = {
    searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -47,11 +37,10 @@ export default async function HomePage({ searchParams }: CollectionPageProps) {
    ]);
 
    const view = collectionView(page);
-   const deck = deckBoardView(board);
 
    return (
       <div className="xl:relative xl:left-1/2 xl:-mb-16 xl:ml-[-50vw] xl:w-screen">
-       <DeckDropProvider>
+       <DeckEditorProvider board={board}>
          <div className="grid grid-cols-1 xl:h-[calc(100vh-4rem)] xl:grid-cols-[248px_minmax(0,1fr)_336px]">
             <div className="order-2 xl:order-0 xl:contents">
                <CollectionFilterBar filters={filters} />
@@ -63,7 +52,7 @@ export default async function HomePage({ searchParams }: CollectionPageProps) {
                      Minha <span className="text-energy">Coleção</span>
                   </h1>
                   <p className="text-sm font-semibold text-ink-dim">
-                     Monte um deck de até {deck.limit} pokémons para batalhar.
+                     Monte um deck de até {DECK_LIMIT} pokémons para batalhar.
                   </p>
                   {view.totalCards > 0 && (
                      <p className="ml-auto font-title text-sm tracking-wider text-ink-dim">
@@ -73,7 +62,10 @@ export default async function HomePage({ searchParams }: CollectionPageProps) {
                   )}
                </div>
 
-               <div className="px-4 pb-8 pt-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+               {/* O painel rolável é o ALVO de "tirar do time": arrastar uma
+                   carta da vaga até aqui devolve ela pra coleção. Só uma casca
+                   cliente — a grade dentro segue vindo do servidor. */}
+               <CollectionDropZone className="px-4 pb-8 pt-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
                   {view.emptyState === "collection" && (
                      <div className="clip-card border border-dashed border-edge p-10 text-center">
                         <p className="mb-2 font-title text-lg uppercase tracking-wide">Coleção vazia</p>
@@ -89,14 +81,9 @@ export default async function HomePage({ searchParams }: CollectionPageProps) {
                      </div>
                   )}
 
-                  {view.emptyState === "all_in_deck" && (
-                     <div className="clip-card border border-dashed border-edge p-10 text-center">
-                        <p className="mb-2 font-title text-lg uppercase tracking-wide">Time completo</p>
-                        <p className="text-sm font-semibold text-ink-dim">
-                           Todas as suas cartas já estão montadas no deck. Abra um pacote para conseguir mais.
-                        </p>
-                     </div>
-                  )}
+                  {/* "Time completo" saiu daqui: a grade lista TODAS as cartas
+                      agora, inclusive as montadas (marcadas com a vaga), então
+                      montar a coleção inteira não esvazia mais a listagem. */}
 
                   {view.emptyState === "filter" && (
                      <div className="clip-card border border-dashed border-edge p-10 text-center">
@@ -125,14 +112,14 @@ export default async function HomePage({ searchParams }: CollectionPageProps) {
                         )}
                      </>
                   )}
-               </div>
+               </CollectionDropZone>
             </section>
 
             <div className="order-1 xl:order-0 xl:contents">
-               <DeckSlots deck={deck} />
+               <DeckPanel />
             </div>
          </div>
-       </DeckDropProvider>
+       </DeckEditorProvider>
       </div>
    );
 }

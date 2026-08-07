@@ -16,12 +16,20 @@ export function buildCollectionWhere(
   userId: string,
   f: CollectionFilters
 ): Prisma.UserPokemonWhereInput {
+  // A coleção lista TUDO que é do jogador, inclusive quem já está no deck.
+  //
+  // Ela já excluiu quem tinha vaga (`deckSlots: { none: {} }`), e isso caiu
+  // quando montar o time virou RASCUNHO de cliente. Com o rascunho, tirar uma
+  // carta da vaga tem que devolvê-la à grade NA HORA, e pôr outra tem que
+  // marcá-la como usada — sem request nenhum. Um WHERE que consulta o deck
+  // GRAVADO não sabe nada do rascunho: a carta que o jogador acabou de tirar
+  // continuaria fora da lista até ele salvar, e ele não teria como recolocá-la.
+  //
+  // Quem está no deck aparece MARCADA (a grade compara com o rascunho, no
+  // cliente) — não sumindo. O estado do deck é do cliente agora, então a
+  // listagem não precisa mais saber dele.
   return {
     userId,
-    // Carta já numa vaga do deck não aparece na coleção — o deck é a única
-    // tela dela agora. Sem isso a carta apareceria nos dois lugares e a coleção
-    // precisaria voltar a saber o estado do deck só pra pintar o botão.
-    deckSlots: { none: {} },
     pokemon: {
       ...(f.q ? { name: { contains: f.q, mode: "insensitive" as const } } : {}),
       ...(f.type ? { types: { array_contains: [f.type] } } : {}),

@@ -74,7 +74,7 @@ export async function buildDuelSnapshot(userId: string, deckId: string): Promise
     slots.map(async (slot, index) => {
       const moves = await defaultMovesFor(userId, slot);
       // Sem NENHUMA skill liberada o pokémon não teria ação nenhuma em campo.
-      // O addToDeck já barra isso na entrada do deck; aqui é a rede de baixo.
+      // O saveDeck já barra isso na entrada do deck; aqui é a rede de baixo.
       if (moves.length === 0) {
         throw new Error(`${slot.userPokemon.pokemon.name} não tem nenhuma skill liberada`);
       }

@@ -26,7 +26,7 @@ export type ApplyTmResult =
 
 export async function applyTM(userId: string, input: ApplyTmInput): Promise<ApplyTmResult> {
   // O Pokémon é do jogador? (id de outro dono responde igual a inexistente —
-  // não vira oráculo de "esse id existe", como addToDeck.)
+  // não vira oráculo de "esse id existe", como saveDeck.)
   const up = await prisma.userPokemon.findUnique({
     where: { id: input.userPokemonId },
     select: { id: true, userId: true, pokemonId: true },

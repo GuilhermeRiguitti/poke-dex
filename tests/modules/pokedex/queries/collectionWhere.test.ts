@@ -3,9 +3,20 @@ import { buildCollectionWhere, orderByFor } from "@/src/modules/pokedex/queries/
 import { parseCollectionFilters } from "@/src/modules/pokedex/domain/collectionFilters";
 
 describe("buildCollectionWhere", () => {
-  it("sem filtro, recorta só pelo dono e exclui quem já está no deck", () => {
+  it("sem filtro, recorta só pelo dono", () => {
     const where = buildCollectionWhere("u1", parseCollectionFilters({}));
-    expect(where).toEqual({ userId: "u1", deckSlots: { none: {} }, pokemon: {} });
+    expect(where).toEqual({ userId: "u1", pokemon: {} });
+  });
+
+  // A LISTAGEM NÃO CONSULTA MAIS O DECK. Ela excluía quem tinha vaga
+  // (`deckSlots: { none: {} }`), e isso caiu quando montar o time virou rascunho
+  // de cliente: um WHERE que olha o deck GRAVADO não sabe nada do rascunho, então
+  // a carta que o jogador acabou de tirar da vaga sumiria da grade até ele salvar
+  // — e ele não teria como recolocá-la. Quem está no time aparece MARCADO, no
+  // cliente.
+  it("não consulta o deck", () => {
+    const where = buildCollectionWhere("u1", parseCollectionFilters({ q: "char" }));
+    expect(where).not.toHaveProperty("deckSlots");
   });
 
   it("busca por nome é insensível a maiúscula", () => {

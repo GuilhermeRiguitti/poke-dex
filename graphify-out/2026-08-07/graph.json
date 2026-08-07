@@ -467,8 +467,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "package_dependencies_react_hot_toast",
-      "community": 17,
-      "community_name": "dependencies",
+      "community": 77,
+      "community_name": "react-hot-toast",
       "norm_label": "react-hot-toast"
     },
     {
@@ -478,8 +478,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "react_hot_toast",
-      "community": 17,
-      "community_name": "dependencies",
+      "community": 77,
+      "community_name": "react-hot-toast",
       "norm_label": "react-hot-toast"
     },
     {
@@ -511,8 +511,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "package_dependencies_tailwindcss",
-      "community": 57,
-      "community_name": "tailwindcss",
+      "community": 17,
+      "community_name": "dependencies",
       "norm_label": "tailwindcss"
     },
     {
@@ -522,8 +522,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "tailwindcss",
-      "community": 57,
-      "community_name": "tailwindcss",
+      "community": 17,
+      "community_name": "dependencies",
       "norm_label": "tailwindcss"
     },
     {
@@ -1369,8 +1369,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_api_realtime_token_route",
-      "community": 35,
-      "community_name": "(game)/page.tsx",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "token/route.ts"
     },
     {
@@ -1380,8 +1380,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_app_api_realtime_token_route_get",
-      "community": 35,
-      "community_name": "(game)/page.tsx",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "get()"
     },
     {
@@ -1391,8 +1391,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_api_training_skills_userpokemonid_route",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 20,
+      "community_name": "listPokedexPage.ts",
       "norm_label": "[userpokemonid]/route.ts"
     },
     {
@@ -1402,8 +1402,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_app_api_training_skills_userpokemonid_route_get",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 20,
+      "community_name": "listPokedexPage.ts",
       "norm_label": "get()"
     },
     {
@@ -1413,7 +1413,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_api_training_tm_route",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "tm/route.ts"
     },
@@ -1424,7 +1424,7 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_app_api_training_tm_route_post",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "post()"
     },
@@ -1468,8 +1468,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_app_design_system_page_specimen",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "specimen"
     },
     {
@@ -2117,7 +2117,7 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "src_lib_pokeapi_normalizedtype",
-      "community": 20,
+      "community": 86,
       "community_name": "listPokedexPage.ts",
       "norm_label": "normalizedtype"
     },
@@ -2205,7 +2205,7 @@
       "source_location": "L217",
       "_origin": "ast",
       "id": "src_lib_pokeapi_fetchtype",
-      "community": 20,
+      "community": 86,
       "community_name": "listPokedexPage.ts",
       "norm_label": "fetchtype()"
     },
@@ -2216,7 +2216,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_pokeapicache",
-      "community": 20,
+      "community": 86,
       "community_name": "listPokedexPage.ts",
       "norm_label": "pokeapicache.ts"
     },
@@ -2227,7 +2227,7 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_lib_pokeapicache_cachekey",
-      "community": 20,
+      "community": 86,
       "community_name": "listPokedexPage.ts",
       "norm_label": "cachekey"
     },
@@ -2238,7 +2238,7 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_lib_pokeapicache_readcached",
-      "community": 20,
+      "community": 86,
       "community_name": "listPokedexPage.ts",
       "norm_label": "readcached()"
     },
@@ -2249,7 +2249,7 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_lib_pokeapicache_fetchandcache",
-      "community": 20,
+      "community": 86,
       "community_name": "listPokedexPage.ts",
       "norm_label": "fetchandcache()"
     },
@@ -2260,7 +2260,7 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "src_lib_pokeapicache_fetchandcachetype",
-      "community": 20,
+      "community": 86,
       "community_name": "listPokedexPage.ts",
       "norm_label": "fetchandcachetype()"
     },
@@ -2546,8 +2546,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "src_modules_battle_commands_buildduelsnapshot_buildtypechart",
-      "community": 20,
-      "community_name": "listPokedexPage.ts",
+      "community": 53,
+      "community_name": "LoadoutBuilder.tsx",
       "norm_label": "buildtypechart()"
     },
     {
@@ -3998,7 +3998,7 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "src_modules_battle_ui_duelarena_stagefallbacksprites",
-      "community": 67,
+      "community": 6,
       "community_name": "battleView.ts",
       "norm_label": "stagefallbacksprites()"
     },
@@ -4009,8 +4009,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "src_modules_battle_ui_duelarena_stageboundary",
-      "community": 38,
-      "community_name": "StageBoundary",
+      "community": 67,
+      "community_name": "battleView.ts",
       "norm_label": "stageboundary"
     },
     {
@@ -4020,8 +4020,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "src_modules_battle_ui_duelarena_stageboundary_getderivedstatefromerror",
-      "community": 38,
-      "community_name": "StageBoundary",
+      "community": 67,
+      "community_name": "battleView.ts",
       "norm_label": ".getderivedstatefromerror()"
     },
     {
@@ -4031,8 +4031,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "src_modules_battle_ui_duelarena_stageboundary_render",
-      "community": 38,
-      "community_name": "StageBoundary",
+      "community": 67,
+      "community_name": "battleView.ts",
       "norm_label": ".render()"
     },
     {
@@ -4207,7 +4207,7 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "src_modules_battle_ui_duelstage3d_callout",
-      "community": 67,
+      "community": 6,
       "community_name": "battleView.ts",
       "norm_label": "callout()"
     },
@@ -4504,7 +4504,7 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "src_modules_battle_ui_battleview_duelcalloutfor",
-      "community": 67,
+      "community": 6,
       "community_name": "battleView.ts",
       "norm_label": "duelcalloutfor()"
     },
@@ -5032,8 +5032,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "src_modules_deck_domain_validatedeckslots_deckslotsissuemessage",
-      "community": 12,
-      "community_name": "deckBoardView.ts",
+      "community": 20,
+      "community_name": "listPokedexPage.ts",
       "norm_label": "deckslotsissuemessage()"
     },
     {
@@ -5362,8 +5362,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_deck_ui_deckslotcard",
-      "community": 21,
-      "community_name": "training/index.ts",
+      "community": 12,
+      "community_name": "deckBoardView.ts",
       "norm_label": "deckslotcard.tsx"
     },
     {
@@ -5373,26 +5373,26 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_modules_deck_ui_deckslotcard_deckslotcard",
-      "community": 21,
-      "community_name": "training/index.ts",
+      "community": 12,
+      "community_name": "deckBoardView.ts",
       "norm_label": "deckslotcard()"
     },
     {
       "label": "VagaVazia()",
       "file_type": "code",
       "source_file": "src/modules/deck/ui/DeckSlotCard.tsx",
-      "source_location": "L136",
+      "source_location": "L132",
       "_origin": "ast",
       "id": "src_modules_deck_ui_deckslotcard_vagavazia",
-      "community": 21,
-      "community_name": "training/index.ts",
+      "community": 12,
+      "community_name": "deckBoardView.ts",
       "norm_label": "vagavazia()"
     },
     {
       "label": "Linha()",
       "file_type": "code",
       "source_file": "src/modules/deck/ui/DeckSlotCard.tsx",
-      "source_location": "L171",
+      "source_location": "L167",
       "_origin": "ast",
       "id": "src_modules_deck_ui_deckslotcard_linha",
       "community": 21,
@@ -5406,8 +5406,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_deck_ui_deckboardview",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 12,
+      "community_name": "deckBoardView.ts",
       "norm_label": "deckboardview.ts"
     },
     {
@@ -5417,8 +5417,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_modules_deck_ui_deckboardview_deckslotview",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 12,
+      "community_name": "deckBoardView.ts",
       "norm_label": "deckslotview"
     },
     {
@@ -5439,8 +5439,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "src_modules_deck_ui_deckboardview_deckboardstatus",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 12,
+      "community_name": "deckBoardView.ts",
       "norm_label": "deckboardstatus"
     },
     {
@@ -5549,8 +5549,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_commands_openpack",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "openpack.ts"
     },
     {
@@ -5560,8 +5560,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_modules_packs_commands_openpack_openpackresult",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "openpackresult"
     },
     {
@@ -5571,8 +5571,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_modules_packs_commands_openpack_mirrorspecies",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "mirrorspecies"
     },
     {
@@ -5582,8 +5582,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "src_modules_packs_commands_openpack_openpack",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "openpack()"
     },
     {
@@ -5593,8 +5593,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_domain_cooldown",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "cooldown.ts"
     },
     {
@@ -5604,8 +5604,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_modules_packs_domain_cooldown_nextfreepackat",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "nextfreepackat()"
     },
     {
@@ -5615,8 +5615,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_modules_packs_domain_cooldown_canopenfree",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "canopenfree()"
     },
     {
@@ -5681,8 +5681,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "src_modules_packs_domain_rarity_raritytier",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "raritytier"
     },
     {
@@ -5791,8 +5791,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_index",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "packs/index.ts"
     },
     {
@@ -5802,8 +5802,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_queries_readpackstate",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "readpackstate.ts"
     },
     {
@@ -5813,8 +5813,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_modules_packs_queries_readpackstate_topackstatedto",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "topackstatedto()"
     },
     {
@@ -5824,8 +5824,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "src_modules_packs_queries_readpackstate_readpackstate",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "readpackstate()"
     },
     {
@@ -5835,8 +5835,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_queries_readtmtokens",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 20,
+      "community_name": "listPokedexPage.ts",
       "norm_label": "readtmtokens.ts"
     },
     {
@@ -5846,8 +5846,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_modules_packs_queries_readtmtokens_readtmtokens",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 20,
+      "community_name": "listPokedexPage.ts",
       "norm_label": "readtmtokens()"
     },
     {
@@ -5857,8 +5857,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_queries_topackdto",
-      "community": 87,
-      "community_name": "rarity.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "topackdto.ts"
     },
     {
@@ -5868,8 +5868,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_modules_packs_queries_topackdto_topackcarddto",
-      "community": 87,
-      "community_name": "rarity.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "topackcarddto()"
     },
     {
@@ -5912,8 +5912,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packopener",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "packopener.tsx"
     },
     {
@@ -5923,8 +5923,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packopener_phase",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "phase"
     },
     {
@@ -5934,8 +5934,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packopener_packopener",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "packopener()"
     },
     {
@@ -5945,8 +5945,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packrevealcard",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 10,
+      "community_name": "collectionFilters.ts",
       "norm_label": "packrevealcard.tsx"
     },
     {
@@ -5956,8 +5956,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packrevealcard_packrevealcard",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 10,
+      "community_name": "collectionFilters.ts",
       "norm_label": "packrevealcard()"
     },
     {
@@ -5967,8 +5967,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packview",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "packview.ts"
     },
     {
@@ -5978,8 +5978,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packview_rarity_label",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "rarity_label"
     },
     {
@@ -5989,8 +5989,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packview_rarity_color",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "rarity_color"
     },
     {
@@ -6011,8 +6011,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packview_raritycolor",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "raritycolor()"
     },
     {
@@ -6033,8 +6033,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packview_rarity_holo",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "rarity_holo"
     },
     {
@@ -6055,8 +6055,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packview_formatcountdown",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "formatcountdown()"
     },
     {
@@ -6077,8 +6077,8 @@
       "source_location": "L102",
       "_origin": "ast",
       "id": "src_modules_packs_ui_packview_packstatusview",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "packstatusview"
     },
     {
@@ -6099,8 +6099,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_modules_packs_ui_types_packcarddto",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "packcarddto"
     },
     {
@@ -6121,8 +6121,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_modules_packs_ui_types_openpackresultdto",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "openpackresultdto"
     },
     {
@@ -6616,8 +6616,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_pokedex_queries_tocollectionpagedto",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "tocollectionpagedto.ts"
     },
     {
@@ -6638,8 +6638,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_modules_pokedex_queries_tocollectionpagedto_collectioncardrow",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "collectioncardrow"
     },
     {
@@ -6704,8 +6704,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_modules_pokedex_types_pokemoncarddto",
-      "community": 87,
-      "community_name": "rarity.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "pokemoncarddto"
     },
     {
@@ -6715,8 +6715,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "src_modules_pokedex_types_collectioncarddto",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "collectioncarddto"
     },
     {
@@ -6979,8 +6979,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokecard_pokecarddetails",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "pokecarddetails"
     },
     {
@@ -7309,8 +7309,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_modules_pokedex_ui_pokedexview_collectioncardview",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "collectioncardview"
     },
     {
@@ -7606,8 +7606,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_modules_progression_domain_leveling_basestats",
-      "community": 10,
-      "community_name": "collectionFilters.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "basestats"
     },
     {
@@ -7782,8 +7782,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_realtime_domain_signrealtimetoken",
-      "community": 35,
-      "community_name": "(game)/page.tsx",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "signrealtimetoken.ts"
     },
     {
@@ -7793,8 +7793,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_modules_realtime_domain_signrealtimetoken_signrealtimetoken",
-      "community": 35,
-      "community_name": "(game)/page.tsx",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "signrealtimetoken()"
     },
     {
@@ -7804,8 +7804,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_realtime_index",
-      "community": 35,
-      "community_name": "(game)/page.tsx",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "realtime/index.ts"
     },
     {
@@ -7815,8 +7815,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_modules_realtime_index_realtimetoken",
-      "community": 35,
-      "community_name": "(game)/page.tsx",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "realtimetoken"
     },
     {
@@ -7826,8 +7826,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "src_modules_realtime_index_createrealtimetoken",
-      "community": 35,
-      "community_name": "(game)/page.tsx",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "createrealtimetoken()"
     },
     {
@@ -7881,7 +7881,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_training_commands_applytm",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "applytm.ts"
     },
@@ -7892,7 +7892,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_modules_training_commands_applytm_applytminput",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "applytminput"
     },
@@ -7903,7 +7903,7 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_modules_training_commands_applytm_applytmresult",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "applytmresult"
     },
@@ -7914,7 +7914,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_modules_training_commands_applytm_applytm",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "applytm()"
     },
@@ -7925,7 +7925,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_training_domain_tm",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "tm.ts"
     },
@@ -7936,7 +7936,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_modules_training_domain_tm_tmteachcheck",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "tmteachcheck"
     },
@@ -7947,7 +7947,7 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "src_modules_training_domain_tm_checktmteachable",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "checktmteachable()"
     },
@@ -7958,7 +7958,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_training_index",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "training/index.ts"
     },
@@ -8024,7 +8024,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_modules_training_ui_types",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "training/ui/types.ts"
     },
@@ -8035,7 +8035,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "src_modules_training_ui_types_teachtmresponsedto",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "teachtmresponsedto"
     },
@@ -8959,8 +8959,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_modules_packs_domain_cooldown_test",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "cooldown.test.ts"
     },
     {
@@ -8970,8 +8970,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "tests_modules_packs_domain_cooldown_test_t0",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "t0"
     },
     {
@@ -8981,8 +8981,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "tests_modules_packs_domain_cooldown_test_now0",
-      "community": 5,
-      "community_name": "design-system/page.tsx",
+      "community": 45,
+      "community_name": "openPack.ts",
       "norm_label": "now0"
     },
     {
@@ -9025,8 +9025,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_modules_packs_queries_topackdto_test",
-      "community": 87,
-      "community_name": "rarity.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "topackdto.test.ts"
     },
     {
@@ -9036,8 +9036,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "tests_modules_packs_queries_topackdto_test_card",
-      "community": 87,
-      "community_name": "rarity.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "card"
     },
     {
@@ -9047,8 +9047,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "tests_modules_packs_queries_topackdto_test_base",
-      "community": 87,
-      "community_name": "rarity.ts",
+      "community": 35,
+      "community_name": "(game)/page.tsx",
       "norm_label": "base"
     },
     {
@@ -9058,8 +9058,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_modules_packs_ui_packview_test",
-      "community": 45,
-      "community_name": "openPack.ts",
+      "community": 2,
+      "community_name": "packs/index.ts",
       "norm_label": "packview.test.ts"
     },
     {
@@ -9300,8 +9300,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_modules_realtime_domain_signrealtimetoken_test",
-      "community": 35,
-      "community_name": "(game)/page.tsx",
+      "community": 5,
+      "community_name": "design-system/page.tsx",
       "norm_label": "signrealtimetoken.test.ts"
     },
     {
@@ -9355,7 +9355,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_modules_training_domain_tm_test",
-      "community": 29,
+      "community": 21,
       "community_name": "training/index.ts",
       "norm_label": "tm.test.ts"
     },
@@ -13234,18 +13234,6 @@
       "_origin": "ast",
       "source": "src_app_game_page",
       "target": "src_modules_pokedex_ui_collectiondropzone",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "src/app/(game)/page.tsx",
-      "source_location": "L9",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_app_game_page",
-      "target": "src_modules_pokedex_ui_collectiondropzone_collectiondropzone",
       "confidence_score": 1.0
     },
     {
@@ -17573,7 +17561,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/modules/deck/ui/DeckSlotCard.tsx",
-      "source_location": "L247",
+      "source_location": "L229",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_deck_ui_deckslotcard_linha",
@@ -26955,7 +26943,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/deck/ui/DeckSlotCard.tsx",
-      "source_location": "L171",
+      "source_location": "L167",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_deck_ui_deckslotcard",
@@ -26966,7 +26954,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/modules/deck/ui/DeckSlotCard.tsx",
-      "source_location": "L136",
+      "source_location": "L132",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_modules_deck_ui_deckslotcard",

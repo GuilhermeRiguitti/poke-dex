@@ -8,7 +8,7 @@ import { DECK_BOARD_SLOT_SELECT, toDeckBoardSlotDTO } from "./toDeckBoardDTO";
  *
  * Só LÊ, e não faz I/O de rede (tudo vem do espelho local) — pode ser chamada
  * do render de uma page (CLAUDE.md, regra 2). NÃO cria o deck: quem cria é o
- * command (addToDeck), no primeiro loadout; sem deck, `id` vem null e as vagas
+ * command (saveDeck), no primeiro save; sem deck, `id` vem null e as vagas
  * vazias.
  *
  * Independente da coleção de propósito: nenhum filtro, nenhuma paginação. É o

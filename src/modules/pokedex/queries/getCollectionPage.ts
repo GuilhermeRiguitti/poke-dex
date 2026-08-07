@@ -32,11 +32,9 @@ export async function getCollectionQuery(
       select: COLLECTION_CARD_SELECT,
     }),
     prisma.userPokemon.count({ where }),
-    // SEMPRE roda, sem filtro nenhum: `where` já exclui quem está no deck
-    // (buildCollectionWhere), então "sem filtro os dois totais batem" não vale
-    // mais. Um jogador com a coleção inteira no deck tem totalCards=0 mas
-    // continua tendo coleção — sem este total puro, a tela diria "coleção
-    // vazia, abra um pacote" pra quem já tem tudo montado.
+    // O total SEM filtro nenhum. É o que separa "não tem carta" de "o filtro
+    // não achou": sem ele, uma busca por "zzz" mostraria a tela de coleção
+    // vazia mandando abrir pacote pra quem tem 200 cartas.
     prisma.userPokemon.count({ where: { userId } }),
   ]);
 

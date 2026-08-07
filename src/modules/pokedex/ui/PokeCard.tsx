@@ -181,8 +181,10 @@ export default function PokeCard({
               daquele z-index e o arco-íris tingiria o pokémon. */}
           <div className="pcard-over">
             {artworkUrl && (
+              // `draggable={false}`: `<img>` nasce arrastável no browser, e esse
+              // drag NATIVO rouba o gesto do nosso (ver DeckSlotCard).
               // eslint-disable-next-line @next/next/no-img-element -- sprites vêm da PokéAPI (host externo dinâmico)
-              <img src={artworkUrl} alt={label} loading="lazy" />
+              <img src={artworkUrl} alt={label} loading="lazy" draggable={false} />
             )}
             <span className="pcard-seal" aria-hidden>
               <span>
