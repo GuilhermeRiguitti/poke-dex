@@ -11,7 +11,7 @@ const prismaMock = {
 
 vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
 
-const { getUnlockedMoveIds } = await import("@/src/modules/pokedex/queries/getUnlockedMoveIds");
+const { getUnlockedMoveIds } = await import("@/src/modules/pokemon/queries/getUnlockedMoveIds");
 
 beforeEach(() => {
   vi.clearAllMocks();

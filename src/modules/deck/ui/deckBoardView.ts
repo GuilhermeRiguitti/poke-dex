@@ -12,12 +12,12 @@
 // ocupar ou trocar duas posições — quem sabe onde o ponteiro está é o retângulo
 // de cada vaga, no DeckEditorProvider, e não uma conta de deslocamento.
 
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
+import type { BaseStats } from "@/src/modules/pokemon/domain/leveling";
 // Do ui/ do pokedex, não do barrel: `dexNumber` é uma formatação pura da
 // identidade do pokémon, e ela é do pokedex. Duplicar aqui seria duas verdades
 // pro mesmo "#0025".
-import { dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
+import { dexNumber } from "@/src/modules/pokemon/ui/pokeCardView";
 
 import type { DeckDraft } from "../domain/deckDraft";
 import { DECK_LIMIT } from "../domain/rules";

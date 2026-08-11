@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkTmTeachable } from "@/src/modules/training/domain/tm";
+import { checkTmTeachable } from "@/src/modules/pokemon/domain/tm";
 
 // Regra pura de "pode ensinar por TM?", antes de gastar token.
 describe("checkTmTeachable", () => {

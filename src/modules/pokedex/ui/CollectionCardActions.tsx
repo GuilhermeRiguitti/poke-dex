@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { DeckCardDTO } from "@/src/modules/deck/ui/types";
 import { useDeckEditor } from "@/src/modules/deck/ui/DeckEditorProvider";
-import SkillSheet from "@/src/modules/training/ui/SkillSheet";
+import SkillSheet from "@/src/modules/pokemon/ui/SkillSheet";
 
 // O rodapé do card da coleção: ver as skills, e pôr/tirar do time.
 //

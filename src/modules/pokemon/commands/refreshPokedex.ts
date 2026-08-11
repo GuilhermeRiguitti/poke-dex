@@ -1,7 +1,7 @@
 import { prisma } from "@/src/lib/prisma";
 import { syncPokedex, type SyncPokedexSummary } from "./syncPokedex";
 
-// Rotina de refresh do espelho da PokéAPI (PLANO_JOGO.md §7): re-sincroniza as
+// Rotina de refresh do espelho da PokéAPI (CLAUDE.md consequência #4): re-sincroniza as
 // espécies com `fetchedAt` mais antigo, em lote pequeno. Reaproveita o mesmo
 // motor de cron que já subimos (Bearer CRON_SECRET → rota → command); o pg_cron
 // do Supabase dispara 1×/dia — dado de geração já lançada quase não muda, então
@@ -15,7 +15,7 @@ import { syncPokedex, type SyncPokedexSummary } from "./syncPokedex";
 // dela): o gargalo do refresh é a REDE, não o banco. 20 espécies cabem no tempo
 // de uma lambda; a Gen 1 inteira gira em ~8 dias de cron diário — e dado de
 // geração lançada quase não muda, então girar devagar sobra.
-export const DEFAULT_REFRESH_BATCH = 20;
+const DEFAULT_REFRESH_BATCH = 20;
 
 export interface RefreshPokedexSummary extends SyncPokedexSummary {
   batch: number;

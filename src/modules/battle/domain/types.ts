@@ -2,7 +2,7 @@
 // duelo — duelTypes.ts/duelEngine.ts — e a montagem/persistência). Nada aqui
 // vem direto da PokéAPI: é a nossa modelagem. Os VALORES que preenchem esses
 // campos é que vêm do espelho local (Pokemon/Move) ou são calculados por nós
-// (stats por nível via progression/domain/leveling, regras de turno).
+// (stats por nível via pokemon/domain/leveling, regras de turno).
 //
 // Aqui mora só o que o SNAPSHOT de um pokémon precisa (stats, cartas, HP). O
 // modelo do turno em si — que voltou a ser simultâneo, como na série — está em
@@ -10,7 +10,7 @@
 
 // Os 6 stats de batalha já convertidos pra valores de jogo. Os base stats crus
 // vêm do espelho (Pokemon.baseStats); a conversão por nível é deriveStats
-// (progression/domain/leveling.ts).
+// (pokemon/domain/leveling.ts).
 export interface BattleStats {
   hp: number;
   attack: number;

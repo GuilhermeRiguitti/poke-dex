@@ -7,12 +7,12 @@
 // mudar, esta página muda junto, sem ninguém lembrar de vir aqui. As variações
 // abaixo são só props do mesmo componente.
 
-import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
-import { CARD_WIDTH, cardMetal, type PokeCardSize } from "@/src/modules/pokedex/ui/pokeCardView";
-import { dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
-import { bstOf, rarityTier, type RarityTier } from "@/src/modules/packs/domain/rarity";
-import { holoIntensity, rarityLabel } from "@/src/modules/packs/ui/packView";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
+import PokeCard from "@/src/modules/pokemon/ui/PokeCard";
+import { CARD_WIDTH, cardMetal, type PokeCardSize } from "@/src/modules/pokemon/ui/pokeCardView";
+import { dexNumber } from "@/src/modules/pokemon/ui/pokeCardView";
+import { bstOf, rarityTier, type RarityTier } from "@/src/modules/pokemon";
+import { holoIntensity, rarityLabel } from "@/src/modules/pokemon/ui/rarityView";
+import type { BaseStats } from "@/src/modules/pokemon";
 import HpBar from "@/src/layout/HpBar";
 import { PokeballIcon, SwordsIcon, CardsIcon } from "@/src/layout/icons";
 import TypeBadge from "@/src/layout/TypeBadge";

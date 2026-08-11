@@ -5,13 +5,13 @@
 // ver o dia virar "cedo/tarde" pelo relógio dele; é o trade-off consciente por
 // simplicidade e reprodutibilidade. Documentado no PACK_SYSTEM.md.
 
-export const DAY_MS = 86_400_000;
+const DAY_MS = 86_400_000;
 
 /** A cada 7 dias seguidos, o jogador ganha 1 pacote-bônus. */
 export const STREAK_REWARD_CYCLE = 7;
 
 /** Índice do dia UTC (dias inteiros desde a época). Meia-noite UTC = fronteira. */
-export function utcDayIndex(d: Date): number {
+function utcDayIndex(d: Date): number {
   return Math.floor(d.getTime() / DAY_MS);
 }
 

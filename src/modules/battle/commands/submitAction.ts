@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import { CARDS_PER_SLOT } from "@/src/modules/deck";
-import { getUnlockedMoveIds } from "@/src/modules/pokedex";
+import { getUnlockedMoveIds } from "@/src/modules/pokemon";
 import type { BattleMoveDef } from "../domain/types";
 import { toBattleDTO } from "../queries/toBattleDTO";
 import { tryResolveTurn } from "./resolveTurn";

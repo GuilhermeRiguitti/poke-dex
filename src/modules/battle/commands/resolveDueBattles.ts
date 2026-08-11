@@ -1,5 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
-import { TURN_TIMEOUT_MS, loadBattleForResolve, resolveIfDue } from "./resolveTurn";
+import { TURN_TIMEOUT_MS } from "../domain/turnClock";
+import { loadBattleForResolve, resolveIfDue } from "./resolveTurn";
 
 // Teto de partidas por varredura. É um cinto de segurança: o pg_net tem timeout
 // e a lambda tem teto de duração (CLAUDE.md, regra 5) — uma varredura sem limite

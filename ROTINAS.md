@@ -1,7 +1,7 @@
 # Rotinas do sistema — fontes de dados, crons e fair use
 
-> Runbook operacional. Complementa o `PLANO_JOGO.md` §8 (decisões de infra) e o
-> `CLAUDE.md` regra 5 (serverless). Última atualização: 2026-07-17.
+> Runbook operacional. Complementa o `CLAUDE.md` regra 5 (serverless) e o
+> `DEPLOY.md`. Última atualização: 2026-08-07.
 
 O contexto que explica tudo aqui: **não existe worker na Vercel Hobby** — toda
 page/rota é uma função efêmera. O tempo só passa de dois jeitos: (a) um request
@@ -117,7 +117,8 @@ Reagendar / desligar:
 ```sql
 select cron.unschedule('resolve-battle-turns');
 select cron.unschedule('refresh-pokedex');
--- re-agendar: SQL completo no PLANO_JOGO.md §8.3
+-- re-agendar: o SQL completo dos dois jobs está comentado em
+-- supabase/migrations/20260715022134_enable_pg_cron_pg_net.sql (ver DEPLOY.md)
 ```
 
 Segredo:

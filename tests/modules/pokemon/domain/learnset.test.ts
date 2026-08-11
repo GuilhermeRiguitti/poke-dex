@@ -6,7 +6,7 @@ import {
   pickVersionGroup,
   VERSION_GROUP_PREFERENCE,
   type LearnDetail,
-} from "@/src/modules/progression/domain/learnset";
+} from "@/src/modules/pokemon/domain/learnset";
 
 // Estes dados imitam a forma do `version_group_details` da PokéAPI: o mesmo
 // move aparece várias vezes, uma por jogo, com nível e método diferentes.

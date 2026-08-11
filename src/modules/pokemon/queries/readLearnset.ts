@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { isUnlockedAt, PLAYABLE_LEARN_METHOD } from "@/src/modules/progression";
+import { isUnlockedAt, PLAYABLE_LEARN_METHOD } from "../domain/learnset";
 import type { LearnsetMoveDTO } from "../ui/types";
 
 const DAMAGE_CLASSES = new Set(["physical", "special", "status"]);

@@ -10,15 +10,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const tx = {
   userPokemon: { findMany: vi.fn(), update: vi.fn() },
   pokemon: { findUnique: vi.fn() },
-  deckSlot: { findMany: vi.fn() },
-  pokemonMove: { findMany: vi.fn() },
-  userPokemonMove: { findMany: vi.fn() },
-  deckSlotCard: { deleteMany: vi.fn(), createMany: vi.fn() },
 };
 
-vi.mock("@/src/lib/prisma", () => ({ prisma: { pokemon: { findMany: vi.fn() } } }));
-
-const { awardBattleXp } = await import("@/src/modules/battle/commands/awardBattleXp");
+const { grantXp } = await import("@/src/modules/pokemon/commands/grantXp");
 
 // Charmander já no nível 20 (gatilho da evolução é 16) — ou seja, ele JÁ
 // deveria ter evoluído. Ganha XP de migalha, que não sobe nível.
@@ -37,18 +31,14 @@ beforeEach(() => {
     evolvesToApiId: 6,
     evolvesToLevel: 36, // longe: a cadeia para aqui
   });
-  tx.deckSlot.findMany.mockResolvedValue([]);
 });
 
-const contexto = (gainedXp: number) => ({
-  winner: { userPokemonId: "up-1", gainedXp },
-  loser: null,
-});
+const premio = (gainedXp: number) => [{ userPokemonId: "up-1", gainedXp }];
 
-describe("awardBattleXp — evolução retroativa", () => {
+describe("grantXp — evolução retroativa", () => {
   it("evolui quem já passou do gatilho MESMO sem subir de nível nesta batalha", async () => {
     // 1 de XP: levelFromXp(8001) continua 20. gained === 0.
-    await awardBattleXp(tx as never, contexto(1));
+    await grantXp(tx as never, premio(1));
 
     expect(tx.pokemon.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { pokemonApiId: 5 } })
@@ -63,7 +53,7 @@ describe("awardBattleXp — evolução retroativa", () => {
       { id: "up-1", xp: 1000, pokemon: { evolvesToApiId: 5, evolvesToLevel: 16 } }, // nível 10
     ]);
 
-    await awardBattleXp(tx as never, contexto(1));
+    await grantXp(tx as never, premio(1));
 
     // `evolutionTargetFor` é puro e corta antes: custo zero no caso saudável.
     expect(tx.pokemon.findUnique).not.toHaveBeenCalled();
@@ -72,7 +62,7 @@ describe("awardBattleXp — evolução retroativa", () => {
   it("não escreve evolução quando a espécie-alvo está fora do espelho", async () => {
     tx.pokemon.findUnique.mockResolvedValue(null);
 
-    await awardBattleXp(tx as never, contexto(1));
+    await grantXp(tx as never, premio(1));
 
     // O XP é gravado; a evolução, não. E nada lança.
     const updates = tx.userPokemon.update.mock.calls.map((c) => c[0].data);

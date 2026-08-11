@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { typeColor } from "@/src/lib/typeColors";
-import type { LearnsetMoveDTO } from "@/src/modules/deck";
+import type { LearnsetMoveDTO } from "@/src/modules/pokemon/ui/types";
 import type { TeachTmResponseDTO } from "./types";
 
 // O repertório de UM pokémon da coleção, e o único lugar onde se ENSINA TM.

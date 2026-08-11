@@ -24,4 +24,6 @@ Broadcast from Database (o trigger realtime.send, que é o que usamos): https://
 Authorization / RLS em realtime.messages (a policy): https://supabase.com/docs/guides/realtime/authorization
 realtime.setAuth() e canal private (JS client): https://supabase.com/docs/reference/javascript/subscribe
 Realtime no dev local (CLI): https://supabase.com/docs/guides/local-development
-Referência interna do projeto: PLANO_JOGO.md §3.3 + §8.1
+Referência interna do projeto: `CLAUDE.md` — consequência #1 (o polling é o motor,
+e o Realtime é só o push) e #5 (abrir o Realtime ≠ abrir o PostgREST); `AGENTS.md`
+§ "A ÚNICA exceção: `realtime.messages`".

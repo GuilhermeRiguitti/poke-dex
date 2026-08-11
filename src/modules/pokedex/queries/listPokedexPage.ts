@@ -2,7 +2,7 @@ import { extractIdFromUrl, fetchPokemon, fetchPokemonIndex } from "@/src/lib/pok
 import { prisma } from "@/src/lib/prisma";
 import { TOTAL_PAGES, pageRange } from "../domain/pagination";
 import type { PokedexPageDTO } from "../types";
-import { toPokemonCardDTO } from "./toPokemonDTO";
+import { toPokemonCardDTO } from "@/src/modules/pokemon";
 
 /**
  * Uma página da listagem da PokéDex, com a marca de quais o usuário já capturou.

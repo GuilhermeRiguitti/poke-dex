@@ -16,7 +16,7 @@ import {
   progressionFromXp,
   progressionFromLevel,
   type BaseStats,
-} from "@/src/modules/progression/domain/leveling";
+} from "@/src/modules/pokemon/domain/leveling";
 
 // Base stats do Charizard (a mesma referência do comentário em battle/stats).
 const charizard: BaseStats = { hp: 78, atk: 84, def: 78, spa: 109, spd: 85, spe: 100 };
@@ -145,7 +145,7 @@ describe("sumBaseStats", () => {
   });
 
   it("bate com o bstOf da tabela gerada nas mesmas espécies", async () => {
-    const { bstOf } = await import("@/src/modules/packs/domain/rarity");
+    const { bstOf } = await import("@/src/modules/pokemon/domain/rarity");
     expect(bstOf(4)).toBe(309);
     expect(bstOf(6)).toBe(534);
     expect(bstOf(129)).toBe(200);

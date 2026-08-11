@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { PLAYABLE_LEARN_METHOD, mergePlayableMoveIds } from "@/src/modules/progression";
+import { PLAYABLE_LEARN_METHOD, mergePlayableMoveIds } from "../domain/learnset";
 
 /**
  * O conjunto de `moveId` que um Pokémon do jogador PODE usar: os de level-up já
@@ -9,9 +9,8 @@ import { PLAYABLE_LEARN_METHOD, mergePlayableMoveIds } from "@/src/modules/progr
  * checar o dono), então não relê a linha à toa. A união é decidida pela regra
  * pura mergePlayableMoveIds — aqui é só o I/O das duas fontes.
  *
- * Usado por battle/pruneLoadoutForSpecies
- * (poda pós-evolução). readLearnset NÃO usa esta função porque precisa dos
- * flags por-carta (destravada? ensinável por TM?), não só do conjunto.
+ * `readLearnset` NÃO usa esta função porque precisa dos flags por-carta
+ * (destravada? ensinável por TM?), não só do conjunto.
  */
 export async function getUnlockedMoveIds(params: {
   userPokemonId: string;

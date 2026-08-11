@@ -1,25 +1,14 @@
-// Contrato de dados entre o servidor e a UI da PokéDex.
+// Contrato de dados entre o servidor e a UI da PokéDex — a LISTA: a coleção do
+// jogador e o catálogo, com filtro e paginação.
 //
-// Nada daqui é linha do Prisma nem resposta crua da PokéAPI. O `NormalizedPokemon`
-// da lib carrega o movepool INTEIRO (o Rattata tem ~130 moves, cada um com nome
-// e url) — mandar isso como prop pra 20 cards de uma página da dex seria
-// centenas de KB de RSC payload por navegação, pra desenhar um sprite e dois
-// badges. O DTO do card tem 5 campos de propósito.
+// O pokémon em si (`PokemonCardDTO`, `PokemonDetailDTO`) NÃO mora aqui: é do
+// @/src/modules/pokemon, porque a mesma carta é desenhada pelo pacote, pelo
+// deck e pela batalha. Aqui fica só o que é da listagem.
 
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
+import type { BaseStats } from "@/src/modules/pokemon/domain/leveling";
+import type { PokemonCardDTO } from "@/src/modules/pokemon/ui/types";
 import type { CollectionFilters } from "./domain/collectionFilters";
-
-/** Um pokémon como um CARD precisa dele. Nada além do que a moldura desenha. */
-export interface PokemonCardDTO {
-  id: number;
-  name: string;
-  /** artwork oficial (grande) — é o que o card mostra */
-  artworkUrl: string | null;
-  /** sprite pequeno — é o que a vaga do deck mostra */
-  iconUrl: string | null;
-  types: string[];
-}
 
 /** Um pokémon da coleção do usuário: a carta dele + nível + o pokémon em si. */
 export interface CollectionCardDTO {
@@ -72,24 +61,4 @@ export interface PokedexPageDTO {
   pokemons: PokemonCardDTO[];
   /** quais desses o usuário já capturou — decide o botão "Capturar" vs "✓" */
   capturedIds: number[];
-}
-
-export interface PokemonStatDTO {
-  name: string;
-  value: number;
-}
-
-/** O pokémon como a página de DETALHE precisa dele (aí sim, com os moves). */
-export interface PokemonDetailDTO {
-  id: number;
-  name: string;
-  artworkUrl: string | null;
-  types: string[];
-  /** decímetros e hectogramas, como a PokéAPI devolve — a UI converte */
-  height: number;
-  weight: number;
-  stats: PokemonStatDTO[];
-  /** só os que a tela mostra (não os ~130 do movepool) */
-  moves: string[];
-  totalMoves: number;
 }

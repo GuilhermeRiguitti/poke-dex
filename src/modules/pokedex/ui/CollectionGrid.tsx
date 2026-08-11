@@ -1,5 +1,5 @@
 import type { DeckCardDTO } from "@/src/modules/deck/ui/types";
-import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
+import PokeCard from "@/src/modules/pokemon/ui/PokeCard";
 import CollectionCardActions from "./CollectionCardActions";
 import CollectionCardDrag from "./CollectionCardDrag";
 import type { CollectionCardView } from "./pokedexView";

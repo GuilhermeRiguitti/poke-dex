@@ -14,7 +14,7 @@ import { getSupabaseClient} from "./supabaseClient";
 //
 // Realtime é SINAL, não DADO: este hook NUNCA lê o payload do broadcast — só
 // avisa "chegou algo". Quem consome refaz o GET que passa pelo DTO (o refetch
-// é idempotente, então sinal duplicado não importa). Ver PLANO_JOGO.md §8.1.
+// é idempotente, então sinal duplicado não importa). Ver REALTIME.md.
 //
 // Fail-safe, não fail-broken: sem env do Supabase (getSupabaseBrowser → null),
 // token 401/503, ou qualquer erro no canal, `live` fica false e quem consome

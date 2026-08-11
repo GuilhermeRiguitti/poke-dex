@@ -12,8 +12,6 @@
 
 import { signRealtimeToken, REALTIME_TOKEN_TTL_SECONDS } from "./domain/signRealtimeToken";
 
-export { REALTIME_TOKEN_TTL_SECONDS };
-
 export interface RealtimeToken {
   token: string;
   expiresIn: number;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectionView, dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
+import { collectionView } from "@/src/modules/pokedex/ui/pokedexView";
 import { parseCollectionFilters } from "@/src/modules/pokedex/domain/collectionFilters";
 import type { CollectionPageDTO } from "@/src/modules/pokedex/types";
 
@@ -30,13 +30,6 @@ const pagina = (over: Partial<CollectionPageDTO> = {}): CollectionPageDTO => ({
   totalInCollection: 1,
   filters: parseCollectionFilters({}),
   ...over,
-});
-
-describe("dexNumber", () => {
-  it("preenche com zero à esquerda", () => {
-    expect(dexNumber(25)).toBe("#0025");
-    expect(dexNumber(1025)).toBe("#1025");
-  });
 });
 
 describe("collectionView", () => {

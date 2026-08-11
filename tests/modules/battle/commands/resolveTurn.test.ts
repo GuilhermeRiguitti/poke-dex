@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+// Puro (sem Prisma), então entra por import estático — a conta da janela do
+// turno mora em domain/turnClock.ts e tem teste próprio lá.
+import { TURN_TIMEOUT_MS } from "@/src/modules/battle/domain/turnClock";
 
 // resolveIfDue é a ponte entre o motor PURO do duelo (duelEngine) e o banco. O
 // engine já tem teste (domain/duelEngine.test.ts); o que só quebra em produção é
@@ -30,9 +33,7 @@ vi.mock("@/src/modules/battle/commands/buildDuelSnapshot", () => ({
   buildTypeChart: vi.fn(async () => ({})),
 }));
 
-const { tryResolveTurn, TURN_TIMEOUT_MS, expiredTurnWindows } = await import(
-  "@/src/modules/battle/commands/resolveTurn"
-);
+const { tryResolveTurn } = await import("@/src/modules/battle/commands/resolveTurn");
 
 function pokemonRow(currentHp = 100, userPokemonId = "up-1") {
   return {
@@ -215,14 +216,6 @@ describe("tryResolveTurn — timeout e abandono", () => {
     );
     // Sem vencedor não há XP a pagar.
     expect(tx.userPokemon.update).not.toHaveBeenCalled();
-  });
-
-  it("conta uma janela de timeout por período vencido, não uma só", () => {
-    const now = Date.now();
-    expect(expiredTurnWindows(new Date(now), now)).toBe(0);
-    expect(expiredTurnWindows(new Date(now - TURN_TIMEOUT_MS - 1), now)).toBe(1);
-    expect(expiredTurnWindows(new Date(now - TURN_TIMEOUT_MS * 3), now)).toBe(3);
-    expect(expiredTurnWindows(new Date(now + 10_000), now)).toBe(0); // relógio torto
   });
 });
 

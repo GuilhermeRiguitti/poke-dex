@@ -6,7 +6,7 @@
 // throw viraria tela de erro no lugar da coleção (mesma razão do clampPage).
 
 import { TYPE_COLORS } from "@/src/lib/typeColors";
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
 
 /** Cartas por página. 16 = 4 fileiras de 4 no grid mais largo. */
 export const COLLECTION_PAGE_SIZE = 16;

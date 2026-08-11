@@ -19,7 +19,7 @@ const prismaMock = {
 
 vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
 
-const { applyTM } = await import("@/src/modules/training/commands/applyTM");
+const { applyTM } = await import("@/src/modules/pokemon/commands/applyTM");
 
 const input = { userPokemonId: "up-1", moveId: "mv-tm" };
 

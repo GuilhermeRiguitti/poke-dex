@@ -1,4 +1,5 @@
-import { bstOf, rarityTier } from "@/src/modules/packs/domain/rarity";
+import { bstOf, rarityTier } from "@/src/modules/pokemon";
+import { TURN_TIMEOUT_MS, remainingTurnMs } from "../domain/turnClock";
 import type { BattleMoveDef } from "../domain/types";
 import type {
   BattleDTO,
@@ -28,6 +29,7 @@ interface BattleRow {
   status: string;
   round: number;
   winnerId: string | null;
+  turnStartedAt: Date;
   actions?: { userId: string; round: number }[];
   participants: {
     id: string;
@@ -100,7 +102,10 @@ function toParticipantDTO(row: BattleRow["participants"][number]): ParticipantDT
   };
 }
 
-export function toBattleDTO(row: BattleRow): BattleDTO {
+// `now` é parâmetro pra o teste poder cravar o instante — em produção é sempre
+// o relógio do servidor, que é justamente o ponto do countdown (ver turnEndsInMs
+// em ui/types.ts).
+export function toBattleDTO(row: BattleRow, now = Date.now()): BattleDTO {
   return {
     id: row.id,
     status: row.status as BattleStatusDTO,
@@ -108,6 +113,10 @@ export function toBattleDTO(row: BattleRow): BattleDTO {
     winnerId: row.winnerId,
     // QUEM já escolheu neste round — nunca O QUÊ. Ver o comentário no topo.
     submittedUserIds: (row.actions ?? []).filter((a) => a.round === row.round).map((a) => a.userId),
+    // O tempo que sobra pra escolher. Não é segredo de ninguém: a janela é a
+    // mesma pros dois lados e começa no mesmo instante (turnStartedAt).
+    turnEndsInMs: remainingTurnMs(row.turnStartedAt, now),
+    turnTimeoutMs: TURN_TIMEOUT_MS,
     participants: row.participants.map(toParticipantDTO),
     turnLogs: row.turnLogs.map((log) => ({
       turnNumber: log.turnNumber,

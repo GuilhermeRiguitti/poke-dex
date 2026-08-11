@@ -6,8 +6,13 @@
 // servidor e reexporta queries/commands, que importam Prisma — e isto aqui vai
 // pro bundle do browser.
 
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
-import { deriveStats, type BaseStats } from "@/src/modules/progression/domain/leveling";
+import type { RarityTier } from "../domain/rarity";
+import { deriveStats, type BaseStats } from "../domain/leveling";
+
+/** O número da dex como o card mostra: 25 -> "#0025". */
+export function dexNumber(pokemonId: number): string {
+  return `#${String(pokemonId).padStart(4, "0")}`;
+}
 
 /** O metal da moldura. Cada faixa de raridade tem o seu. */
 export type CardMetal = "bronze" | "silver" | "rose" | "gold";
@@ -36,7 +41,7 @@ export const CARD_WIDTH: Record<PokeCardSize, number> = {
 };
 
 /** Teto do PREENCHIMENTO da barra. O número mostrado NÃO é travado. */
-export const STAT_MAX_PCT = 100;
+const STAT_MAX_PCT = 100;
 
 export interface CardStatBar {
   key: string;

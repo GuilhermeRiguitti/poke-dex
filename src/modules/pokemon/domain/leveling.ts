@@ -1,4 +1,4 @@
-// Nível incremental + stats derivados 100% da PokéAPI (PLANO_JOGO.md §6).
+// Nível incremental + stats derivados 100% da PokéAPI (CLAUDE.md § O jogo, regra 3).
 //
 // O QUE VEM DA API: os `baseStats` (o número fixo por espécie) e o
 // `baseExperience` (quanto vale derrotar aquela espécie). NADA de stat é

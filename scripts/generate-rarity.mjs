@@ -1,4 +1,4 @@
-// Gera src/modules/packs/domain/rarity.generated.ts — o índice de BST (base
+// Gera src/modules/pokemon/domain/rarity.generated.ts — o índice de BST (base
 // stat total) de cada pokémon da dex, que é o peso de raridade do sorteio.
 //
 // POR QUE É UM SCRIPT OFFLINE, E NÃO UM CRON:
@@ -22,7 +22,7 @@ const MAX_POKEMON = 1025; // igual ao pokedex/domain/pagination.ts
 const BATCH = 25; // concorrência modesta — educado com a PokéAPI
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT = join(__dirname, "..", "src", "modules", "packs", "domain", "rarity.generated.ts");
+const OUT = join(__dirname, "..", "src", "modules", "pokemon", "domain", "rarity.generated.ts");
 
 /** BST = soma dos 6 base stats. É o mesmo número que a engine de batalha usa. */
 async function fetchBst(id) {
@@ -54,7 +54,7 @@ async function main() {
   const body = `// GERADO por scripts/generate-rarity.mjs — NÃO edite à mão.
 //
 // BST (base stat total) de cada pokémon da dex. Índice = pokemonId - 1.
-// É o peso de raridade do sorteio de pacotes (packs/domain/rarity.ts): quanto
+// É o peso de raridade do sorteio de pacotes (packs/domain/draw.ts): quanto
 // MAIOR o BST, MENOR a chance da carta sair. Dado imutável de geração já
 // lançada — ver o script gerador pra por que não é um cron.
 

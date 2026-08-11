@@ -1,12 +1,59 @@
+# JOGO — o que falta
+
+> Herdado do `PLANO_JOGO.md`, aposentado em 2026-08-07. As regras de jogo que
+> continuam valendo foram pro `CLAUDE.md` § "O jogo: as regras que o código já
+> assume"; o histórico de execução está no git. Aqui ficou só o que NÃO foi feito.
+
+- [ ] **Energia por rodada + custo de carta.** A tensão de "descarrego agora ou
+  guardo?". Encaixa no turno simultâneo sem mexer na orquestração: é custo na
+  validação da carta + um campo no snapshot. Nada existe hoje — `energy` no
+  código é só cor do design system. O balanceamento (custo × poder) só se acerta
+  jogando.
+- [ ] **Presence / abandono por desconexão.** Hoje o abandono é só o
+  `missedTurns` (3 faltas). O desenho pretendido: a Presence do Supabase mostra
+  que o jogador saiu e **não voltou em X s → o oponente vence**; o timeout segue
+  como backstop no `pg_cron`. Falta o dono decidir o X.
+- [ ] **Mecânica reativa (redesenhar do zero).** A "janela de reação" do plano
+  antigo pressupunha turno ALTERNADO e morreu com ele (ver `CLAUDE.md` regra 1 do
+  jogo). Se voltar, tem que ser algo escolhido às cegas — ex.: carta defensiva
+  resolvida na ordem do turno. **Não implementar o desenho antigo.**
+- [ ] **Troca de Pokémon entre jogadores** (módulo `trade`): oferta/aceite
+  transferindo a instância de `UserPokemon`. As duplicatas na coleção já estão
+  liberadas, então não há trava de espécie repetida. É o que dá o "pai" pro
+  cruzamento.
+- [ ] **Cruzamento (ovo).** Cruzar dois `UserPokemon` do jogador: se um conhece um
+  golpe que a espécie do outro aprende por `egg`, nasce uma instância nova (nível
+  1) já com esse egg-move concedido (`UserPokemonMove source:"egg"`). **Sem
+  choco** — o serverless não tem worker pra temporizar.
+- [ ] **Tutor por quests diárias.** Tabela de progresso de quest (dia UTC via
+  `packs/domain/streak.ts`), incrementada no fim da batalha (dentro do claim do
+  `awardBattleXp`, que é o que garante pagamento único); ao completar, concede um
+  golpe `tutor`.
+- [ ] **Curva de XP real por espécie.** Hoje todo mundo usa medium-fast (n³). O
+  `growth_rate` vem de `/pokemon-species`, que já é buscado pra evolução — sai
+  quase de graça.
+- [ ] **Fase D — efeitos ricos da API**: status, mudança de stat (stat stages) e
+  cooldowns. Empilha por cima do núcleo, que já está estável.
+- [ ] **Código morto da poda de loadout.** `pruneLoadout`/`refillLoadout`
+  (`pokemon/domain/evolution.ts`) e o comentário "Usado por
+  battle/pruneLoadoutForSpecies" em `pokemon/queries/getUnlockedMoveIds.ts` ficaram
+  sem consumidor quando o `DeckSlotCard` foi dropado (2026-08-03) e a escolha de
+  skills virou decisão de batalha: não há mais loadout guardado pra ficar órfão na
+  evolução. Só o barril e os testes deles chamam. Apagar.
+
+Ordem sugerida entre os três de cima: **troca** (dá uso às duplicatas e destrava
+conseguir o "pai") → **cruzamento** → **tutor** (independente das outras).
+
 # TODO
 - Api client com react query tan stack 
-- [ ] **Split opcional do `progression/domain/leveling.ts`** em `stats.ts` (deriveStats/
+- [ ] **Split opcional do `pokemon/domain/leveling.ts`** em `stats.ts` (deriveStats/
   calcHp/calcStat) × `xp.ts` (curva/applyXp/xpFromDefeat) × `levels.ts` (MIN/MAX/
   STARTING + clampLevel compartilhados). São duas razões de mudar no mesmo arquivo
-  (SRP). Adiado no refactor do módulo `progression` (2026-07-30) — decisão de mover
-  inteiro primeiro. Desenho e "não-objetivos" em
-  `docs/superpowers/specs/2026-07-30-progression-module-design.md`. O DIP/repositório
-  sobre o Prisma foi avaliado no mesmo refactor e **descartado** (custo/benefício).
+  (SRP). Adiado duas vezes: no refactor do módulo `progression` (2026-07-30) e no
+  do módulo `pokemon` (2026-08-07) — nos dois, a decisão foi mover inteiro
+  primeiro. O DIP/repositório sobre o Prisma foi avaliado no primeiro e
+  **descartado** (custo/benefício). Ver
+  `docs/specs/2026-08-07-pokemon-module-design.md`.
 
 
 # SEGURANCA

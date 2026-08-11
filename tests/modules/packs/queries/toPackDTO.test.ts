@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PokemonCardDTO } from "@/src/modules/pokedex";
+import type { PokemonCardDTO } from "@/src/modules/pokemon";
 import { toPackCardDTO } from "@/src/modules/packs/queries/toPackDTO";
 
 // O card já vem montado do espelho local (whitelist do PokemonCardDTO), então o

@@ -1,9 +1,9 @@
 // Contrato de dados entre o servidor e a UI de pacotes. Só interface — não pesa
 // no bundle. Nada daqui é linha do Prisma nem resposta crua da PokéAPI.
 
-import type { PokemonCardDTO } from "@/src/modules/pokedex";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
-import type { RarityTier } from "../domain/rarity";
+import type { PokemonCardDTO } from "@/src/modules/pokemon/ui/types";
+import type { BaseStats } from "@/src/modules/pokemon/domain/leveling";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
 
 /** Uma carta sorteada num pacote. */
 export interface PackCardDTO {

@@ -30,6 +30,7 @@ const BATTLE = {
   status: "IN_PROGRESS",
   round: 3,
   winnerId: null,
+  turnStartedAt: new Date(),
   participants: [
     { id: "pa", userId: "alpha", activeSlot: 1, pokemons: [] },
     { id: "pb", userId: "zeta", activeSlot: 1, pokemons: [] },

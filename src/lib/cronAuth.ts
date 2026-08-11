@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { timingSafeEqual } from "crypto";
 
-// Autorização compartilhada das rotas de cron (PLANO_JOGO.md §8). Quem chama
+// Autorização compartilhada das rotas de cron (CLAUDE.md consequência #1). Quem chama
 // não é um jogador: é o pg_cron do Supabase, via pg_net, com
 // `Authorization: Bearer <CRON_SECRET>`. O MESMO segredo está no Vault do
 // Supabase e na Vercel.

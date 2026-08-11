@@ -1,9 +1,9 @@
 import HoloCard from "./HoloCard";
 import { CARD_WIDTH, cardMetal, statBars, type PokeCardSize } from "./pokeCardView";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
+import type { BaseStats } from "@/src/modules/pokemon/domain/leveling";
 import { typeColor } from "@/src/lib/typeColors";
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
-import { holoIntensity, isTopRarity, rarityLabel } from "@/src/modules/packs/ui/packView";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
+import { holoIntensity, isTopRarity, rarityLabel } from "./rarityView";
 
 // A carta do jogo. UMA moldura pra todas as telas: coleção, catálogo, pacote,
 // vaga do deck e reserva na batalha. É Server Component — o único pedaço

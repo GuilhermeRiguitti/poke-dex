@@ -22,7 +22,7 @@ vi.mock("@/src/modules/battle/commands/resolveTurn", async (orig) => {
 });
 
 const { resolveDueBattles } = await import("@/src/modules/battle/commands/resolveDueBattles");
-const { TURN_TIMEOUT_MS } = await import("@/src/modules/battle/commands/resolveTurn");
+const { TURN_TIMEOUT_MS } = await import("@/src/modules/battle/domain/turnClock");
 
 function battleRow(id: string) {
   return { id, status: "IN_PROGRESS" as const };

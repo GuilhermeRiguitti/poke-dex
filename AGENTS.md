@@ -34,7 +34,7 @@ Referência: `prisma/migrations/20260714010000_enable_rls_all_tables`.
 ## A ÚNICA exceção: `realtime.messages` (implementada)
 
 A regra "deny-all, sem policy" vale pras tabelas do **app** (schema `public`). O
-Realtime do duelo (PLANO_JOGO.md §8) é a exceção consciente: pra um jogador
+Realtime do duelo (`CLAUDE.md` consequência #1) é a exceção consciente: pra um jogador
 assinar o canal `battle:<id>`, existe **uma policy em `realtime.messages`**
 (schema `realtime`, não `public`) autorizando **participante ↔ topic** — em
 `supabase/migrations/20260717055605_realtime_harden_functions_private_schema.sql`

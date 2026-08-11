@@ -1,4 +1,4 @@
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
 import type { BattleDTO, BattleEventDTO, BattlePokemonDTO, BattleStatusDTO } from "./types";
 
 // Mapear o BattleDTO -> o que a mesa do duelo desenha é função PURA, mora aqui e
@@ -101,6 +101,41 @@ export function duelLogMark(line: DuelLogLine): DuelLogMark {
   return { glyph: "✦", tone: "flare" };
 }
 
+/**
+ * O countdown do round como a tela desenha. Puro e testado: decidir quando o
+ * tempo vira urgência é regra de apresentação, e o componente só costura.
+ */
+export interface TurnClockView {
+  /** "1:12" — minutos:segundos, arredondando pra CIMA (ver turnClockView). */
+  text: string;
+  /** 0..100 — quanto da janela ainda resta; é a barra. */
+  pct: number;
+  urgency: "calm" | "warn" | "critical";
+  /** o tempo acabou; o round resolve no próximo request */
+  expired: boolean;
+}
+
+/** Abaixo disto o relógio muda de cor: 30s avisa, 10s aperta. */
+const WARN_MS = 30_000;
+const CRITICAL_MS = 10_000;
+
+export function turnClockView(remainingMs: number, timeoutMs: number): TurnClockView {
+  const left = Math.max(0, Math.min(remainingMs, timeoutMs));
+  // Arredonda pra CIMA: com floor o relógio marcaria "0:00" durante o último
+  // segundo inteiro, e "acabou" é exatamente o que ele ainda NÃO pode dizer —
+  // quem largar a carta nesse segundo ainda joga.
+  const totalSeconds = Math.ceil(left / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return {
+    text: `${minutes}:${String(seconds).padStart(2, "0")}`,
+    pct: timeoutMs > 0 ? Math.round((left / timeoutMs) * 100) : 0,
+    urgency: left <= CRITICAL_MS ? "critical" : left <= WARN_MS ? "warn" : "calm",
+    expired: left <= 0,
+  };
+}
+
 // O modo da MINHA vez no round:
 //  - choose:       round normal, escolho carta ou troca voluntária.
 //  - forcedSwitch: meu ativo desmaiou (com reserva viva) — só escolho substituto.
@@ -193,6 +228,13 @@ export interface DuelView {
   /** o oponente já escolheu (só QUEM, nunca O QUÊ — ver toBattleDTO). */
   opponentReady: boolean;
   round: number;
+  /**
+   * Quanto restava do round quando este DTO chegou, e a janela cheia. Quem faz
+   * o número ANDAR é o useTurnClock (o tique é do cliente); daqui sai só o ponto
+   * de partida, que é o do servidor.
+   */
+  turnEndsInMs: number;
+  turnTimeoutMs: number;
   status: BattleStatusDTO;
   isOver: boolean;
   iWon: boolean;
@@ -391,6 +433,8 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
     waitingOpponent: !isOver && iSubmitted,
     opponentReady: !isOver && opponentReady,
     round: battle.round,
+    turnEndsInMs: battle.turnEndsInMs,
+    turnTimeoutMs: battle.turnTimeoutMs,
     status: battle.status,
     isOver,
     iWon: battle.winnerId === myUserId,

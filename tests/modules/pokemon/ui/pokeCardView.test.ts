@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CARD_WIDTH, cardMetal, statBars } from "@/src/modules/pokedex/ui/pokeCardView";
+import { CARD_WIDTH, cardMetal, dexNumber, statBars } from "@/src/modules/pokemon/ui/pokeCardView";
+
+describe("dexNumber", () => {
+  it("preenche com zero à esquerda", () => {
+    expect(dexNumber(25)).toBe("#0025");
+    expect(dexNumber(1025)).toBe("#1025");
+  });
+});
 
 describe("cardMetal", () => {
   it("mapeia cada raridade pro seu metal", () => {

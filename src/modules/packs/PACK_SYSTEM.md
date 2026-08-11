@@ -36,8 +36,8 @@ Peças (todas em `src/modules/packs/`):
 
 | arquivo | papel |
 |---|---|
-| `domain/rarity.ts` | peso de raridade, tiers, sorteio. Puro, testado. |
-| `domain/rarity.generated.ts` | BST dos 1025 pokémon. Gerado offline. |
+| `domain/draw.ts` | peso de raridade + sorteio (roleta). Puro, testado. |
+| — | O BST e as faixas de raridade (`bstOf`/`rarityTier`) são fato da ESPÉCIE e moram no `@/src/modules/pokemon` (`domain/rarity.ts` + `rarity.generated.ts`). |
 | `domain/cooldown.ts` | janela de 24h. Puro, testado. |
 | `commands/openPack.ts` | ESCREVE. Sorteia, cobra o cooldown, grava as cartas. |
 | `queries/readPackState.ts` | SÓ LÊ. Estado do cofre pro render da page. |
@@ -75,7 +75,7 @@ já cacheamos — nenhum endpoint novo.
 
 BST de uma geração já lançada é **imutável**. Então ele é pré-computado **uma
 vez, offline**, por `scripts/generate-rarity.mjs`, que varre os 1025 pokémon e
-grava `domain/rarity.generated.ts`:
+grava `src/modules/pokemon/domain/rarity.generated.ts`:
 
 ```ts
 export const BST_BY_ID: readonly number[] = [ /* índice = pokemonId - 1 */ ];
@@ -88,7 +88,7 @@ O gerador **lança** se algum BST vier faltando, então o índice nunca tem bura
 
 ### A fórmula de peso
 
-Em `domain/rarity.ts`:
+Em `domain/draw.ts`:
 
 ```
 BST_CEIL        = 800     (acima do máximo real, 720 → nada tem peso 0)

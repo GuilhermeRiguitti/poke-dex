@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/modules/auth/auth";
-import { readLearnset } from "@/src/modules/deck";
+import { readLearnset } from "@/src/modules/pokemon";
 import { readTmTokens } from "@/src/modules/packs";
 
 // GET /api/training/skills/[userPokemonId] — o repertório COMPLETO de um pokémon

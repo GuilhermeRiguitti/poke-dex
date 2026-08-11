@@ -1,6 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
-import { readLearnset } from "@/src/modules/deck";
-import type { LearnsetMoveDTO } from "@/src/modules/deck";
+import { readLearnset } from "@/src/modules/pokemon";
+import type { LearnsetMoveDTO } from "@/src/modules/pokemon";
 
 /**
  * As skills que EU posso montar num pokémon do MEU time nesta partida.

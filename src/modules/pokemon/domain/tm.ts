@@ -1,14 +1,14 @@
 // Regras do TM (Máquina Técnica). PURAS: sem Prisma, sem fetch, sem React.
 //
 // O TM ensina um golpe de MÁQUINA que a espécie conhece, gastando 1 token. É a
-// primeira forma de ganhar carta por fora do nível (PLANO_JOGO §7.1); tutor e
+// primeira forma de ganhar carta por fora do nível (CLAUDE.md § O jogo, regra 2); tutor e
 // ovo vêm depois, gravando na mesma UserPokemonMove só com outro `source`.
 
 /** `source` gravado em UserPokemonMove quando o desbloqueio veio de um TM. */
 export const TM_SOURCE = "machine";
 
 /** O método de aprendizado que um TM cobre (o mesmo nome que a PokéAPI usa). */
-export const TM_LEARN_METHOD = "machine";
+const TM_LEARN_METHOD = "machine";
 
 export type TmTeachCheck = "ok" | "not_machine_move" | "already_known";
 

@@ -1,4 +1,4 @@
-// Evolução por NÍVEL, fiel à série (PLANO_JOGO.md, fim da Fase A). Puro: sem
+// Evolução por NÍVEL, fiel à série (CLAUDE.md § O jogo, regra 4). Puro: sem
 // Prisma, sem fetch, sem React. Quem busca a cadeia é lib/pokeapi; quem grava a
 // aresta no espelho é commands/syncPokedex; quem troca a espécie do UserPokemon
 // é o crédito de XP (battle/commands/awardBattleXp).
@@ -68,51 +68,13 @@ export function evolutionTargetFor(
   return level >= species.evolvesToLevel ? species.evolvesToApiId : null;
 }
 
-/**
- * Poda o loadout na evolução (decisão do dono, 2026-07-22): das cartas atuais,
- * mantém só as que a NOVA espécie conhece e já destravou — as órfãs (que a nova
- * não aprende) saem. `validMoveIds` são os Move.id válidos da espécie nova no
- * nível novo. Mantém a ordem original das que sobrevivem.
- */
-export function pruneLoadout(currentMoveIds: string[], validMoveIds: ReadonlySet<string>): string[] {
-  return currentMoveIds.filter((id) => validMoveIds.has(id));
-}
-
-/** Uma carta candidata a repor um loadout: o move e em que nível a espécie o aprende. */
-export interface LoadoutCandidate {
-  moveId: string;
-  levelLearnedAt: number;
-}
-
-/**
- * Repõe o loadout quando a PODA o deixou VAZIO.
- *
- * Por que isto existe: `pruneLoadout` pode tirar TODAS as cartas, e isso não é
- * caso raro — Caterpie com Tackle/String Shot evolui no nível 7 e o learnset por
- * level-up de Metapod é praticamente só Harden. O slot ficava com ZERO cartas, e
- * daí em diante o pokémon não era só fraco, era INJOGÁVEL: `buildDuelSnapshot`
- * lança em cima de loadout vazio, o que quebrava o matchmaking (e, se o dono do
- * deck estivesse esperando na fila, quebrava o de todo mundo — ele voltava pra
- * fila e derrubava o pareamento do próximo). Evoluir nunca pode deixar o pokémon
- * sem golpe: na série também não deixa.
- *
- * Só age no caso vazio — loadout que sobreviveu à poda, mesmo com 1 carta, é
- * escolha do jogador e não se mexe. As candidatas são os moves da espécie NOVA
- * já destravados por nível; entram as de nível mais alto primeiro (o que ela
- * aprendeu por último costuma ser o melhor), com desempate por id pra duas
- * lambdas concorrentes chegarem no mesmo resultado.
- */
-export function refillLoadout(
-  kept: readonly string[],
-  candidates: readonly LoadoutCandidate[],
-  limit: number
-): string[] {
-  if (kept.length > 0) return [...kept];
-  return [...candidates]
-    .sort((a, b) => b.levelLearnedAt - a.levelLearnedAt || a.moveId.localeCompare(b.moveId))
-    .slice(0, limit)
-    .map((c) => c.moveId);
-}
+// A poda de loadout na evolução (`pruneLoadout`/`refillLoadout`, decisão de
+// 2026-07-22) FOI REMOVIDA em 2026-08-07, junto com o resto do código que ela
+// servia. O problema que ela resolvia deixou de existir: com o `DeckSlotCard`
+// dropado (2026-08-03), a barra de skills é escolhida na hora de entrar em campo
+// e não fica guardada em lugar nenhum — não há mais carta que possa ficar órfã
+// quando a espécie muda. Se um dia o loadout voltar a ser persistido, o problema
+// volta junto; o histórico está no git.
 
 /**
  * O nível em que uma espécie É ALCANÇADA por evolução — pra a forma evoluída

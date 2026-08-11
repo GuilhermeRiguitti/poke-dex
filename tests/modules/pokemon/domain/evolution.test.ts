@@ -3,10 +3,8 @@ import {
   birthLevelForSpecies,
   evolutionTargetFor,
   parseLevelUpEvolutions,
-  pruneLoadout,
-  refillLoadout,
   type EvolutionChainNode,
-} from "@/src/modules/progression/domain/evolution";
+} from "@/src/modules/pokemon/domain/evolution";
 
 // Imita a cadeia da PokéAPI já normalizada por lib/pokeapi: Bulbasaur(1) →
 // Ivysaur(2, nv.16) → Venusaur(3, nv.32). Uma linha level-up pura.
@@ -66,54 +64,6 @@ describe("evolutionTargetFor", () => {
   it("devolve null quando a espécie não evolui por nível", () => {
     expect(evolutionTargetFor({ evolvesToApiId: null, evolvesToLevel: null }, 100)).toBeNull();
     expect(evolutionTargetFor({ evolvesToApiId: 3, evolvesToLevel: null }, 100)).toBeNull();
-  });
-});
-
-describe("pruneLoadout", () => {
-  it("mantém só as cartas que a nova espécie conhece, na ordem original", () => {
-    const valid = new Set(["a", "c"]);
-    expect(pruneLoadout(["a", "b", "c", "d"], valid)).toEqual(["a", "c"]);
-  });
-
-  it("pode zerar o loadout se nenhuma carta sobrevive", () => {
-    expect(pruneLoadout(["x", "y"], new Set<string>())).toEqual([]);
-  });
-});
-
-describe("refillLoadout", () => {
-  // O caso real: Caterpie (tackle, string-shot) evolui no nv.7 e o learnset por
-  // level-up de Metapod é só harden. A poda zera o slot — e slot vazio deixa o
-  // pokémon INJOGÁVEL (buildDuelSnapshot lança) e travava o matchmaking.
-  const metapod = [{ moveId: "harden", levelLearnedAt: 1 }];
-
-  it("loadout ZERADO pela poda é reposto com o que a nova espécie conhece", () => {
-    expect(refillLoadout([], metapod, 6)).toEqual(["harden"]);
-  });
-
-  it("loadout que sobreviveu NÃO é mexido — nem pra completar", () => {
-    // Escolha do jogador. Repor aqui trocaria carta na mão dele sem pedir.
-    expect(refillLoadout(["tackle"], metapod, 6)).toEqual(["tackle"]);
-  });
-
-  it("repõe as de nível MAIS ALTO primeiro e respeita o teto de cartas", () => {
-    const learnset = [
-      { moveId: "m1", levelLearnedAt: 1 },
-      { moveId: "m20", levelLearnedAt: 20 },
-      { moveId: "m10", levelLearnedAt: 10 },
-    ];
-    expect(refillLoadout([], learnset, 2)).toEqual(["m20", "m10"]);
-  });
-
-  it("empate de nível desempata por id — duas lambdas concorrentes convergem", () => {
-    const learnset = [
-      { moveId: "b", levelLearnedAt: 5 },
-      { moveId: "a", levelLearnedAt: 5 },
-    ];
-    expect(refillLoadout([], learnset, 6)).toEqual(["a", "b"]);
-  });
-
-  it("sem candidata nenhuma, devolve vazio em vez de inventar carta", () => {
-    expect(refillLoadout([], [], 6)).toEqual([]);
   });
 });
 

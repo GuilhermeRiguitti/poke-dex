@@ -7,6 +7,7 @@ import CombatantPanel from "./CombatantPanel";
 import DuelCallout from "./DuelCallout";
 import MoveCommandBar from "./MoveCommandBar";
 import ReserveDrawer from "./ReserveDrawer";
+import TurnClock from "./TurnClock";
 import { duelCalloutFor, type DuelMonView, type DuelTurnFx, type DuelView } from "./battleView";
 
 // A ARENA: o palco 3D ocupa a TELA INTEIRA (é o cenário, não um quadro) e o HUD
@@ -156,6 +157,16 @@ export default function DuelArena({
           <span className="plate border border-edge bg-panel-2/85 px-3 py-1 backdrop-blur-sm">
             <span className="plate-inner font-title text-xs uppercase tracking-wider">Rodada {view.round}</span>
           </span>
+          {!view.isOver && (
+            // key por round: o relógio remonta a cada rodada e já nasce no
+            // valor do servidor, sem esperar o primeiro tique.
+            <TurnClock
+              key={view.round}
+              turnEndsInMs={view.turnEndsInMs}
+              turnTimeoutMs={view.turnTimeoutMs}
+              running={!view.isOver}
+            />
+          )}
           {!view.isOver && (
             <span
               className={`font-title text-[10px] uppercase tracking-widest ${view.opponentReady ? "text-ok" : "text-ink-dim"}`}

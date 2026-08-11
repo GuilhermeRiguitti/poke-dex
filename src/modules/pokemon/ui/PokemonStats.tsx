@@ -1,6 +1,6 @@
 import HpBar from "@/src/layout/HpBar";
 import DetailPanel from "./DetailPanel";
-import type { StatBarView } from "./pokedexView";
+import type { StatBarView } from "./detailView";
 
 // Os stats base. Server Component: barra é largura em CSS, não precisa de JS.
 // O teto das barras (STAT_MAX) já vem resolvido em cada `StatBarView`.

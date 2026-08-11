@@ -1,7 +1,7 @@
 // GERADO por scripts/generate-rarity.mjs — NÃO edite à mão.
 //
 // BST (base stat total) de cada pokémon da dex. Índice = pokemonId - 1.
-// É o peso de raridade do sorteio de pacotes (packs/domain/rarity.ts): quanto
+// É o peso de raridade do sorteio de pacotes (packs/domain/draw.ts): quanto
 // MAIOR o BST, MENOR a chance da carta sair. Dado imutável de geração já
 // lançada — ver o script gerador pra por que não é um cron.
 

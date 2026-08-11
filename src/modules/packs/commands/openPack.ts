@@ -1,9 +1,13 @@
 import { prisma } from "@/src/lib/prisma";
-import { birthLevelForSpecies, STARTING_LEVEL, progressionFromLevel } from "@/src/modules/progression";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
-import type { PokemonCardDTO } from "@/src/modules/pokedex";
+import {
+  birthLevelForSpecies,
+  STARTING_LEVEL,
+  progressionFromLevel,
+  type BaseStats,
+} from "@/src/modules/pokemon";
+import type { PokemonCardDTO } from "@/src/modules/pokemon";
 import { canOpenFree, FREE_PACK_INTERVAL_MS } from "../domain/cooldown";
-import { drawPack } from "../domain/rarity";
+import { drawPack } from "../domain/draw";
 import { toPackStateDTO } from "../queries/readPackState";
 import { toPackCardDTO } from "../queries/toPackDTO";
 import type { OpenPackResultDTO } from "../ui/types";

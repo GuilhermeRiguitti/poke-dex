@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPokemonDetail } from "@/src/modules/pokedex";
-import PokemonMoves from "@/src/modules/pokedex/ui/PokemonMoves";
-import PokemonPortrait from "@/src/modules/pokedex/ui/PokemonPortrait";
-import PokemonStats from "@/src/modules/pokedex/ui/PokemonStats";
-import { detailView } from "@/src/modules/pokedex/ui/pokedexView";
+import { getPokemonDetail } from "@/src/modules/pokemon";
+import PokemonMoves from "@/src/modules/pokemon/ui/PokemonMoves";
+import PokemonPortrait from "@/src/modules/pokemon/ui/PokemonPortrait";
+import PokemonStats from "@/src/modules/pokemon/ui/PokemonStats";
+import { detailView } from "@/src/modules/pokemon/ui/detailView";
 
 // Page é servidor, e aqui a árvore INTEIRA é servidor: a tela de detalhe não
 // tem estado nem evento — é retrato, stats e chips de move. Nenhum componente

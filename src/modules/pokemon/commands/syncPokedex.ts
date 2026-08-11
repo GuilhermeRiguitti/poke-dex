@@ -8,19 +8,13 @@ import {
   fetchSpeciesEvolutionChainId,
   type NormalizedPokemon,
 } from "@/src/lib/pokeapi";
-import {
-  parseLevelUpEvolutions,
-  pickLearnEntry,
-  pickVersionGroup,
-  sumBaseStats,
-  type BaseStats,
-  type EvolutionEdge,
-  type LearnsetEntry,
-} from "@/src/modules/progression";
-import { rarityTier } from "@/src/modules/packs/domain/rarity";
+import { sumBaseStats, type BaseStats } from "../domain/leveling";
+import { pickLearnEntry, pickVersionGroup, type LearnsetEntry } from "../domain/learnset";
+import { parseLevelUpEvolutions, type EvolutionEdge } from "../domain/evolution";
+import { rarityTier } from "../domain/rarity";
 
 // Sincroniza o espelho da PokéAPI (Pokemon/Move/PokemonMove) — o motor único
-// da seed inicial (Fase 0) E do cron de refresh (PLANO_JOGO.md §7). Escreve →
+// da seed inicial E do cron de refresh (CLAUDE.md consequência #4). Escreve →
 // é command, nunca render de page (CLAUDE.md regra 2).
 //
 // POR QUE NÃO $transaction (contraste com resolveTurn):
