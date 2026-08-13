@@ -60,105 +60,58 @@ como concluído, corrija o que mudou de comportamento, registre a decisão nova.
 Isso faz parte da tarefa, não é passo extra — um doc que descreve o mundo antigo
 manda o próximo agente pro caminho errado.
 
-# O jogo: as regras que o código já assume
+# O jogo: as regras moram no README
 
-**PokéDuel** é um duelo tático 1×1 com time de até 6. As quatro regras abaixo não
-são preferência de estilo — cada uma foi decidida errando, e o código inteiro está
-montado em cima delas. Mexer numa é mexer no jogo, não em detalhe de implementação.
-*(Estas quatro sobreviveram ao `PLANO_JOGO.md`, aposentado em 2026-08-07; o
-histórico de execução dele está no git.)*
+**As regras do jogo estão no `README.md`** — turno simultâneo, nível libera golpe,
+as fórmulas de atributo e de XP, evolução por nível. Leia lá antes de mexer em
+qualquer coisa que mude o jogo. Aqui fica só o que o **código** é obrigado a
+respeitar por causa delas.
 
-## 1. O turno é SIMULTÂNEO, e a ordem é priority → Speed → sorteio
+## Não reintroduzir (já tentamos, e voltou atrás)
 
-Os dois escolhem a jogada do mesmo round **sem ver a do outro**; quando as duas
-estão na mesa, o turno resolve inteiro. Não existe "de quem é a vez". Dentro do
-turno: **priority do golpe** (dado real da API) → **Speed efetivo** → empate total
-vira **sorteio** (`domain/turnOrder.ts`). Quem é nocauteado antes de agir **perde o
-turno** — é isso que dá peso a montar em cima de Speed ou de priority.
+- **Turno alternado** (revertido em 2026-07-21). Com vez definida, quem jogava em
+  segundo escolhia **depois de ver** a jogada do outro, e Speed virava "quem começa
+  a rodada" em vez de "quem bate primeiro". Morre junto a "janela de reação" (ver a
+  carta do oponente e responder): só faz sentido com vez definida. Se um dia
+  quisermos algo reativo, tem que ser outra mecânica, escolhida às cegas.
+- **`skillPowerMult`** (`1 + (nível-1)*k`), removido: no Pokémon o nível não deixa
+  o golpe mais forte por si.
+- **Liberar o learnset inteiro** pra compensar pokémon novo com poucas cartas
+  (~3-4, não 6 — `CARDS_PER_SLOT` é teto). As alavancas são `STARTING_LEVEL` e o XP
+  por batalha.
 
-**Já tentamos alternado, e voltou atrás (2026-07-21).** Custou uma fatia inteira
-pra descobrir o óbvio: quem jogava em segundo escolhia **depois de ver** a jogada
-do outro, e o Speed virava "quem começa a rodada" em vez de "quem bate primeiro".
-**Não reintroduzir.** O que morre junto com o alternado: a "janela de reação" (ver
-a carta do oponente e responder) só faz sentido com vez definida — se um dia
-quisermos algo reativo, tem que ser outra mecânica, escolhida às cegas.
+## O que o código é obrigado a fazer
 
-O que o simultâneo obriga no resto do código: a jogada é **segredo** até resolver
-(regra 3 dos DTOs), o `BattleAction` é uma por jogador por round
-(`@@unique[battleId, round, userId]`), a contagem de faltas é **simétrica**, e o
-Realtime precisou de um 2º trigger (`battle_action_submitted`) porque escolher a
-carta não mexe no `Battle`.
-
-## 2. O nível LIBERA skill — e só `level-up` conta
-
-Um Pokémon só conhece o que já aprendeu por level-up **naquele nível**, como a
-PokéAPI descreve (`level_learned_at`). Três coisas seguem daí:
-
-- **Um version group por espécie** (`VERSION_GROUP_PREFERENCE`): o mais recente em
-  que ela aprende algo por level-up. Misturar jogos daria "Pikachu que aprende tudo
-  de todas as gerações" — o oposto de fiel. Exigir level-up evita cair num jogo em
-  que a espécie só aparece com TM (aí não haveria nada a destravar).
-- **`machine` (TM), `egg` e `tutor` NÃO dependem de nível.** Ficam gravados no
-  espelho e viram carta jogável só quando o jogador ganha por fora — uma linha em
-  `UserPokemonMove`. A união "level-up destravado ∪ concedido" é pura
+- **A jogada é segredo até o turno resolver.** Uma ação por jogador por round
+  (`@@unique[battleId, round, userId]`), contagem de faltas **simétrica**, e o
+  `cardSlot` nunca sai no DTO nem no payload do Realtime (regra 3 da arquitetura).
+  O 2º trigger `battle_action_submitted` existe porque escolher a carta não mexe no
+  `Battle`. Ordem do turno em `domain/turnOrder.ts`, dano em `domain/damage.ts`.
+- **A trava do learnset é do SERVIDOR, não da UI.** `PUT /api/deck` é público:
+  `saveDeck` recusa pokémon sem NENHUMA carta liberada (iria a campo sem ação
+  possível e o `buildDuelSnapshot` lançaria no matchmaking), e a batalha filtra
+  pelo nível **congelado no snapshot** — subir de nível em outra aba não destrava
+  carta na partida em andamento.
+- **Só `level-up` conta como liberação por nível**, e é **um version group por
+  espécie** (`VERSION_GROUP_PREFERENCE`, o mais recente em que ela aprende algo por
+  level-up). `machine` (TM), `egg` e `tutor` ficam no espelho e viram carta só com
+  uma linha em `UserPokemonMove`; a união "destravado ∪ concedido" é pura
   (`learnset.mergePlayableMoveIds`) e lida por `getUnlockedMoveIds`.
-- **A trava é do SERVIDOR, não da UI.** O `PUT /api/deck` é público: `saveDeck`
-  recusa pokémon sem NENHUMA carta liberada (ele iria a campo sem ação possível e o
-  `buildDuelSnapshot` lançaria lá no matchmaking), e a escolha de skills na batalha
-  filtra pelo nível **congelado no snapshot** — subir de nível em outra aba não
-  destrava carta na partida em andamento.
-
-**Consequência que muda o começo do jogo:** pokémon novo tem ~3-4 cartas, não 6.
-`CARDS_PER_SLOT` é **teto, não obrigação**. Se ficar seco demais, as alavancas são
-`STARTING_LEVEL` e o XP por batalha — **não** voltar a liberar o learnset inteiro.
-
-## 3. Stat vem da API + nível. Nada é inventado por nós
-
-```
-HP     = floor(2 * baseHP * nível / 100) + nível + 10
-Demais = floor(2 * base   * nível / 100) + 5
-```
-
-O nível entra no jogo por três caminhos, todos fiéis à série: escala o stat, entra
-na fórmula de dano (`domain/damage.ts`) e libera skill (regra 2). **Ele NÃO
-multiplica o poder da skill** — existiu um `skillPowerMult` nosso (`1 + (nível-1)*k`)
-e foi removido: no Pokémon o nível não deixa thunderbolt mais forte por si.
-**Não reintroduzir.**
-
-XP, pela fórmula da série (gen 5+), com curva medium-fast (total pro nível n = n³):
-
-```
-xp ganho = floor(baseExperience_do_derrotado * nível_do_derrotado / 7)
-```
-
-`UserPokemon.xp` é o **total acumulado** e `level` é função dele — os dois são
-escritos SEMPRE juntos, só pelos helpers (regra 3.1 lá embaixo). **Desvio
-consciente:** o perdedor leva `LOSER_XP_SHARE` (25%). Na série quem é nocauteado
-não ganha nada; aqui isso prenderia quem perde num loop sem nunca destravar carta.
-
-## 4. Evolução é por nível, em cadeia, e retroativa
-
-Só `level-up` **com `min_level`** vira aresta (`Pokemon.evolvesToApiId`/
-`evolvesToLevel`, gravadas pelo `syncPokedex`) — pedra, troca e amizade ficam null,
-porque não são progressão por nível. `pokemon/commands/grantXp.ts` troca o
-`pokemonId` do `UserPokemon` ao cruzar o gatilho, **em cadeia** (um XP grande pode
-cruzar dois estágios), e os stats vêm de graça: derivam da espécie nova.
-
-Dois cuidados que já morderam:
-
-- **A checagem roda em TODA aplicação de XP, não só quando o nível sobe.** Um
-  pokémon que cruzasse o gatilho quando a espécie-alvo ainda não estava no espelho
+- **`UserPokemon.xp` e `level` são escritos SEMPRE juntos**, só pelos helpers
+  `progressionFromXp` / `progressionFromLevel` (regra 3.1).
+- **A checagem de evolução roda em TODA aplicação de XP**, não só quando o nível
+  sobe. Um pokémon que cruzasse o gatilho com a espécie-alvo ainda fora do espelho
   ficava preso na forma antiga **pra sempre** — no `MAX_LEVEL` não há mais nível a
-  ganhar, então a checagem nunca voltava. E não há worker pra consertar depois.
-- **O snapshot da partida fica intacto.** O `grantXp` mexe no `UserPokemon`
-  (coleção), nunca no `BattlePokemon` (congelado): a evolução vale da PRÓXIMA
-  partida. Isso é a mesma regra do snapshot congelado (3.1).
-
-Quem **calcula** o prêmio é a batalha (`battle/commands/awardBattleXp.ts`, com a
-fórmula acima); quem **escreve** é o `pokemon`. E o `grantXp` recebe o `tx` em vez
-de abrir a própria transação: ele roda dentro da que encerra a partida, onde o
-claim otimista garante que só uma lambda chega ali. Fora dela, pagaria XP
-duplicado a cada polling de 2s.
+  ganhar, e não há worker pra consertar depois. Só `level-up` com `min_level` vira
+  aresta (`Pokemon.evolvesToApiId`/`evolvesToLevel`, gravadas pelo `syncPokedex`);
+  pedra, troca e amizade ficam null.
+- **Evolução não toca no snapshot.** `grantXp` muda o `pokemonId` do `UserPokemon`
+  (coleção, em cadeia), nunca o `BattlePokemon` congelado: vale da PRÓXIMA partida.
+- **Quem calcula o prêmio é a batalha** (`battle/commands/awardBattleXp.ts`); quem
+  escreve é o `pokemon` (`pokemon/commands/grantXp.ts`). O `grantXp` recebe o `tx`
+  em vez de abrir a própria transação — roda dentro da que encerra a partida, onde
+  o claim otimista garante que só uma lambda chega ali. Fora dela, pagaria XP
+  duplicado a cada polling de 2s.
 
 # Arquitetura
 

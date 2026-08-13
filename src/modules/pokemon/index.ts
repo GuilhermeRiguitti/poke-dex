@@ -14,10 +14,10 @@
 // caminho relativo — este arquivo reexporta queries/commands, que puxam Prisma,
 // e o que está em ui/ vai pro bundle do browser.
 //
-// AQUI SÓ ENTRA O QUE ALGUÉM DE FORA IMPORTA. O barril chegou a reexportar as
+// AQUI SÓ ENTRA O QUE ALGUÉM DE FORA IMPORTA. Este barrel chegou a reexportar as
 // ~40 peças do módulo inteiro, e 24 delas não tinham um único importador: quem
 // usa `calcHp`/`levelFromXp` é o próprio `deriveStats` ao lado, e quem os
-// exercita é o teste, que importa por caminho fundo. Barril que anuncia mais do
+// exercita é o teste, que importa por caminho fundo. Barrel que anuncia mais do
 // que alguém pede não é API, é ruído — some com a resposta pra "o que este
 // módulo oferece de verdade". Precisou de um símbolo numa page ou rota? Publique
 // a linha então, junto do consumidor que a justifica.

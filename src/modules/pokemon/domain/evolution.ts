@@ -68,13 +68,10 @@ export function evolutionTargetFor(
   return level >= species.evolvesToLevel ? species.evolvesToApiId : null;
 }
 
-// A poda de loadout na evolução (`pruneLoadout`/`refillLoadout`, decisão de
-// 2026-07-22) FOI REMOVIDA em 2026-08-07, junto com o resto do código que ela
-// servia. O problema que ela resolvia deixou de existir: com o `DeckSlotCard`
-// dropado (2026-08-03), a barra de skills é escolhida na hora de entrar em campo
-// e não fica guardada em lugar nenhum — não há mais carta que possa ficar órfã
-// quando a espécie muda. Se um dia o loadout voltar a ser persistido, o problema
-// volta junto; o histórico está no git.
+// Evoluir NÃO mexe em carta: sem `DeckSlotCard` (dropado em 2026-08-03) não há
+// loadout guardado que possa ficar órfão quando a espécie muda — a barra é
+// escolhida ao entrar em campo. Se o loadout voltar a ser persistido, a poda
+// volta a ser necessária (o código dela está no git).
 
 /**
  * O nível em que uma espécie É ALCANÇADA por evolução — pra a forma evoluída

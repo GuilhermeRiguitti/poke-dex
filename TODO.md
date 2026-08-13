@@ -1,8 +1,9 @@
 # JOGO — o que falta
 
-> Herdado do `PLANO_JOGO.md`, aposentado em 2026-08-07. As regras de jogo que
-> continuam valendo foram pro `CLAUDE.md` § "O jogo: as regras que o código já
-> assume"; o histórico de execução está no git. Aqui ficou só o que NÃO foi feito.
+> Herdado do `PLANO_JOGO.md`, apagado em 2026-08-07. As regras de jogo que
+> continuam valendo foram pro `README.md` (e o que o código tem que respeitar por
+> causa delas, pro `CLAUDE.md` § "O jogo: as regras moram no README"); o histórico
+> de execução está no git. Aqui ficou só o que NÃO foi feito.
 
 - [ ] **Energia por rodada + custo de carta.** A tensão de "descarrego agora ou
   guardo?". Encaixa no turno simultâneo sem mexer na orquestração: é custo na
@@ -14,8 +15,8 @@
   que o jogador saiu e **não voltou em X s → o oponente vence**; o timeout segue
   como backstop no `pg_cron`. Falta o dono decidir o X.
 - [ ] **Mecânica reativa (redesenhar do zero).** A "janela de reação" do plano
-  antigo pressupunha turno ALTERNADO e morreu com ele (ver `CLAUDE.md` regra 1 do
-  jogo). Se voltar, tem que ser algo escolhido às cegas — ex.: carta defensiva
+  antigo pressupunha turno ALTERNADO e morreu com ele (ver `CLAUDE.md` § "Não
+  reintroduzir"). Se voltar, tem que ser algo escolhido às cegas — ex.: carta defensiva
   resolvida na ordem do turno. **Não implementar o desenho antigo.**
 - [ ] **Troca de Pokémon entre jogadores** (módulo `trade`): oferta/aceite
   transferindo a instância de `UserPokemon`. As duplicatas na coleção já estão
@@ -34,12 +35,6 @@
   quase de graça.
 - [ ] **Fase D — efeitos ricos da API**: status, mudança de stat (stat stages) e
   cooldowns. Empilha por cima do núcleo, que já está estável.
-- [ ] **Código morto da poda de loadout.** `pruneLoadout`/`refillLoadout`
-  (`pokemon/domain/evolution.ts`) e o comentário "Usado por
-  battle/pruneLoadoutForSpecies" em `pokemon/queries/getUnlockedMoveIds.ts` ficaram
-  sem consumidor quando o `DeckSlotCard` foi dropado (2026-08-03) e a escolha de
-  skills virou decisão de batalha: não há mais loadout guardado pra ficar órfão na
-  evolução. Só o barril e os testes deles chamam. Apagar.
 
 Ordem sugerida entre os três de cima: **troca** (dá uso às duplicatas e destrava
 conseguir o "pai") → **cruzamento** → **tutor** (independente das outras).
