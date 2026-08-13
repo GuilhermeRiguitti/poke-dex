@@ -57,16 +57,29 @@ o cron só cobre o buraco.
   (`resolveDueBattles`). Idempotente e disputado: quem perde o claim otimista
   não escreve nada — cron × polling se cruzando é corrida controlada.
 
-## 3. Cron: `refresh-pokedex` (diário, 03:15 UTC)
+## 3. Cron: `refresh-pokedex` (mensal — 6 lotes de 50, dia 1)
 
-**O que faz:** re-sincroniza o espelho devagar — pega as **20 espécies com
+**O que faz:** re-sincroniza o espelho devagar — pega as **N espécies com
 `fetchedAt` mais antigo** e re-busca da PokéAPI (upsert por `pokemonApiId`).
 
-- **Chama:** `POST https://poke-dex-rgt.vercel.app/api/cron/refresh-pokedex`
-  (mesma auth do §2).
-- **Lote de 20** porque o gargalo é a REDE (cada espécie puxa a si + os moves) e
-  a lambda tem teto de tempo. **Esse teto é o limite real do job** — não dá pra
-  aumentar o lote pra ele "dar conta" mais rápido.
+**Agendamento:** `*/10 3 1 * *` — dia 1 de cada mês, das 03:00 às 03:50 UTC, de
+10 em 10 minutos. São **6 disparos de 50 espécies = 300/mês**.
+
+- **Chama:** `POST .../api/cron/refresh-pokedex?batch=50` (mesma auth do §2).
+- **A paginação é o próprio `fetchedAt`**: cada disparo carimba as que tocou, o
+  seguinte encontra outras. Não há cursor, não há estado — um disparo que falhar
+  só deixa aquelas espécies velhas pro mês que vem.
+- **Lote de 50 é teto de LAMBDA, não escolha** (`MAX_REFRESH_BATCH`): o Hobby dá
+  60s (`maxDuration` na rota) e cada espécie leva ~1s. Lote maior não acelera —
+  mata a função no meio, e espécie morta no meio **não recebe `fetchedAt` novo**,
+  então a passada seguinte pega as MESMAS e o cron trava sem avançar.
+- **Por que 6 e não uma volta completa por mês:** cobrir as 1025 num mês exigiria
+  ~171 espécies por disparo (não cabe na lambda) ou ~21 disparos. E seria mais
+  tráfego na PokéAPI do que o esquema diário antigo — 12.300 espécies/ano contra
+  7.300. Com 6 lotes são **3.600/ano, 51% MENOS que antes**, e a volta completa
+  leva ~3,4 meses. Pra dado que não muda, sobra. Se um dia precisar de volta
+  mensal, é `*/10 3-6 1 * *` (24 disparos, 4h) — mas leia o parágrafo de tráfego
+  antes.
 - ⚠️ **Só ATUALIZA o que já existe.** Não adiciona gerações novas — isso é o
   seed (§4).
 - ⚠️ **Quanto demora uma volta depende do tamanho do espelho, e isso muda tudo:**
@@ -116,20 +129,20 @@ martelar. Cumprimos com folga:
 
 ## 6. Runbook — operar os crons
 
-> **O MCP do Supabase é LOCAL e read-only** (`.mcp.json`): roda
-> `@supabase/mcp-server-supabase` via `npx` com `--read-only` e um **Personal
-> Access Token** em `SUPABASE_ACCESS_TOKEN` (variável de ambiente — o token
-> NUNCA entra no `.mcp.json`, que é versionado).
+> **O MCP do Supabase é LOCAL** (`.mcp.json`): roda `@supabase/mcp-server-supabase`
+> via `npx`, com um **Personal Access Token** em `SUPABASE_ACCESS_TOKEN`. O token
+> vive em `.claude/settings.local.json` (que **não** é versionado) — nunca no
+> `.mcp.json`, que é.
 >
 > Era o servidor **hospedado** (`https://mcp.supabase.com/mcp?project_ref=…`) e
-> foi trocado em 2026-08-13 por dois motivos: (1) o OAuth dele não fechava — o
-> `?project_ref=` da URL virava `%253F` no parâmetro `resource` do authorize, ou
-> seja, codificado duas vezes; (2) ele pedia escopo de **escrita** (`database:write`,
-> `projects:write`, `secrets:read`) no prod, o oposto da regra do `CLAUDE.md`.
-> O `--read-only` agora **impõe** essa regra em vez de só documentá-la.
+> foi trocado em 2026-08-13 porque o OAuth dele não fechava: o `?project_ref=` da
+> URL virava `%253F` no parâmetro `resource` do authorize — codificado duas
+> vezes. O local usa token e dispensa o OAuth inteiro.
 >
-> Consequência prática: **reagendar cron NÃO passa pelo MCP** (é escrita). Use o
-> SQL Editor do dashboard.
+> **Ele ESCREVE** (o `--read-only` foi removido a pedido do dono, mesma data),
+> então dá pra reagendar cron e corrigir dado por aqui. **Schema, não** — DDL e
+> migration continuam só por arquivo versionado (`CLAUDE.md`, topo). Muda a
+> FORMA do banco → migration; muda o ESTADO → pode pelo MCP.
 
 Inspecionar (SQL Editor do Supabase ou MCP `execute_sql`):
 ```sql
@@ -140,10 +153,23 @@ select id, status_code, error_msg from net._http_response order by id desc limit
 
 Reagendar / desligar:
 ```sql
--- mudar só a periodicidade, mantendo o job e o comando:
+-- O agendamento ATUAL do refresh (mensal, 6 lotes de 50 de 10 em 10 min).
+-- Recria o job inteiro porque a URL muda junto (ganhou ?batch=50):
+select cron.unschedule('refresh-pokedex');
+select cron.schedule('refresh-pokedex', '*/10 3 1 * *', $$
+  select net.http_post(
+    url     := 'https://poke-dex-rgt.vercel.app/api/cron/refresh-pokedex?batch=50',
+    headers := jsonb_build_object(
+      'Authorization',
+      'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+    )
+  );
+$$);
+
+-- só a periodicidade, mantendo o comando:
 select cron.alter_job(
   (select jobid from cron.job where jobname = 'refresh-pokedex'),
-  schedule => '15 3 1 * *'   -- 1x/mês, dia 1 às 03:15 UTC
+  schedule => '*/10 3 1 * *'
 );
 
 select cron.unschedule('resolve-battle-turns');

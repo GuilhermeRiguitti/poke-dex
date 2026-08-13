@@ -1,27 +1,49 @@
 import { prisma } from "@/src/lib/prisma";
 import { syncPokedex, type SyncPokedexSummary } from "./syncPokedex";
 
-// Rotina de refresh do espelho da PokéAPI (CLAUDE.md consequência #4): re-sincroniza as
-// espécies com `fetchedAt` mais antigo, em lote pequeno. Reaproveita o mesmo
-// motor de cron que já subimos (Bearer CRON_SECRET → rota → command); o pg_cron
-// do Supabase dispara 1×/dia — dado de geração já lançada quase não muda, então
-// varrer devagar sobra.
+// Rotina de refresh do espelho da PokéAPI (CLAUDE.md consequência #4):
+// re-sincroniza as espécies com `fetchedAt` mais antigo, em lote pequeno.
+// Reaproveita o mesmo motor de cron do resolve-turns (Bearer CRON_SECRET → rota
+// → command).
+//
+// A PAGINAÇÃO É O PRÓPRIO `fetchedAt`, e é isso que dispensa cursor: cada
+// passada pega os N mais VELHOS e carimba `fetchedAt` neles, então a passada
+// seguinte encontra outros N. Chamar a rota 6 vezes seguidas varre 6 lotes
+// diferentes sem ninguém guardar "onde parei" — e, como não há estado, uma
+// passada que falhar no meio só deixa aquelas espécies velhas pra próxima.
 //
 // Teto por passada porque a rota roda numa lambda: sincronizar tudo de uma vez
-// estouraria o tempo. A cada disparo pega os N mais velhos; ao longo dos dias a
-// tabela inteira gira. Idempotente (o sync é upsert por apiId).
+// estouraria o tempo (ver MAX_REFRESH_BATCH). Idempotente (upsert por apiId).
 //
-// 20 por passada porque cada espécie ainda puxa a PokéAPI (a própria + os moves
-// dela): o gargalo do refresh é a REDE, não o banco, e 20 cabem no tempo de uma
-// lambda.
+// QUANTO DEMORA UMA VOLTA COMPLETA = espécies ÷ (lote × passadas por mês), e o
+// numerador é decisão de quem semeou (`npm run seed -- <de> <ate>`), não desta
+// constante. Com as 1025 espelhadas e o agendamento de hoje (6 lotes de 50, 1×
+// por mês) a volta leva ~3,4 meses — e isso SOBRA, porque dado de geração já
+// lançada não muda.
 //
-// QUANTO DEMORA UMA VOLTA depende de quantas espécies estão espelhadas, e isso
-// é decisão de quem semeou (`npm run seed -- <de> <ate>`), não desta constante:
-// com a Gen 1 (151) a volta leva ~8 dias; com as 1025, ~51. Dado de geração já
-// lançada quase não muda, então girar devagar sobra pra MANTER o espelho fresco
-// — mas não sirva pra PREENCHER campo novo (foi o caso do `Move.effect`, que
-// nasceu vazio nas linhas já semeadas). Pra isso, re-rode o seed na faixa toda.
+// ⚠️ O que este cron NÃO serve pra fazer: PREENCHER campo novo. Quando o código
+// passa a ler algo que o espelho nunca gravou (foi o caso do `Move.effect`, em
+// 2026-08-12), esperar a volta do cron é esperar meses. Backfill é o seed, na
+// faixa toda, rodado à mão.
 const DEFAULT_REFRESH_BATCH = 20;
+
+/**
+ * TETO DURO do lote, e ele NÃO é gosto: cada espécie puxa a si + o species +
+ * (às vezes) a cadeia de evolução + os moves dela, e tudo isso tem que caber
+ * numa invocação de função da Vercel. O plano Hobby dá no máximo 60s
+ * (`maxDuration` na rota) — a ~1s por espécie, 50 já usa a folga inteira.
+ *
+ * Passar disso não faz o refresh ser mais rápido: faz a função ser MORTA no
+ * meio, e aí as espécies daquele lote nem `fetchedAt` novo recebem — a passada
+ * seguinte pega as MESMAS, e o refresh trava num loop que nunca avança.
+ */
+export const MAX_REFRESH_BATCH = 50;
+
+/** O lote pedido, preso na faixa que a lambda aguenta. Puro, tem teste. */
+export function clampRefreshBatch(requested: number | null | undefined): number {
+  if (typeof requested !== "number" || !Number.isFinite(requested)) return DEFAULT_REFRESH_BATCH;
+  return Math.max(1, Math.min(MAX_REFRESH_BATCH, Math.floor(requested)));
+}
 
 export interface RefreshPokedexSummary extends SyncPokedexSummary {
   batch: number;
@@ -33,8 +55,9 @@ export interface RefreshPokedexOptions {
 }
 
 export async function refreshPokedex(
-  { batch = DEFAULT_REFRESH_BATCH }: RefreshPokedexOptions = {},
+  { batch: requested }: RefreshPokedexOptions = {},
 ): Promise<RefreshPokedexSummary> {
+  const batch = clampRefreshBatch(requested);
   const stalest = await prisma.pokemon.findMany({
     orderBy: { fetchedAt: "asc" },
     take: batch,
