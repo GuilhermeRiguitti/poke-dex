@@ -61,15 +61,24 @@ o cron só cobre o buraco.
 
 **O que faz:** re-sincroniza o espelho devagar — pega as **20 espécies com
 `fetchedAt` mais antigo** e re-busca da PokéAPI (upsert por `pokemonApiId`).
-A Gen 1 inteira gira em ~8 dias, o que sobra: dado de geração lançada quase não
-muda.
 
 - **Chama:** `POST https://poke-dex-rgt.vercel.app/api/cron/refresh-pokedex`
   (mesma auth do §2).
 - **Lote de 20** porque o gargalo é a REDE (cada espécie puxa a si + os moves) e
-  a lambda tem teto de tempo.
+  a lambda tem teto de tempo. **Esse teto é o limite real do job** — não dá pra
+  aumentar o lote pra ele "dar conta" mais rápido.
 - ⚠️ **Só ATUALIZA o que já existe.** Não adiciona gerações novas — isso é o
   seed (§4).
+- ⚠️ **Quanto demora uma volta depende do tamanho do espelho, e isso muda tudo:**
+  com a Gen 1 (151) são ~8 dias de cron diário; com as **1025 gens semeadas**
+  (o caso do prod hoje), são **~51 dias** — e mensal, ~51 MESES. Ou seja: neste
+  espelho o job **não é** mecanismo de re-sincronização, é batimento cardíaco.
+- ⚠️ **NÃO conte com ele pra preencher campo novo.** Quando o código passa a ler
+  um campo que o espelho nunca gravou, as linhas antigas ficam nulas e só o
+  `syncPokedex` passando por elas conserta. Foi o caso do `Move.effect` (status
+  e stat stage, 2026-08-12): a coluna existia vazia desde sempre porque o
+  `fetchMove` descartava o `meta` da API. **Backfill é o seed (§4), na faixa
+  toda, rodado à mão** — 20 espécies por passada nunca vai alcançar 1025.
 
 ## 4. Rotina manual: seed do espelho (por geração)
 
@@ -77,6 +86,7 @@ muda.
 npm run seed              # Gen 1 (#1–#151) — padrão
 npm run seed -- 152 251   # Gen 2
 npm run seed -- 252 386   # Gen 3, etc.
+npm run seed -- 1 1025    # TUDO — é isto que faz backfill de campo novo (~20 min)
 ```
 
 - Idempotente (upsert por `pokemonApiId`/`moveApiId`; learnset via
@@ -106,6 +116,21 @@ martelar. Cumprimos com folga:
 
 ## 6. Runbook — operar os crons
 
+> **O MCP do Supabase é LOCAL e read-only** (`.mcp.json`): roda
+> `@supabase/mcp-server-supabase` via `npx` com `--read-only` e um **Personal
+> Access Token** em `SUPABASE_ACCESS_TOKEN` (variável de ambiente — o token
+> NUNCA entra no `.mcp.json`, que é versionado).
+>
+> Era o servidor **hospedado** (`https://mcp.supabase.com/mcp?project_ref=…`) e
+> foi trocado em 2026-08-13 por dois motivos: (1) o OAuth dele não fechava — o
+> `?project_ref=` da URL virava `%253F` no parâmetro `resource` do authorize, ou
+> seja, codificado duas vezes; (2) ele pedia escopo de **escrita** (`database:write`,
+> `projects:write`, `secrets:read`) no prod, o oposto da regra do `CLAUDE.md`.
+> O `--read-only` agora **impõe** essa regra em vez de só documentá-la.
+>
+> Consequência prática: **reagendar cron NÃO passa pelo MCP** (é escrita). Use o
+> SQL Editor do dashboard.
+
 Inspecionar (SQL Editor do Supabase ou MCP `execute_sql`):
 ```sql
 select jobid, jobname, schedule, active from cron.job;
@@ -115,11 +140,21 @@ select id, status_code, error_msg from net._http_response order by id desc limit
 
 Reagendar / desligar:
 ```sql
+-- mudar só a periodicidade, mantendo o job e o comando:
+select cron.alter_job(
+  (select jobid from cron.job where jobname = 'refresh-pokedex'),
+  schedule => '15 3 1 * *'   -- 1x/mês, dia 1 às 03:15 UTC
+);
+
 select cron.unschedule('resolve-battle-turns');
 select cron.unschedule('refresh-pokedex');
--- re-agendar: o SQL completo dos dois jobs está comentado em
+-- re-agendar do zero: o SQL completo dos dois jobs está comentado em
 -- supabase/migrations/20260715022134_enable_pg_cron_pg_net.sql (ver DEPLOY.md)
 ```
+
+⚠️ O `resolve-battle-turns` é o único dos dois que **não pode** ser afrouxado: é
+o backstop que encerra partida zumbi (`CLAUDE.md` regra 5). O `refresh-pokedex`
+é o folgado — ver o §3 sobre por que, no espelho de 1025, ele é quase decorativo.
 
 Segredo:
 ```sql

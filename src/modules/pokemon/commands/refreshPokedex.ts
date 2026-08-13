@@ -11,10 +11,16 @@ import { syncPokedex, type SyncPokedexSummary } from "./syncPokedex";
 // estouraria o tempo. A cada disparo pega os N mais velhos; ao longo dos dias a
 // tabela inteira gira. Idempotente (o sync é upsert por apiId).
 //
-// 20 (não 151) porque cada espécie ainda puxa a PokéAPI (a própria + os moves
-// dela): o gargalo do refresh é a REDE, não o banco. 20 espécies cabem no tempo
-// de uma lambda; a Gen 1 inteira gira em ~8 dias de cron diário — e dado de
-// geração lançada quase não muda, então girar devagar sobra.
+// 20 por passada porque cada espécie ainda puxa a PokéAPI (a própria + os moves
+// dela): o gargalo do refresh é a REDE, não o banco, e 20 cabem no tempo de uma
+// lambda.
+//
+// QUANTO DEMORA UMA VOLTA depende de quantas espécies estão espelhadas, e isso
+// é decisão de quem semeou (`npm run seed -- <de> <ate>`), não desta constante:
+// com a Gen 1 (151) a volta leva ~8 dias; com as 1025, ~51. Dado de geração já
+// lançada quase não muda, então girar devagar sobra pra MANTER o espelho fresco
+// — mas não sirva pra PREENCHER campo novo (foi o caso do `Move.effect`, que
+// nasceu vazio nas linhas já semeadas). Pra isso, re-rode o seed na faixa toda.
 const DEFAULT_REFRESH_BATCH = 20;
 
 export interface RefreshPokedexSummary extends SyncPokedexSummary {

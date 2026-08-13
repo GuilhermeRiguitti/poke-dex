@@ -1,6 +1,17 @@
 import { orderForTurn, type OrderInput } from "./turnOrder";
-import { calculateDamage } from "./damage";
+import { calculateDamage, confusionSelfDamage, rollAccuracy } from "./damage";
 import { effectivenessMultiplier, TypeEffectivenessMap } from "./typeChart";
+import {
+  actionGate,
+  ailmentBlockedBy,
+  applyAilment,
+  applyStageChanges,
+  clearVolatiles,
+  conditionsOf,
+  leechDamage,
+  residualDamage,
+} from "./conditions";
+import { hasEffect, isSelfDirected, type MoveEffect } from "./moveEffect";
 import type { BattleMoveDef, BattlePokemonState } from "./types";
 import {
   activeOf,
@@ -71,22 +82,186 @@ export function startDuel(sideA: DuelSide, sideB: DuelSide): DuelState {
   return { round: 1, sideA, sideB };
 }
 
+/** Tudo que UM golpe precisa saber pra sair: quem bate, em quem, e onde anotar. */
+interface AttackContext {
+  attacker: BattlePokemonState;
+  defender: BattlePokemonState;
+  attackerUserId: string;
+  defenderUserId: string;
+  typeChart: TypeEffectivenessMap;
+  rng: () => number;
+  events: DuelEvent[];
+}
+
+/** Tira HP de alguém e marca o desmaio. Devolve quanto saiu de fato. */
+function damageMon(mon: BattlePokemonState, amount: number): number {
+  const dealt = Math.min(mon.currentHp, Math.max(0, amount));
+  mon.currentHp -= dealt;
+  if (mon.currentHp === 0) mon.fainted = true;
+  return dealt;
+}
+
+/** Devolve HP a alguém, sem passar do máximo. Devolve quanto entrou de fato. */
+function healMon(mon: BattlePokemonState, amount: number): number {
+  const healed = Math.min(mon.maxHp - mon.currentHp, Math.max(0, amount));
+  mon.currentHp += healed;
+  return healed;
+}
+
+/** Percentual do HP máximo, nunca menos de 1 — meio ponto de cura seria zero. */
+function pctOfMaxHp(mon: BattlePokemonState, pct: number): number {
+  return Math.max(1, Math.floor((mon.maxHp * pct) / 100));
+}
+
+/**
+ * Quantas vezes um golpe de múltiplos acertos bate. A PokéAPI dá a faixa
+ * (double-kick 2..2, fury-swipes 2..5); só sorteia quando a faixa é aberta, pra
+ * não consumir rng em golpe normal.
+ */
+function rollHits(effect: MoveEffect | null | undefined, rng: () => number): number {
+  if (!effect || effect.maxHits <= 1) return 1;
+  if (effect.maxHits === effect.minHits) return effect.minHits;
+  return effect.minHits + Math.floor(rng() * (effect.maxHits - effect.minHits + 1));
+}
+
+/**
+ * O golpe precisa ACERTAR alguém? Sim quando ele encosta no oponente (status,
+ * debuff); não quando só mexe em quem usa (swords-dance, recover) — aí não há
+ * alvo pra desviar, e na série esses golpes não erram.
+ */
+function targetsFoe(effect: MoveEffect | null | undefined): boolean {
+  if (!hasEffect(effect)) return false;
+  return effect.ailment !== null || effect.flinchChance > 0 || !isSelfDirected(effect);
+}
+
+/**
+ * Aplica o que o golpe faz ALÉM do dano: status, estágio de atributo, recuo,
+ * dreno/recuo de HP e cura. Só é chamado quando o golpe CONECTOU — ember não
+ * queima quando erra, senão errar deixaria de ser punição.
+ */
+function applyMoveEffect(ctx: AttackContext, card: BattleMoveDef, damageDealt: number): void {
+  const { attacker, defender, attackerUserId, defenderUserId, rng, events } = ctx;
+  const effect = card.effect;
+  if (!hasEffect(effect)) return;
+
+  // DRENO / RECUO — proporcional ao dano causado (absorb devolve 50%,
+  // take-down cobra 25%). Vem antes do status: se o recuo derruba quem usou, o
+  // log conta o desmaio no lugar certo.
+  if (effect.drainPct !== 0 && damageDealt > 0) {
+    const amount = Math.max(1, Math.floor((damageDealt * Math.abs(effect.drainPct)) / 100));
+    if (effect.drainPct > 0) {
+      const healed = healMon(attacker, amount);
+      if (healed > 0) {
+        events.push({ type: "tick", targetUserId: attackerUserId, monName: attacker.name, source: "drain", hp: healed });
+      }
+    } else {
+      const lost = damageMon(attacker, amount);
+      events.push({
+        type: "tick",
+        targetUserId: attackerUserId,
+        monName: attacker.name,
+        source: "recoil",
+        hp: -lost,
+        fainted: attacker.fainted || undefined,
+      });
+    }
+  }
+
+  // CURA no próprio usuário (recover, roost).
+  if (effect.healPct > 0) {
+    const healed = healMon(attacker, pctOfMaxHp(attacker, effect.healPct));
+    events.push({ type: "tick", targetUserId: attackerUserId, monName: attacker.name, source: "heal", hp: healed });
+  }
+
+  // ESTÁGIO DE ATRIBUTO. Alvo desmaiado não recebe debuff (o próximo entra limpo).
+  if (effect.stageChanges.length > 0) {
+    const naSorte = effect.stageChance >= 100 || rng() * 100 < effect.stageChance;
+    const alvo = effect.stageTarget === "self" ? attacker : defender;
+    const alvoUserId = effect.stageTarget === "self" ? attackerUserId : defenderUserId;
+    if (naSorte && !alvo.fainted) {
+      for (const applied of applyStageChanges(alvo, effect.stageChanges)) {
+        events.push({
+          type: "stage",
+          targetUserId: alvoUserId,
+          monName: alvo.name,
+          stat: applied.stat,
+          delta: applied.delta,
+          stage: applied.stage,
+        });
+      }
+    }
+  }
+
+  // STATUS. Só no oponente: os golpes que se auto-adormecem (rest) são categoria
+  // que o jogo não modela, então não há caso de status em quem usa.
+  if (effect.ailment && !defender.fainted) {
+    const naSorte = effect.ailmentChance >= 100 || rng() * 100 < effect.ailmentChance;
+    if (naSorte) {
+      const blocked = ailmentBlockedBy(defender, effect.ailment);
+      if (blocked) {
+        // Só vira linha de log quando o golpe EXISTIA pra isso (thunder-wave num
+        // elétrico). Num efeito secundário de 10% ninguém precisa saber.
+        if (effect.ailmentChance >= 100) {
+          events.push({
+            type: "ailment",
+            targetUserId: defenderUserId,
+            monName: defender.name,
+            ailment: effect.ailment,
+            blocked,
+          });
+        }
+      } else {
+        applyAilment(defender, effect.ailment, effect, rng);
+        events.push({
+          type: "ailment",
+          targetUserId: defenderUserId,
+          monName: defender.name,
+          ailment: effect.ailment,
+        });
+      }
+    }
+  }
+
+  // RECUO (flinch): quem ainda não agiu neste turno perde o turno. Só vale se
+  // quem usou for MAIS RÁPIDO — é o prêmio da Velocidade no turno simultâneo.
+  if (effect.flinchChance > 0 && !defender.fainted && rng() * 100 < effect.flinchChance) {
+    conditionsOf(defender).flinched = true;
+  }
+}
+
 /**
  * Executa o golpe de um lado. Devolve true se o alvo desmaiou.
  *
  * Não age quem já foi nocauteado neste mesmo turno (o golpe que veio primeiro
  * matou). Quem trocou/hesitou nem chega aqui (não está na lista de atacantes).
  */
-function executeAttack(
-  attacker: BattlePokemonState,
-  defender: BattlePokemonState,
-  attackerUserId: string,
-  cardSlot: number,
-  typeChart: TypeEffectivenessMap,
-  rng: () => number,
-  events: DuelEvent[]
-): boolean {
+function executeAttack(ctx: AttackContext, cardSlot: number): boolean {
+  const { attacker, defender, attackerUserId, typeChart, rng, events } = ctx;
   if (attacker.fainted) return false; // nocauteado antes de agir: perdeu o turno
+
+  // O PORTÃO DAS CONDIÇÕES, antes de qualquer carta: dormindo, congelado,
+  // paralisado, confuso ou recuado, o turno acaba aqui — e SEM gastar PP, como
+  // na série. O rng só é tocado por quem tem alguma condição.
+  const gate = actionGate(attacker, rng);
+  if (gate.recovered) {
+    events.push({
+      type: "recovered",
+      targetUserId: attackerUserId,
+      monName: attacker.name,
+      ailment: gate.recovered,
+    });
+  }
+  if (gate.blockedBy) {
+    const selfDamage = gate.hitSelf ? damageMon(attacker, confusionSelfDamage(attacker, rng)) : undefined;
+    events.push({
+      type: "blocked",
+      targetUserId: attackerUserId,
+      monName: attacker.name,
+      reason: gate.blockedBy,
+      selfDamage,
+    });
+    return false;
+  }
 
   const chosen = attacker.moves[cardSlot];
 
@@ -108,19 +283,54 @@ function executeAttack(
   const effectiveness = effectivenessMultiplier(typeChart, card.type, defender.types);
   const result = calculateDamage({ attacker, defender, move: card, effectiveness, rng });
 
-  defender.currentHp = Math.max(0, defender.currentHp - result.damage);
-  if (defender.currentHp === 0) defender.fainted = true;
+  let damageDealt = damageMon(defender, result.damage);
+  let hits = 1;
+
+  // MÚLTIPLOS ACERTOS: a precisão é rolada UMA vez (a do primeiro golpe); os
+  // acertos seguintes só rolam crítico e variância — como na série.
+  if (!result.missed && result.damage > 0) {
+    const total = rollHits(card.effect, rng);
+    const semPrecisao: BattleMoveDef = { ...card, accuracy: null };
+    while (hits < total && !defender.fainted) {
+      const extra = calculateDamage({ attacker, defender, move: semPrecisao, effectiveness, rng });
+      damageDealt += damageMon(defender, extra.damage);
+      hits += 1;
+    }
+  }
+
+  // Golpe de fogo descongela o alvo — senão o congelamento viraria sentença, e
+  // é justamente o fogo que a série usa pra dar a saída.
+  if (damageDealt > 0 && card.type === "fire" && conditionsOf(defender).status === "freeze") {
+    conditionsOf(defender).status = null;
+    events.push({
+      type: "recovered",
+      targetUserId: ctx.defenderUserId,
+      monName: defender.name,
+      ailment: "freeze",
+    });
+  }
+
+  // A precisão do golpe de STATUS é rolada aqui (o calculateDamage devolve cedo
+  // pra quem não tem poder e nunca chega a rolar nada). Só quem mira o oponente
+  // pode errar; o que mexe em quem usa não tem alvo pra desviar.
+  const statusMissed = !card.power && targetsFoe(card.effect) && !rollAccuracy(card, attacker, defender, rng);
 
   events.push({
     type: "attack",
     userId: attackerUserId,
     cardName: card.name,
-    damage: result.damage,
+    damage: damageDealt,
     effectiveness: result.effectiveness,
     isCrit: result.isCrit,
-    missed: result.missed,
+    missed: result.missed || statusMissed,
     targetFainted: defender.fainted,
+    hits: hits > 1 ? hits : undefined,
   });
+
+  // "Conectou" = tem direito a efeito. Golpe de dano precisa ter acertado e não
+  // ser imune; golpe de status precisa não ter errado.
+  const connected = card.power ? !result.missed && result.effectiveness !== 0 : !statusMissed;
+  if (connected) applyMoveEffect(ctx, card, damageDealt);
 
   return defender.fainted;
 }
@@ -139,6 +349,10 @@ function applyVoluntarySwitch(
   const from = activeOf(side);
   const target = side.team.find((m) => m.slot === targetSlot);
   if (!target || target.fainted || target.slot === side.activeSlot) return;
+  // Quem SAI de campo perde estágios, confusão e semente — o status
+  // não-volátil (queimadura, veneno...) vai junto com ele. É essa assimetria
+  // que faz a troca ser resposta a um debuff sem ser fuga de tudo.
+  clearVolatiles(from);
   side.activeSlot = targetSlot;
   equipOnEntry(target, moves);
   events.push({ type: "switch", userId: side.userId, fromName: from.name, toName: target.name });
@@ -161,6 +375,71 @@ export function equipOnEntry(mon: BattlePokemonState, moves?: BattleMoveDef[]): 
   mon.moves = moves.map((m) => ({ ...m, currentPp: ppAnterior.get(m.id) ?? m.currentPp }));
 }
 
+/**
+ * O fecho do turno: o preço do status.
+ *
+ * Queimadura e veneno tiram um pedaço fixo do HP máximo, e a semente passa esse
+ * pedaço pro pokémon do outro lado. Depois disso o RECUO do turno é apagado —
+ * flinch dura um turno só, e só quem ainda não tinha agido chega a sentir.
+ *
+ * Roda no round NORMAL e nele só. O round de troca forçada é uma pausa (só o
+ * dono do desmaio joga) e o round 0 é preparação: cobrar status ali faria a
+ * queimadura tirar HP duas vezes na mesma rodada de jogo.
+ *
+ * Ordem fixa (sideA depois sideB) de propósito: as duas lambdas concorrentes
+ * têm que reconstruir exatamente o mesmo log, e `orderedSides` já ordena por
+ * userId antes de chegar aqui.
+ */
+function applyEndOfTurn(state: DuelState, events: DuelEvent[]): void {
+  for (const side of [state.sideA, state.sideB]) {
+    const mon = activeOf(side);
+    if (mon.fainted) continue;
+
+    const residual = residualDamage(mon);
+    if (residual > 0) {
+      const lost = damageMon(mon, residual);
+      events.push({
+        type: "tick",
+        targetUserId: side.userId,
+        monName: mon.name,
+        source: conditionsOf(mon).status ?? "status",
+        hp: -lost,
+        fainted: mon.fainted || undefined,
+      });
+    }
+    if (mon.fainted) continue;
+
+    const leech = leechDamage(mon);
+    if (leech > 0) {
+      const lost = damageMon(mon, leech);
+      events.push({
+        type: "tick",
+        targetUserId: side.userId,
+        monName: mon.name,
+        source: "leech-seed",
+        hp: -lost,
+        fainted: mon.fainted || undefined,
+      });
+      // O que a semente tira vai pro pokémon do outro lado — é o que faz dela
+      // uma troca de recursos, e não só dano por turno.
+      const foe = activeOf(side === state.sideA ? state.sideB : state.sideA);
+      if (!foe.fainted) {
+        const healed = healMon(foe, lost);
+        if (healed > 0) {
+          const foeUserId = side === state.sideA ? state.sideB.userId : state.sideA.userId;
+          events.push({ type: "tick", targetUserId: foeUserId, monName: foe.name, source: "leech-gain", hp: healed });
+        }
+      }
+    }
+  }
+
+  // O recuo vale só pro turno em que foi causado. Limpar TODO o time (e não só
+  // o ativo) é barato e fecha a porta pro flag vazar num snapshot persistido.
+  for (const side of [state.sideA, state.sideB]) {
+    for (const mon of side.team) conditionsOf(mon).flinched = false;
+  }
+}
+
 /** Desfecho da partida a partir das reservas vivas: quem zerou o time perdeu. */
 function outcome(state: DuelState): { finished: boolean; winnerId: string | null } {
   const aLiving = hasLivingMon(state.sideA);
@@ -172,10 +451,15 @@ function outcome(state: DuelState): { finished: boolean; winnerId: string | null
 
 /**
  * Resolve UM round NORMAL inteiro (os dois lados com ativo vivo):
- *  1. as TROCAS resolvem primeiro (quem trocou não ataca);
- *  2. os ATAQUES saem na ordem priority → Speed → sorteio, contra o ativo ATUAL
- *     de cada lado (pós-troca) — quem entrou por troca PODE tomar dano;
- *  3. desmaiar NÃO encerra enquanto houver reserva viva; a partida só acaba
+ *  1. as TROCAS resolvem primeiro (quem trocou não ataca, e quem sai larga
+ *     estágios e condições voláteis);
+ *  2. os ATAQUES saem na ordem priority → Speed EFETIVO → sorteio, contra o
+ *     ativo ATUAL de cada lado (pós-troca) — quem entrou por troca PODE tomar
+ *     dano. Cada golpe passa antes pelo portão das condições (dormindo,
+ *     paralisado, confuso, recuado) e, depois de conectar, aplica o que ele faz
+ *     além do dano (status, estágio, dreno, cura);
+ *  3. o FIM DO TURNO cobra queimadura/veneno/semente e apaga o recuo;
+ *  4. desmaiar NÃO encerra enquanto houver reserva viva; a partida só acaba
  *     quando um lado zera o time.
  *
  * Idempotência/concorrência ficam na camada de command (trava otimista + tx).
@@ -233,8 +517,24 @@ export function resolveRound(params: ResolveRoundParams): DuelResult {
 
   for (const side of ordered) {
     const foe = side === state.sideA ? state.sideB : state.sideA;
-    executeAttack(activeOf(side), activeOf(foe), side.userId, cardSlotOf(side), typeChart, rng, events);
+    executeAttack(
+      {
+        attacker: activeOf(side),
+        defender: activeOf(foe),
+        attackerUserId: side.userId,
+        defenderUserId: foe.userId,
+        typeChart,
+        rng,
+        events,
+      },
+      cardSlotOf(side)
+    );
   }
+
+  // 3) FIM DO TURNO: queimadura, veneno e semente cobram a conta, e o recuo
+  // (flinch) do turno é apagado. É o que impede a partida de virar uma troca de
+  // golpes eterna — quem está com status tem pressa.
+  applyEndOfTurn(state, events);
 
   const { finished, winnerId } = outcome(state);
   if (finished) return { state, events, winnerId, finished: true };
@@ -311,6 +611,7 @@ export function applyForcedSwitch(params: ForcedSwitchParams): DuelResult {
     const target = forcedTarget(side, choice);
     if (target == null) continue; // sem reserva viva (não deveria: needsForcedSwitch garante)
     const from = activeOf(side);
+    clearVolatiles(from); // quem sai de campo (aqui, desmaiado) larga estágios e voláteis
     side.activeSlot = target;
     const to = side.team.find((m) => m.slot === target)!;
     // A barra só é montada quando o SUBSTITUTO ESCOLHIDO é o que entrou. Se o

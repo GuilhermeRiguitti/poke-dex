@@ -1,6 +1,8 @@
 import { prisma } from "@/src/lib/prisma";
 import { readLearnset } from "@/src/modules/pokemon";
 import type { LearnsetMoveDTO } from "@/src/modules/pokemon";
+import { parseMoveEffect } from "../domain/moveEffect";
+import type { LoadoutOptionDTO } from "../ui/types";
 
 /**
  * As skills que EU posso montar num pokémon do MEU time nesta partida.
@@ -22,7 +24,7 @@ export async function getLoadoutOptions(
   battleId: string,
   userId: string,
   slot: number
-): Promise<LearnsetMoveDTO[] | null> {
+): Promise<LoadoutOptionDTO[] | null> {
   const mon = await prisma.battlePokemon.findFirst({
     where: { slot, participant: { battleId, userId } },
     select: { userPokemonId: true, level: true },
@@ -32,10 +34,29 @@ export async function getLoadoutOptions(
   const learnset = await readLearnset(userId, mon.userPokemonId);
   if (!learnset) return null;
 
+  const effects = await loadEffects(learnset);
+
   // `unlocked` do readLearnset olha o nível ATUAL do UserPokemon. Aqui o que
   // vale é o do snapshot, então recalculamos com ele.
   return learnset.map((c) => ({
     ...c,
     unlocked: c.teachableViaTm ? c.unlocked : c.unlocked && c.levelLearnedAt <= mon.level,
+    effect: effects.get(c.moveId) ?? null,
   }));
+}
+
+/**
+ * O efeito de cada carta da lista, pra o seletor poder DIZER o que ela faz.
+ *
+ * Consulta à parte (e não um campo novo em `LearnsetMoveDTO`) porque o efeito
+ * só vira mecânica dentro da batalha: o módulo `pokemon` guarda o espelho cru e
+ * não conhece a tradução — quem interpreta é o domínio daqui (moveEffect.ts).
+ * Roda na abertura do modal, não no polling de 2s, então uma query a mais cabe.
+ */
+async function loadEffects(learnset: LearnsetMoveDTO[]) {
+  const rows = await prisma.move.findMany({
+    where: { id: { in: learnset.map((c) => c.moveId) } },
+    select: { id: true, effect: true },
+  });
+  return new Map(rows.map((r) => [r.id, parseMoveEffect(r.effect)]));
 }

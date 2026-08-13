@@ -45,6 +45,15 @@ function rowMidTurn() {
                 currentPp: 15,
               },
             ],
+            conditions: {
+              status: "burn",
+              // Quantos turnos o sono ainda dura é ESCONDIDO — na série também.
+              sleepTurns: 3,
+              stages: { attack: 2, defense: 0, specialAttack: 0, specialDefense: 0, speed: -1, accuracy: 0, evasion: 0 },
+              confusionTurns: 2,
+              seeded: true,
+              flinched: false,
+            },
           },
         ],
       },
@@ -108,6 +117,23 @@ describe("toBattleDTO", () => {
     // Pikachu tem BST 320 -> "common". Vem do servidor porque bstOf carrega a
     // tabela dos 1025 BSTs, que não pode ir pro bundle da arena (cliente).
     expect(dto.participants[0].pokemons[0].rarity).toBe("common");
+  });
+
+  // Status e estágio são informação PÚBLICA (na série você vê que o oponente
+  // está queimado). O que não sai é a contagem do sono — entregar viraria
+  // "espero exatamente 2 turnos e ataco no 3º".
+  it("leva o estado alterado, mas esconde a contagem do sono", () => {
+    const dto = toBattleDTO(rowMidTurn());
+    const c = dto.participants[0].pokemons[0].conditions;
+
+    expect(c.status).toBe("burn");
+    expect(c.confused).toBe(true);
+    expect(c.seeded).toBe(true);
+    expect(c.stages).toEqual([
+      { stat: "attack", stage: 2 },
+      { stat: "speed", stage: -1 },
+    ]);
+    expect(JSON.stringify(dto)).not.toContain("sleepTurns");
   });
 
   it("a raridade NÃO é informação nova — sai do pokemonId que já ia no DTO", () => {

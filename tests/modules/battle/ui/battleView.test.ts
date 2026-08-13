@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  conditionBadges,
   duelCalloutFor,
   duelLogMark,
+  moveEffectLabel,
   selectDuelView,
   turnClockView,
   type DuelLogLine,
   type DuelTurnFx,
 } from "@/src/modules/battle/ui/battleView";
+import type { MoveEffect } from "@/src/modules/battle/domain/moveEffect";
 import type { BattleDTO } from "@/src/modules/battle/ui/types";
 
 function mon(over: Partial<BattleDTO["participants"][number]["pokemons"][number]> = {}) {
@@ -22,9 +25,10 @@ function mon(over: Partial<BattleDTO["participants"][number]["pokemons"][number]
     currentHp: 40,
     fainted: false,
     moves: [
-      { id: 1, name: "thunderbolt", type: "electric", power: 90, accuracy: 100, damageClass: "special" as const, priority: 0, maxPp: 15, currentPp: 15 },
-      { id: 2, name: "quick-attack", type: "normal", power: 40, accuracy: 100, damageClass: "physical" as const, priority: 1, maxPp: 30, currentPp: 0 },
+      { id: 1, name: "thunderbolt", type: "electric", power: 90, accuracy: 100, damageClass: "special" as const, priority: 0, maxPp: 15, currentPp: 15, effect: null },
+      { id: 2, name: "quick-attack", type: "normal", power: 40, accuracy: 100, damageClass: "physical" as const, priority: 1, maxPp: 30, currentPp: 0, effect: null },
     ],
+    conditions: { status: null, confused: false, seeded: false, stages: [] },
     rarity: "common" as const,
     ...over,
   };
@@ -314,5 +318,123 @@ describe("turnClockView", () => {
   it("aguenta valor fora da janela sem estourar a barra", () => {
     expect(turnClockView(120_000, 90_000).pct).toBe(100);
     expect(turnClockView(-5_000, 90_000).pct).toBe(0);
+  });
+});
+
+// ── STATUS E STAT STAGE NA TELA ──────────────────────────────────────────────
+// Dizer o que a carta faz e o que o pokémon está sentindo é regra de
+// apresentação, então mora no battleView e é testada aqui (CLAUDE.md regra 4).
+
+describe("moveEffectLabel — o que a carta faz, em uma linha", () => {
+  const efeito = (over: Partial<MoveEffect> = {}): MoveEffect => ({
+    ailment: null,
+    ailmentChance: 100,
+    ailmentMinTurns: null,
+    ailmentMaxTurns: null,
+    stageChanges: [],
+    stageChance: 100,
+    stageTarget: "foe",
+    flinchChance: 0,
+    healPct: 0,
+    drainPct: 0,
+    critStage: 0,
+    minHits: 1,
+    maxHits: 1,
+    ...over,
+  });
+
+  it("status certo é o verbo; status de chance mostra a chance", () => {
+    expect(moveEffectLabel(efeito({ ailment: "paralysis" }))).toBe("Paralisa");
+    expect(moveEffectLabel(efeito({ ailment: "burn", ailmentChance: 10 }))).toBe("10% de queima");
+  });
+
+  it("estágio diz de quem é o atributo", () => {
+    expect(moveEffectLabel(efeito({ stageChanges: [{ stat: "attack", change: 2 }], stageTarget: "self" }))).toBe("Ataque +2");
+    expect(moveEffectLabel(efeito({ stageChanges: [{ stat: "defense", change: -1 }] }))).toBe("Defesa −1 do alvo");
+  });
+
+  it("cura, dreno, recuo e múltiplos acertos", () => {
+    expect(moveEffectLabel(efeito({ healPct: 50 }))).toBe("Cura 50% do HP");
+    expect(moveEffectLabel(efeito({ drainPct: 50 }))).toBe("Drena 50% do dano");
+    expect(moveEffectLabel(efeito({ drainPct: -25 }))).toBe("Recuo de 25% do dano");
+    expect(moveEffectLabel(efeito({ minHits: 2, maxHits: 5 }))).toBe("2 a 5 acertos");
+  });
+
+  it("sem efeito conhecido devolve null — é o que faz a tela avisar 'sem efeito'", () => {
+    expect(moveEffectLabel(null)).toBeNull();
+    expect(moveEffectLabel(efeito())).toBeNull();
+  });
+});
+
+describe("conditionBadges — as etiquetas da placa de HP", () => {
+  const vazio = { status: null, confused: false, seeded: false, stages: [] };
+
+  it("pokémon limpo não desenha etiqueta nenhuma", () => {
+    expect(conditionBadges(vazio)).toEqual([]);
+  });
+
+  it("status, confusão, semente e estágio viram etiqueta com tom", () => {
+    const badges = conditionBadges({
+      status: "burn" as const,
+      confused: true,
+      seeded: true,
+      stages: [{ stat: "attack" as const, stage: 2 }, { stat: "speed" as const, stage: -1 }],
+    });
+
+    expect(badges.map((b) => b.label)).toEqual(["Queimado", "Confuso", "Semeado", "Ataque +2", "Velocidade −1"]);
+    expect(badges[0].tone).toBe("bad");
+    expect(badges.find((b) => b.label === "Ataque +2")!.tone).toBe("energy");
+  });
+
+  it("toda etiqueta explica a mecânica no tooltip (o jogo não tem tutorial)", () => {
+    const [badge] = conditionBadges({ ...vazio, status: "paralysis" as const });
+    expect(badge.title).toContain("Velocidade");
+  });
+});
+
+describe("o relatório de combate conta os efeitos", () => {
+  const linhasDe = (events: BattleDTO["turnLogs"][number]["events"]) =>
+    selectDuelView(battle({ turnLogs: [{ turnNumber: 5, events }] }), "me")!.logLines;
+
+  it("status novo aparece do lado de quem SOFREU, não de quem usou", () => {
+    const [linha] = linhasDe([{ type: "ailment", targetUserId: "opp", monName: "bulbasaur", ailment: "paralysis" }]);
+    expect(linha).toMatchObject({ kind: "ailment", actor: "opp", subject: "Paralisado", mood: "bad" });
+  });
+
+  it("estágio pra cima é bom, pra baixo é ruim, e no teto avisa que não sobe mais", () => {
+    const [sobe] = linhasDe([{ type: "stage", targetUserId: "me", monName: "pikachu", stat: "attack", delta: 2, stage: 2 }]);
+    expect(sobe).toMatchObject({ mood: "good", subject: "Ataque +2" });
+    expect(duelLogMark(sobe).tone).toBe("energy");
+
+    const [teto] = linhasDe([{ type: "stage", targetUserId: "me", monName: "pikachu", stat: "attack", delta: 0, stage: 6 }]);
+    expect(teto.mood).toBe("neutral");
+    expect(teto.text).toContain("não muda mais");
+  });
+
+  it("dano de fim de turno vira linha com o número, e cura vira ganho", () => {
+    const [queimou] = linhasDe([{ type: "tick", targetUserId: "me", monName: "pikachu", source: "burn", hp: -8 }]);
+    expect(queimou).toMatchObject({ kind: "tick", damage: 8, mood: "bad" });
+    expect(queimou.text).toContain("queimadura");
+
+    const [curou] = linhasDe([{ type: "tick", targetUserId: "me", monName: "pikachu", source: "heal", hp: 20 }]);
+    expect(curou).toMatchObject({ damage: null, subject: "+20 HP", mood: "good" });
+  });
+
+  it("perder o turno por condição explica o motivo", () => {
+    const [dormiu] = linhasDe([{ type: "blocked", targetUserId: "me", monName: "pikachu", reason: "sleep" }]);
+    expect(dormiu.text).toBe("está dormindo");
+
+    const [confuso] = linhasDe([{ type: "blocked", targetUserId: "me", monName: "pikachu", reason: "confusion", selfDamage: 12 }]);
+    expect(confuso.damage).toBe(12);
+
+    const [acordou] = linhasDe([{ type: "recovered", targetUserId: "me", monName: "pikachu", ailment: "sleep" }]);
+    expect(acordou).toMatchObject({ text: "acordou", mood: "good" });
+  });
+
+  it("golpe de vários acertos conta quantas vezes bateu", () => {
+    const [linha] = linhasDe([
+      { type: "attack", userId: "me", cardName: "double-kick", damage: 30, effectiveness: 1, isCrit: false, missed: false, targetFainted: false, hits: 2 },
+    ]);
+    expect(linha.subject).toBe("double kick (2×)");
   });
 });

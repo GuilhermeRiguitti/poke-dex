@@ -190,6 +190,10 @@ export async function syncPokedex(
       pp: m.pp,
       priority: m.priority,
       damageClass: m.damageClass,
+      // O que o golpe faz ALÉM de bater (status, stat stage, dreno, cura...),
+      // copiado cru da API. Quem traduz isso em mecânica é a batalha
+      // (battle/domain/moveEffect.ts) — aqui é espelho, como o baseStats.
+      effect: m.effect as unknown as Prisma.InputJsonObject,
     };
     const row = await prisma.move.upsert({
       where: { moveApiId: m.id },

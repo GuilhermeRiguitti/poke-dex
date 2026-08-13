@@ -1,3 +1,5 @@
+import { emptyConditions } from "@/src/modules/battle/domain/conditions";
+import type { MoveEffect } from "@/src/modules/battle/domain/moveEffect";
 import { BattleMoveDef, BattlePokemonState } from "@/src/modules/battle/domain/types";
 
 // Helpers só pra testes (duelEngine.test.ts, damage.test.ts): montam pokémon e
@@ -17,6 +19,31 @@ export function makeMove(overrides: Partial<BattleMoveDef> = {}): BattleMoveDef 
     priority: 0,
     maxPp: 15,
     currentPp: 15,
+    ...overrides,
+  };
+}
+
+/**
+ * Um efeito de carta "vazio", pra o teste preencher só o que interessa. Os
+ * defaults são os de um golpe sem efeito nenhum — chance 100 e 1 acerto — pra
+ * que `makeEffect({ ailment: "burn" })` queime SEMPRE e o teste não precise de
+ * rng pra provar o que quer provar.
+ */
+export function makeEffect(overrides: Partial<MoveEffect> = {}): MoveEffect {
+  return {
+    ailment: null,
+    ailmentChance: 100,
+    ailmentMinTurns: null,
+    ailmentMaxTurns: null,
+    stageChanges: [],
+    stageChance: 100,
+    stageTarget: "foe",
+    flinchChance: 0,
+    healPct: 0,
+    drainPct: 0,
+    critStage: 0,
+    minHits: 1,
+    maxHits: 1,
     ...overrides,
   };
 }
@@ -41,6 +68,7 @@ export function makeMon(overrides: Partial<BattlePokemonState> = {}): BattlePoke
     currentHp: maxHp,
     fainted: false,
     moves: [makeMove()],
+    conditions: emptyConditions(),
     ...overrides,
   };
 }

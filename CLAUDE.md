@@ -82,6 +82,11 @@ respeitar por causa delas.
 
 ## O que o código é obrigado a fazer
 
+- **Status é público; a contagem do sono não.** O DTO leva status, confusão,
+  semente e os estágios dos DOIS lados de propósito — na série você enxerga que
+  o oponente está queimado, e sem isso não dá pra jogar contra status. O que
+  fica fora é `sleepTurns`: entregar viraria "espero exatamente 2 turnos".
+  A whitelist é `toConditionsDTO`.
 - **A jogada é segredo até o turno resolver.** Uma ação por jogador por round
   (`@@unique[battleId, round, userId]`), contagem de faltas **simétrica**, e o
   `cardSlot` nunca sai no DTO nem no payload do Realtime (regra 3 da arquitetura).
@@ -107,6 +112,27 @@ respeitar por causa delas.
   pedra, troca e amizade ficam null.
 - **Evolução não toca no snapshot.** `grantXp` muda o `pokemonId` do `UserPokemon`
   (coleção, em cadeia), nunca o `BattlePokemon` congelado: vale da PRÓXIMA partida.
+- **O que o golpe faz além de bater é DADO da API, não regra no banco.**
+  `Move.effect` é espelho CRU do `meta`/`stat_changes` do `/move`
+  (`NormalizedMoveEffect`, em `lib/pokeapi.ts`). Quem decide o que aquilo
+  significa — quais status o jogo suporta, que "chance 0" quer dizer "sempre",
+  de quem é o atributo que sobe — é `battle/domain/moveEffect.ts`, na leitura.
+  Guardar traduzido congelaria a regra dentro de ~350 linhas do banco: mudar de
+  ideia obrigaria a re-sincronizar tudo contra a PokéAPI. Efeito que o jogo não
+  modela vira `null`, e a carta aparece como "sem efeito" — **nunca** finja que
+  fez algo.
+- **Status e stat stage moram em `BattlePokemon.conditions`** (Json anulável) e
+  a regra em `battle/domain/conditions.ts`. Três coisas não podem mudar sem
+  quebrar o jogo: o slot não-volátil é **um só** (queimadura/veneno/paralisia/
+  sono/congelamento não empilham); **a troca limpa estágio, confusão, semente e
+  recuo, e NÃO limpa o não-volátil** (é essa assimetria que faz trocar ser
+  escolha e não fuga); e o **portão de condições roda ANTES do PP** — dormir não
+  gasta carta. `null` na coluna é estado limpo (`normalizeConditions`), o que
+  deixou a migration ser aditiva, sem backfill e sem trava no deploy.
+- **O rng só é tocado por quem tem motivo.** Pokémon sem condição e carta sem
+  efeito passam pelo turno inteiro sem sortear nada — é o que mantém os testes
+  do motor determinísticos com `throwingRng()`. Se um efeito novo rolar dado
+  incondicionalmente, ele quebra a suíte inteira, e isso é proposital.
 - **Quem calcula o prêmio é a batalha** (`battle/commands/awardBattleXp.ts`); quem
   escreve é o `pokemon` (`pokemon/commands/grantXp.ts`). O `grantXp` recebe o `tx`
   em vez de abrir a própria transação — roda dentro da que encerra a partida, onde

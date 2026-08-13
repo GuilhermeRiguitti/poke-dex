@@ -1,3 +1,6 @@
+import type { NonVolatileAilment } from "../domain/conditions";
+import type { MoveEffect, StageStat } from "../domain/moveEffect";
+import type { LearnsetMoveDTO } from "@/src/modules/pokemon/ui/types";
 import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
 
 // Contrato de dados entre o servidor e a UI da batalha (duelo simultâneo).
@@ -18,6 +21,29 @@ export interface BattleMoveDTO {
   priority: number;
   maxPp: number;
   currentPp: number;
+  /**
+   * O que a carta faz além de bater. Vai INTEIRO pro cliente (é o efeito da
+   * MINHA carta, que eu já poderia ler na PokéDex) porque é ele que transforma
+   * "STA / sem dano" numa jogada compreensível: sem isso o jogador não tem como
+   * saber que aquela carta paralisa. Quem traduz em texto é `moveEffectLabel`,
+   * no battleView — regra de apresentação não mora no componente.
+   */
+  effect: MoveEffect | null;
+}
+
+/**
+ * O estado alterado de um combatente, como a tela mostra. É informação PÚBLICA
+ * de propósito — nos jogos da série você vê que o oponente está queimado e que
+ * ele subiu o Ataque; sem isso não dá pra jogar contra status. O que NÃO sai
+ * daqui é a contagem de turnos do sono, que é escondida também na série (e
+ * entregar viraria "espero exatamente 2 turnos").
+ */
+export interface MonConditionsDTO {
+  status: NonVolatileAilment | null;
+  confused: boolean;
+  seeded: boolean;
+  /** só os estágios DIFERENTES de zero, pra tela não desenhar sete zeros. */
+  stages: { stat: StageStat; stage: number }[];
 }
 
 export interface BattlePokemonDTO {
@@ -32,6 +58,7 @@ export interface BattlePokemonDTO {
   currentHp: number;
   fainted: boolean;
   moves: BattleMoveDTO[];
+  conditions: MonConditionsDTO;
   /**
    * Faixa de raridade pela fortitude (BST) — pinta o metal da moldura.
    * Calculada NO SERVIDOR de propósito: `bstOf` carrega a tabela dos 1025 BSTs,
@@ -61,10 +88,16 @@ export type BattleEventDTO =
       isCrit: boolean;
       missed: boolean;
       targetFainted: boolean;
+      hits?: number;
     }
   | { type: "switch"; userId: string; fromName: string; toName: string }
   | { type: "hesitate"; userId: string }
-  | { type: "roundStart"; round: number; firstUserId: string };
+  | { type: "roundStart"; round: number; firstUserId: string }
+  | { type: "ailment"; targetUserId: string; monName: string; ailment: string; blocked?: "immune" | "already" }
+  | { type: "stage"; targetUserId: string; monName: string; stat: string; delta: number; stage: number }
+  | { type: "blocked"; targetUserId: string; monName: string; reason: string; selfDamage?: number }
+  | { type: "recovered"; targetUserId: string; monName: string; ailment: string }
+  | { type: "tick"; targetUserId: string; monName: string; source: string; hp: number; fainted?: boolean };
 
 export interface TurnLogDTO {
   turnNumber: number;
@@ -101,6 +134,19 @@ export interface BattleDTO {
   turnTimeoutMs: number;
   participants: ParticipantDTO[];
   turnLogs: TurnLogDTO[];
+}
+
+/**
+ * Uma carta candidata no seletor de skills (GET /api/battle/[id]/loadout): o
+ * learnset do módulo `pokemon` MAIS o efeito já traduzido pela batalha.
+ *
+ * O efeito viaja junto porque escolher às cegas era o problema: a lista dizia
+ * só "STATUS" e o jogador não tinha como saber que aquela carta paralisa, cura
+ * ou dobra o Ataque. É a MINHA lista (a rota resolve o dono), então nada aqui
+ * conta sobre o time do oponente.
+ */
+export interface LoadoutOptionDTO extends LearnsetMoveDTO {
+  effect: MoveEffect | null;
 }
 
 // Deck como a tela da fila precisa dele (não é o deck inteiro do Prisma).

@@ -187,7 +187,19 @@ model Move {
   pp          Int
   priority    Int      @default(0)
   damageClass String // physical | special | status
-  effect      Json? // efeitos estruturados (status, stat stage, etc.) — nulo por ora
+  // O que o golpe faz ALÉM de bater: `meta` + `stat_changes` + `target` +
+  // `effect_chance` do endpoint /move, copiados CRUS (NormalizedMoveEffect em
+  // lib/pokeapi.ts). É o que tira os golpes de status da inércia — queimar,
+  // paralisar, dormir, baixar/subir atributo, curar, drenar.
+  //
+  // Json e não colunas: ninguém FILTRA por efeito no banco (regra 3.1), e a
+  // forma varia por categoria de golpe. Quem interpreta é battle/domain/
+  // moveEffect.ts, não esta tabela — assim mudar uma regra de jogo não obriga a
+  // re-sincronizar ~350 moves.
+  //
+  // null = linha semeada antes desta fatia (o golpe segue sem efeito até o
+  // syncPokedex passar por ele de novo).
+  effect      Json?
   fetchedAt   DateTime @default(now())
 
   learnedBy    PokemonMove[]
@@ -372,6 +384,15 @@ model BattlePokemon {
   currentHp     Int
   fainted       Boolean @default(false)
   moves         Json // até 6 cartas: [{id,name,type,power,accuracy,damageClass,priority,maxPp,currentPp}]
+  // Estado alterado deste combatente: status (queimado/paralisado/dormindo...),
+  // os 7 stat stages (-6..+6), confusão e semente. Ver
+  // battle/domain/conditions.ts — `MonConditions`.
+  //
+  // Json e não colunas: é estado de UMA partida, ninguém consulta "quem está
+  // queimado" no banco (regra 3.1), e ele muda junto, num write só, no mesmo
+  // updateMany que já grava HP/PP. NULL = partida que começou antes desta fatia
+  // (e também o estado limpo) — `normalizeConditions` trata os dois igual.
+  conditions    Json?
 
   participant BattleParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 

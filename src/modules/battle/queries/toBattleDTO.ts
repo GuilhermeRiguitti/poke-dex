@@ -1,5 +1,6 @@
 import { bstOf, rarityTier } from "@/src/modules/pokemon";
 import { TURN_TIMEOUT_MS, remainingTurnMs } from "../domain/turnClock";
+import { STAGE_STATS, normalizeConditions } from "../domain/conditions";
 import type { BattleMoveDef } from "../domain/types";
 import type {
   BattleDTO,
@@ -7,6 +8,7 @@ import type {
   BattleMoveDTO,
   BattlePokemonDTO,
   BattleStatusDTO,
+  MonConditionsDTO,
   ParticipantDTO,
 } from "../ui/types";
 
@@ -47,6 +49,7 @@ interface BattleRow {
       currentHp: number;
       fainted: boolean;
       moves: unknown;
+      conditions?: unknown;
     }[];
   }[];
   turnLogs: { turnNumber: number; events: unknown }[];
@@ -63,6 +66,24 @@ function toMoveDTO(move: BattleMoveDef): BattleMoveDTO {
     priority: move.priority,
     maxPp: move.maxPp,
     currentPp: move.currentPp,
+    effect: move.effect ?? null,
+  };
+}
+
+/**
+ * O estado alterado como a tela vê. Whitelist explícita, como todo o resto
+ * deste arquivo: `sleepTurns` fica de fora (quantos turnos o sono ainda dura é
+ * escondido também na série) e os estágios saem só quando são diferentes de
+ * zero. Status, confusão e semente SÃO públicos — jogar contra status sem
+ * enxergar o status seria adivinhação.
+ */
+function toConditionsDTO(raw: unknown): MonConditionsDTO {
+  const c = normalizeConditions(raw);
+  return {
+    status: c.status,
+    confused: c.confusionTurns > 0,
+    seeded: c.seeded,
+    stages: STAGE_STATS.filter((stat) => c.stages[stat] !== 0).map((stat) => ({ stat, stage: c.stages[stat] })),
   };
 }
 
@@ -82,6 +103,7 @@ function toPokemonDTO(row: BattleRow["participants"][number]["pokemons"][number]
     currentHp: row.currentHp,
     fainted: row.fainted,
     moves: moves.map(toMoveDTO),
+    conditions: toConditionsDTO(row.conditions),
     // Raridade pela fortitude: pinta o metal da moldura da carta de reserva.
     // NÃO é informação nova — sai de `pokemonId`, que já está aqui. Vem
     // calculada do servidor porque `bstOf` carrega a tabela dos 1025 BSTs e a

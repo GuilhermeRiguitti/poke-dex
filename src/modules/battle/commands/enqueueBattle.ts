@@ -24,6 +24,9 @@ function toPokemonCreateInput(
     currentHp: state.currentHp,
     fainted: state.fainted,
     moves: state.moves as unknown as Prisma.InputJsonValue,
+    // Estado alterado inicial: limpo. Escrito na criação (e não deixado NULL)
+    // pra a partida nova já nascer com a forma que o resolveTurn grava depois.
+    conditions: (state.conditions ?? {}) as unknown as Prisma.InputJsonValue,
   };
 }
 

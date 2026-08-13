@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { typeColor } from "@/src/lib/typeColors";
 import { CARDS_PER_SLOT } from "@/src/modules/deck/domain/rules";
-import type { LearnsetMoveDTO } from "@/src/modules/pokemon/ui/types";
+import { moveEffectLabel } from "./battleView";
+import type { LoadoutOptionDTO } from "./types";
 
 // A escolha das skills do pokémon que vai ENTRAR em campo.
 //
@@ -35,7 +36,7 @@ export default function LoadoutPicker({
   onConfirm: (moveIds: string[]) => void;
   onCancel?: () => void;
 }) {
-  const [opcoes, setOpcoes] = useState<LearnsetMoveDTO[] | null>(null);
+  const [opcoes, setOpcoes] = useState<LoadoutOptionDTO[] | null>(null);
   const [escolhidas, setEscolhidas] = useState<string[]>([]);
   const [erro, setErro] = useState("");
 
@@ -47,7 +48,7 @@ export default function LoadoutPicker({
 
     fetch(`/api/battle/${battleId}/loadout?slot=${slot}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("falhou"))))
-      .then((cartas: LearnsetMoveDTO[]) => {
+      .then((cartas: LoadoutOptionDTO[]) => {
         if (!vivo) return;
         const livres = cartas.filter((c) => c.unlocked);
         setOpcoes(livres);
@@ -101,6 +102,10 @@ export default function LoadoutPicker({
             {opcoes?.map((carta) => {
               const marcada = escolhidas.includes(carta.moveId);
               const cor = typeColor(carta.type);
+              // O que a carta FAZ, na própria linha: sem isso o seletor mostrava
+              // "STATUS" e nada mais, e escolher um golpe de efeito era aposta
+              // no escuro. É a mesma etiqueta da barra de comando.
+              const efeito = moveEffectLabel(carta.effect);
               return (
                 <button
                   key={carta.moveId}
@@ -115,11 +120,17 @@ export default function LoadoutPicker({
                   >
                     {carta.type}
                   </span>
-                  <span className="flex-1 font-title text-sm uppercase tracking-wide">{carta.name}</span>
-                  <span className="font-title text-xs text-ink-dim">
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="font-title text-sm uppercase tracking-wide">{carta.name}</span>
+                    {efeito && <span className="text-[10px] font-semibold leading-tight text-energy">{efeito}</span>}
+                    {!efeito && carta.power == null && (
+                      <span className="text-[10px] font-semibold leading-tight text-ink-dim/60">sem efeito no jogo</span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-title text-xs text-ink-dim">
                     {carta.power != null ? `PWR ${carta.power}` : "STATUS"}
                   </span>
-                  <span className={`font-title text-sm ${marcada ? "text-energy" : "text-ink-dim/40"}`}>
+                  <span className={`shrink-0 font-title text-sm ${marcada ? "text-energy" : "text-ink-dim/40"}`}>
                     {marcada ? "✓" : "+"}
                   </span>
                 </button>
