@@ -20,7 +20,7 @@ import {
  * é um objeto COMPARTILHADO — quem usa não pode decrementá-lo (viraria -1 e
  * vazaria entre partidas), por isso a guarda `currentPp > 0` antes de gastar.
  */
-export const STRUGGLE: BattleMoveDef = {
+const STRUGGLE: BattleMoveDef = {
   id: 0,
   name: "struggle",
   type: "normal",

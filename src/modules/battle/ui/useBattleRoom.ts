@@ -7,7 +7,7 @@ import type { BattleDTO } from "./types";
 // Sem Realtime, o polling é o MOTOR do jogo (a leitura resolve o turno —
 // resolveTurn.ts; não há worker). Com Realtime de pé ele vira rede de
 // segurança: o push chega na hora e o poll lento só cobre mensagem perdida
-// (Realtime NUNCA é autoritativo — PLANO_JOGO.md §8.1).
+// (Realtime NUNCA é autoritativo — CLAUDE.md consequência #1).
 const POLL_INTERVAL_MS = 2000;
 const REALTIME_FALLBACK_POLL_MS = 20_000;
 
@@ -100,6 +100,31 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
 
     return () => clearInterval(timer);
   }, [battleId, loadFullState, live]);
+
+  // ── Vencimento do turno: um request no instante em que a janela fecha ──────
+  //
+  // O turno vencido só resolve quando ALGUÉM faz request (não há worker). Com o
+  // canal de Realtime de pé o polling relaxa pra 20s, então o relógio da tela
+  // chegaria a zero e o round ficaria parado em "resolvendo…" por até um quarto
+  // de minuto. Este timeout dispara UM refetch no vencimento — e o GET resolve o
+  // turno no servidor (getBattleState).
+  //
+  // Uma vez por round, guardado pelo ref: se por algum motivo o refetch não
+  // resolver, quem cobre é o polling normal (e o pg_cron), sem virar um laço de
+  // requests de 300ms.
+  const expireFiredFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (battle.status !== "IN_PROGRESS") return;
+    if (expireFiredFor.current === battle.round) return;
+
+    const timer = setTimeout(() => {
+      expireFiredFor.current = battle.round;
+      if (document.hidden) return; // aba escondida → deixa com o backstop do cron
+      void loadFullState();
+    }, battle.turnEndsInMs + 300);
+
+    return () => clearTimeout(timer);
+  }, [battle.status, battle.round, battle.turnEndsInMs, loadFullState]);
 
   // Envio da jogada — golpe (MOVE) ou troca (SWITCH). O servidor guarda o
   // segredo e resolve o turno se o outro lado também já jogou.

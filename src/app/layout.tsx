@@ -35,7 +35,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className={`${anton.variable} ${rajdhani.variable} ${cinzel.variable} select-none`}>
-      <body>
+      {/* min-h-screen: o html tem background próprio, então o fundo do body não
+          propaga pro canvas — ele é pintado só dentro da caixa do body. Sem
+          altura mínima, página curta corta o gradiente no fim do conteúdo. */}
+      <body className="min-h-screen">
         {children}
         <AppToaster />
       </body>

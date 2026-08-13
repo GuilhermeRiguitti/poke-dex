@@ -1,8 +1,8 @@
 import Link from "next/link";
-import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
-import { bstOf, rarityTier } from "@/src/modules/packs/domain/rarity";
-import { dexNumber } from "./pokedexView";
-import type { PokemonCardDTO } from "../types";
+import PokeCard from "@/src/modules/pokemon/ui/PokeCard";
+import { bstOf, rarityTier } from "@/src/modules/pokemon/domain/rarity";
+import { dexNumber } from "@/src/modules/pokemon/ui/pokeCardView";
+import type { PokemonCardDTO } from "@/src/modules/pokemon/ui/types";
 
 // Server Component. É o CATÁLOGO: view-only, pra consultar informação. O
 // "Capturar" morreu — a única forma de obter pokémon é abrir pacote. Cada card

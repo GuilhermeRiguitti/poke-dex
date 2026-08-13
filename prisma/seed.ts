@@ -1,15 +1,15 @@
 import "dotenv/config";
-import { syncPokedex } from "@/src/modules/pokedex";
+import { syncPokedex } from "@/src/modules/pokemon";
 import { prisma } from "@/src/lib/prisma";
 
-// Seed do espelho da PokéAPI (PLANO_JOGO.md §7): popula Pokemon/Move/PokemonMove
+// Seed do espelho da PokéAPI (CLAUDE.md consequência #4): popula Pokemon/Move/PokemonMove
 // a partir da API, começando por UMA geração pra respeitar a fair use policy
 // (não puxar 1025 de uma vez). Reaproveita o MOTOR único `syncPokedex` — a mesma
 // função que o cron de refresh usa. Idempotente: re-rodar só atualiza `fetchedAt`.
 //
 // Rodar: `npm run seed` (ou `npm run seed -- 152 251` pra outra faixa).
 //
-// A base de dev pode ser recriada à vontade (PLANO_JOGO.md F3) — não há dado a
+// A base de dev pode ser recriada à vontade (decisão do dono: reset liberado) — não há dado a
 // preservar. Este seed NÃO mexe em coleção/usuários; só no espelho da API.
 
 // Gen 1 por padrão. Aceita `npm run seed -- <de> <ate>` pra outra faixa.

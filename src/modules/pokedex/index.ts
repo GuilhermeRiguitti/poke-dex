@@ -1,54 +1,25 @@
-// API pública do módulo pokedex — as rotas em app/api/** e as pages de (game)
-// só devem importar daqui, nunca de domain/queries/commands direto.
+// API pública do módulo pokedex — a LISTA: navegar, filtrar, ordenar e paginar
+// a coleção do jogador e o catálogo. As rotas em app/api/** e as pages de
+// (game) só devem importar daqui, nunca de domain/queries/commands direto.
+//
+// O pokémon EM SI (espelho da PokéAPI, ficha da espécie, nível, learnset,
+// raridade, a carta desenhada) é do @/src/modules/pokemon. Aqui não se sabe o
+// que é um nível — só se sabe ordenar por ele.
 //
 // Só código de SERVIDOR. Os componentes ficam em ui/ e são importados pelas
 // pages por caminho direto: se um componente "use client" fosse reexportado por
 // este barrel, toda rota de API que importa um command arrastaria a UI junto.
 
-export type {
-  CollectionCardDTO,
-  CollectionPageDTO,
-  PokedexPageDTO,
-  PokemonCardDTO,
-  PokemonDetailDTO,
-  PokemonStatDTO,
-} from "./types";
-
-export { PAGE_SIZE, MAX_POKEMON, TOTAL_PAGES, clampPage, pageRange } from "./domain/pagination";
-
-// Progressão (nível/stats, XP, evolução, learnset) NÃO mora mais aqui — virou o
-// módulo @/src/modules/progression. Importar de lá, não do pokedex.
-
-// Espelho da PokéAPI (Pokemon/Move/PokemonMove). syncPokedex é o motor da seed
-// e do refresh; refreshPokedex é o que a rota de cron chama. Ambos ESCREVEM —
-// só command/rota, nunca render (CLAUDE.md regra 2).
-export { syncPokedex } from "./commands/syncPokedex";
-export type { SyncPokedexSummary, SyncPokedexOptions } from "./commands/syncPokedex";
-export { refreshPokedex, DEFAULT_REFRESH_BATCH } from "./commands/refreshPokedex";
-export type { RefreshPokedexSummary, RefreshPokedexOptions } from "./commands/refreshPokedex";
+// Os DTOs da lista e os tipos dos filtros não saem daqui: quem os usa é a UI,
+// que importa de types/domain por caminho relativo. O mesmo vale pras constantes
+// de paginação e da paleta de filtros — quem desenha é o view ao lado delas.
+export { clampPage } from "./domain/pagination";
 
 // Todas as queries abaixo SÓ LEEM — podem ser chamadas do render de uma page.
-// A escrita (inclusive a do cache da PokéAPI) mora nos commands.
 export { listPokedexPage } from "./queries/listPokedexPage";
 export { getCollectionQuery } from "./queries/getCollectionPage";
-export {
-  COLLECTION_PAGE_SIZE,
-  POKEMON_TYPES,
-  RARITY_TIERS,
-  parseCollectionFilters,
-  hasActiveFilter,
-  collectionHref,
-} from "./domain/collectionFilters";
-export type { CollectionFilters, CollectionSort } from "./domain/collectionFilters";
-// Conjunto de moveId jogáveis de um UserPokemon (level-up destravado ∪ concedidos).
-// Consumido por deck (readLearnset) e battle (poda pós-evolução).
-export { getUnlockedMoveIds } from "./queries/getUnlockedMoveIds";
-export { getPokemonDetail } from "./queries/getPokemonDetail";
-// Mapper puro NormalizedPokemon → card. Exposto pro módulo packs montar a DTO
-// das cartas sorteadas sem duplicar a whitelist de campos.
-export { toPokemonCardDTO } from "./queries/toPokemonDTO";
+export { parseCollectionFilters, collectionHref } from "./domain/collectionFilters";
 
 // A captura direta morreu — obter pokémon é só pelo módulo packs. Só resta a
 // remoção (soltar uma carta da coleção).
 export { removeCard } from "./commands/removeCard";
-export type { RemoveCardResult } from "./commands/removeCard";

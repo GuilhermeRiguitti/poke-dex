@@ -1,4 +1,4 @@
-import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
+import PokeCard from "@/src/modules/pokemon/ui/PokeCard";
 import type { PartyMemberView } from "./battleView";
 
 // O leque de reservas: as cartas mini abertas em leque no rodapé da arena.

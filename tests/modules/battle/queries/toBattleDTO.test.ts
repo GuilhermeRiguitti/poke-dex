@@ -115,6 +115,27 @@ describe("toBattleDTO", () => {
     expect(dto.participants[0].pokemons[0].pokemonId).toBe(25);
   });
 
+  // O countdown da tela sai daqui, e RELATIVO: o relógio do browser pode estar
+  // torto, então quem faz a subtração é o servidor (ver turnEndsInMs em ui/types).
+  it("leva quanto RESTA do round, contado com o relógio do servidor", () => {
+    const now = Date.now();
+    const row = { ...rowMidTurn(), turnStartedAt: new Date(now - 30_000) };
+    const dto = toBattleDTO(row, now);
+
+    expect(dto.turnTimeoutMs).toBe(90_000);
+    expect(dto.turnEndsInMs).toBe(60_000);
+    // Nada de instante absoluto no payload: um deadline em ISO convidaria o
+    // cliente a fazer `deadline - Date.now()` e herdar o próprio desvio.
+    expect(dto).not.toHaveProperty("turnStartedAt");
+    expect(JSON.stringify(dto)).not.toContain("turnStartedAt");
+  });
+
+  it("turno já vencido chega zerado, não negativo", () => {
+    const now = Date.now();
+    const row = { ...rowMidTurn(), turnStartedAt: new Date(now - 90_000 * 40) };
+    expect(toBattleDTO(row, now).turnEndsInMs).toBe(0);
+  });
+
   it("mantém tudo que a mesa precisa desenhar", () => {
     const dto = toBattleDTO(rowMidTurn());
     const pokemon = dto.participants[0].pokemons[0];

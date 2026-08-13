@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { typeColor } from "@/src/lib/typeColors";
 import { CARDS_PER_SLOT } from "@/src/modules/deck/domain/rules";
-import type { LearnsetMoveDTO } from "@/src/modules/deck/ui/types";
+import type { LearnsetMoveDTO } from "@/src/modules/pokemon/ui/types";
 
 // A escolha das skills do pokémon que vai ENTRAR em campo.
 //

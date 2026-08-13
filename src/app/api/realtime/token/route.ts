@@ -4,7 +4,7 @@ import { auth } from "@/src/modules/auth/auth";
 import { createRealtimeToken } from "@/src/modules/realtime";
 
 // GET /api/realtime/token — troca a sessão better-auth por um JWT curto que o
-// Supabase Realtime aceita (PLANO_JOGO.md §8.1). O cliente usa esse token pra
+// Supabase Realtime aceita (ver REALTIME.md). O cliente usa esse token pra
 // assinar o canal battle:<id>; a policy em realtime.messages checa o `sub`.
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });

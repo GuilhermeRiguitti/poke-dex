@@ -1,15 +1,15 @@
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+import type { BaseStats } from "@/src/modules/pokemon/domain/leveling";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
+import { dexNumber } from "@/src/modules/pokemon/ui/pokeCardView";
 
-import type { CollectionPageDTO, PokemonDetailDTO } from "../types";
+import type { CollectionPageDTO } from "../types";
 
-// Mapear DTO -> o que a tela desenha é função pura, mora aqui e tem teste.
-// Componente é costura. (CLAUDE.md, regra 4 — ver battle/ui/battleView.ts.)
-
-/** O número da dex como o card mostra: 25 -> "#0025". */
-export function dexNumber(pokemonId: number): string {
-  return `#${String(pokemonId).padStart(4, "0")}`;
-}
+// A view da LISTA (a coleção paginada). Mapear DTO -> o que a tela desenha é
+// função pura, mora aqui e tem teste. Componente é costura.
+// (CLAUDE.md, regra 4 — ver battle/ui/battleView.ts.)
+//
+// A ficha da espécie (detailView) e o `dexNumber` NÃO moram mais aqui: são do
+// pokémon, não da listagem — ver pokemon/ui/{detailView,pokeCardView}.ts.
 
 export interface CollectionCardView {
   userPokemonId: string;
@@ -98,62 +98,5 @@ export function collectionView(page: CollectionPageDTO): CollectionView {
     totalPages: page.totalPages,
     totalCards: page.totalCards,
     emptyState,
-  };
-}
-
-// ─── página de detalhe ────────────────────────────────────────────────────
-
-const STAT_LABELS: Record<string, string> = {
-  hp: "HP",
-  attack: "Ataque",
-  defense: "Defesa",
-  "special-attack": "At. Especial",
-  "special-defense": "Def. Especial",
-  speed: "Velocidade",
-};
-
-/** Teto das barras de stat. 255 é o maior base stat do jogo (Blissey, HP). */
-export const STAT_MAX = 255;
-
-export interface StatBarView {
-  key: string;
-  label: string;
-  value: number;
-  max: number;
-}
-
-export interface DetailView {
-  name: string;
-  dexNumber: string;
-  artworkUrl: string | null;
-  types: string[];
-  /** tipo que pinta a moldura (--type-c) e a placa do nome */
-  accentType: string;
-  statBars: StatBarView[];
-  /** a PokéAPI dá decímetros e hectogramas; a tela mostra m e kg */
-  heightMeters: string;
-  weightKg: string;
-  /** nomes de move vêm com hífen ("thunder-punch") */
-  moveNames: string[];
-  totalMoves: number;
-}
-
-export function detailView(pokemon: PokemonDetailDTO): DetailView {
-  return {
-    name: pokemon.name,
-    dexNumber: dexNumber(pokemon.id),
-    artworkUrl: pokemon.artworkUrl,
-    types: pokemon.types,
-    accentType: pokemon.types[0] ?? "normal",
-    statBars: pokemon.stats.map((s) => ({
-      key: s.name,
-      label: STAT_LABELS[s.name] ?? s.name,
-      value: s.value,
-      max: STAT_MAX,
-    })),
-    heightMeters: (pokemon.height / 10).toFixed(1),
-    weightKg: (pokemon.weight / 10).toFixed(1),
-    moveNames: pokemon.moves.map((m) => m.replace(/-/g, " ")),
-    totalMoves: pokemon.totalMoves,
   };
 }

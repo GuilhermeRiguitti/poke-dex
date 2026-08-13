@@ -5,7 +5,7 @@ import { resolveDueBattles } from "@/src/modules/battle";
 // POST /api/cron/resolve-turns — o "worker" da batalha.
 //
 // Quem chama NÃO é um jogador: é o `pg_cron` do Supabase, via `pg_net`, a cada
-// poucos segundos (ver PLANO_JOGO.md §8). A rota é casca fina: autentica pelo
+// poucos segundos (ver CLAUDE.md consequência #1). A rota é casca fina: autentica pelo
 // segredo (authorizeCron) e delega pra resolveDueBattles, que varre as partidas
 // com turno vencido e resolve cada uma. O motor de batalha continua num lugar só
 // (o módulo battle) — o cron só DISPARA, não reimplementa nada.

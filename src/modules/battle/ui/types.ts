@@ -1,4 +1,4 @@
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
 
 // Contrato de dados entre o servidor e a UI da batalha (duelo simultâneo).
 //
@@ -84,6 +84,21 @@ export interface BattleDTO {
    * resolver: QUEM, nunca O QUÊ (ver toBattleDTO).
    */
   submittedUserIds: string[];
+  /**
+   * Quanto resta do round, em ms, NO INSTANTE em que o servidor montou este DTO.
+   *
+   * Relativo, e não um `turnStartedAt`/deadline absoluto, de propósito: o
+   * relógio do browser pode estar minutos fora do certo, e um countdown feito de
+   * `deadline - Date.now()` herdaria esse erro inteiro — mostrando 4 minutos ou
+   * já zerado enquanto o servidor conta outra coisa. Aqui as duas pontas da
+   * subtração são do SERVIDOR; o cliente só precisa medir o quanto passou desde
+   * que recebeu, e pra isso o relógio dele basta (o erro não se acumula porque
+   * cada resposta traz o valor novo). 0 = o tempo já venceu e o round resolve no
+   * próximo request.
+   */
+  turnEndsInMs: number;
+  /** A janela cheia — a barra do countdown precisa do total pra ter escala. */
+  turnTimeoutMs: number;
   participants: ParticipantDTO[];
   turnLogs: TurnLogDTO[];
 }

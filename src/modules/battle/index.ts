@@ -5,22 +5,11 @@
 // Só entra aqui código de SERVIDOR. Os componentes ficam em ui/ e são
 // importados pelas pages por caminho direto, de propósito: se um componente
 // "use client" fosse reexportado por este barrel, toda rota de API que
-// importa getBattleState arrastaria a UI (e o Konva) junto.
-
-export type { BattleStats, BattleMoveDef, BattlePokemonState } from "./domain/types";
-
-// O contrato de dados que sai daqui pra UI (tipos são apagados na compilação,
-// então exportá-los não puxa nada pro bundle).
-export type {
-  BattleDTO,
-  BattleEventDTO,
-  BattleMoveDTO,
-  BattlePokemonDTO,
-  BattleStatusDTO,
-  ParticipantDTO,
-  QueueDeckDTO,
-  TurnLogDTO,
-} from "./ui/types";
+// importa getBattleState arrastaria a UI (e as libs 3D) junto.
+//
+// Os tipos do motor e os DTOs também não saem daqui: quem os usa é a própria
+// mesa (ui/), que importa de ui/types por caminho relativo, e as rotas só fazem
+// NextResponse.json do que a query devolve — nenhuma delas anota o tipo.
 
 // getBattleState RESOLVE o turno (escreve, e pode bater na PokéAPI) — é o que
 // as rotas de API usam. readBattleState só LÊ — é o que o render das pages
@@ -40,6 +29,5 @@ export { enqueueBattle } from "./commands/enqueueBattle";
 export { leaveQueue } from "./commands/leaveQueue";
 
 // Motor de servidor: o pg_cron do Supabase dispara a rota que chama isto pra
-// resolver turnos vencidos sem depender do polling do cliente (ver PLANO_JOGO.md §8).
+// resolver turnos vencidos sem depender do polling do cliente (CLAUDE.md consequência #1).
 export { resolveDueBattles } from "./commands/resolveDueBattles";
-export type { ResolveDueSummary } from "./commands/resolveDueBattles";

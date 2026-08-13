@@ -10,8 +10,10 @@ import {
   type DuelSide,
   type DuelState,
 } from "../domain/duelTypes";
+import { MAX_MISSES, expiredTurnWindows, nextMisses } from "../domain/turnClock";
 import { buildTypeChart } from "./buildDuelSnapshot";
-import { awardBattleXp, loadXpContext, type XpContext } from "./awardBattleXp";
+import { grantXp } from "@/src/modules/pokemon";
+import { loadXpContext, xpAwardsOf, type XpContext } from "./awardBattleXp";
 import type { Prisma } from "@prisma/client";
 
 // Ponte entre o motor PURO do duelo (domain/duelEngine.ts) e o mundo real
@@ -24,35 +26,10 @@ import type { Prisma } from "@prisma/client";
 // Com TIME de 6: um round pode ser NORMAL (os dois com ativo vivo escolhem golpe
 // ou troca) ou de TROCA FORÇADA (o ativo de alguém desmaiou e há reserva viva —
 // só o dono do desmaio age, escolhendo o substituto; timeout auto-promove).
-export const TURN_TIMEOUT_MS = 90_000;
-export const MAX_MISSES = 3;
-
-/**
- * Quantas janelas de TURN_TIMEOUT_MS já venceram desde que o turno começou.
- * 0 = ainda dá tempo de jogar.
- *
- * É `floor`, e não booleano, DE PROPÓSITO. O turno só resolve quando alguém faz
- * request (não há worker — CLAUDE.md regra 5), então "estourou o tempo" e
- * "alguém apareceu pra notar" são coisas diferentes. Se os dois fecharam a aba e
- * alguém volta 1h depois, venceram ~40 janelas, não 1: contar só 1 fazia a
- * punição por abandono NÃO ser retroativa (o turno resolvido reseta turnStartedAt).
- */
-export function expiredTurnWindows(turnStartedAt: Date, now = Date.now()): number {
-  return Math.max(0, Math.floor((now - turnStartedAt.getTime()) / TURN_TIMEOUT_MS));
-}
-
-/**
- * Faltas de um lado depois deste turno: escolheu → −1, hesitou → +janelas.
- *
- * Simétrico entre os dois lados, ao contrário do modelo alternado. Uma zumbi
- * (ninguém jogando por muitas janelas) leva OS DOIS a MAX_MISSES, encerrando sem
- * vencedor, que é o desfecho justo.
- */
-export function nextMisses(current: number, played: boolean, expiredWindows: number): number {
-  if (played) return Math.max(0, current - 1);
-  return Math.min(MAX_MISSES, current + Math.max(1, expiredWindows));
-}
-
+//
+// A conta do tempo (duração da janela, janelas vencidas, faltas) mora em
+// domain/turnClock.ts — a mesma que o countdown da tela lê, pra não existirem
+// dois "quanto tempo eu tenho".
 /** O que muda num pokémon quando o turno resolve (HP, faint e o PP na coluna moves). */
 function writeMonState(mon: {
   currentHp: number;
@@ -229,7 +206,7 @@ async function commit(params: CommitParams) {
       });
       await tx.battleAction.deleteMany({ where: { battleId: battle.id, round: battle.round } });
 
-      if (params.xpContext) await awardBattleXp(tx, params.xpContext);
+      if (params.xpContext) await grantXp(tx, xpAwardsOf(params.xpContext));
     },
     { timeout: 15_000, maxWait: 5_000 }
   );

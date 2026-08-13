@@ -1,6 +1,6 @@
-import type { PokemonCardDTO } from "@/src/modules/pokedex";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
-import { bstOf, rarityTier } from "../domain/rarity";
+import type { PokemonCardDTO } from "@/src/modules/pokemon";
+import type { BaseStats } from "@/src/modules/pokemon";
+import { bstOf, rarityTier } from "@/src/modules/pokemon";
 import type { PackCardDTO } from "../ui/types";
 
 /**

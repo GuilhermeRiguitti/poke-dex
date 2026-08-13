@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import type { BaseStats } from "@/src/modules/progression";
+import type { BaseStats } from "@/src/modules/pokemon";
 
 // ─────────────────────────────────────────────────────────────────────────
 // A DÍVIDA DO Deck.userId, num lugar só.

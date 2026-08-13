@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/modules/auth/auth";
-import { applyTM, type ApplyTmInput } from "@/src/modules/training";
+import { applyTM, type ApplyTmInput } from "@/src/modules/pokemon";
 
 // POST /api/training/tm — ensina um golpe de MÁQUINA (TM) a um Pokémon do
 // jogador, gastando 1 token de TM. Casca fina: sessão → command → HTTP.

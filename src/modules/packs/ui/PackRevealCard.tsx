@@ -1,5 +1,5 @@
-import PokeCard from "@/src/modules/pokedex/ui/PokeCard";
-import { dexNumber } from "@/src/modules/pokedex/ui/pokedexView";
+import PokeCard from "@/src/modules/pokemon/ui/PokeCard";
+import { dexNumber } from "@/src/modules/pokemon/ui/pokeCardView";
 import type { PackCardDTO } from "./types";
 
 // Uma carta revelada do pacote: a MESMA carta do resto do jogo, no tamanho

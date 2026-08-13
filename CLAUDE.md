@@ -54,11 +54,111 @@ Migration hand-written só pra `supabase/migrations/` (RLS/realtime) — o schem
 # Terminou a tarefa? Atualize os docs dela.
 
 Antes de dar uma tarefa por pronta, procure os documentos, TODOs e planos que
-falam dela (README, `DEPLOY.md`, `PLANO_JOGO.md`, `TODO.md`, `CLAUDE.md`,
+falam dela (README, `DEPLOY.md`, `TODO.md`, `CLAUDE.md`,
 `AGENTS.md`) e **atualize cada um pra refletir o que foi feito**: marque o TODO
 como concluído, corrija o que mudou de comportamento, registre a decisão nova.
 Isso faz parte da tarefa, não é passo extra — um doc que descreve o mundo antigo
 manda o próximo agente pro caminho errado.
+
+# O jogo: as regras que o código já assume
+
+**PokéDuel** é um duelo tático 1×1 com time de até 6. As quatro regras abaixo não
+são preferência de estilo — cada uma foi decidida errando, e o código inteiro está
+montado em cima delas. Mexer numa é mexer no jogo, não em detalhe de implementação.
+*(Estas quatro sobreviveram ao `PLANO_JOGO.md`, aposentado em 2026-08-07; o
+histórico de execução dele está no git.)*
+
+## 1. O turno é SIMULTÂNEO, e a ordem é priority → Speed → sorteio
+
+Os dois escolhem a jogada do mesmo round **sem ver a do outro**; quando as duas
+estão na mesa, o turno resolve inteiro. Não existe "de quem é a vez". Dentro do
+turno: **priority do golpe** (dado real da API) → **Speed efetivo** → empate total
+vira **sorteio** (`domain/turnOrder.ts`). Quem é nocauteado antes de agir **perde o
+turno** — é isso que dá peso a montar em cima de Speed ou de priority.
+
+**Já tentamos alternado, e voltou atrás (2026-07-21).** Custou uma fatia inteira
+pra descobrir o óbvio: quem jogava em segundo escolhia **depois de ver** a jogada
+do outro, e o Speed virava "quem começa a rodada" em vez de "quem bate primeiro".
+**Não reintroduzir.** O que morre junto com o alternado: a "janela de reação" (ver
+a carta do oponente e responder) só faz sentido com vez definida — se um dia
+quisermos algo reativo, tem que ser outra mecânica, escolhida às cegas.
+
+O que o simultâneo obriga no resto do código: a jogada é **segredo** até resolver
+(regra 3 dos DTOs), o `BattleAction` é uma por jogador por round
+(`@@unique[battleId, round, userId]`), a contagem de faltas é **simétrica**, e o
+Realtime precisou de um 2º trigger (`battle_action_submitted`) porque escolher a
+carta não mexe no `Battle`.
+
+## 2. O nível LIBERA skill — e só `level-up` conta
+
+Um Pokémon só conhece o que já aprendeu por level-up **naquele nível**, como a
+PokéAPI descreve (`level_learned_at`). Três coisas seguem daí:
+
+- **Um version group por espécie** (`VERSION_GROUP_PREFERENCE`): o mais recente em
+  que ela aprende algo por level-up. Misturar jogos daria "Pikachu que aprende tudo
+  de todas as gerações" — o oposto de fiel. Exigir level-up evita cair num jogo em
+  que a espécie só aparece com TM (aí não haveria nada a destravar).
+- **`machine` (TM), `egg` e `tutor` NÃO dependem de nível.** Ficam gravados no
+  espelho e viram carta jogável só quando o jogador ganha por fora — uma linha em
+  `UserPokemonMove`. A união "level-up destravado ∪ concedido" é pura
+  (`learnset.mergePlayableMoveIds`) e lida por `getUnlockedMoveIds`.
+- **A trava é do SERVIDOR, não da UI.** O `PUT /api/deck` é público: `saveDeck`
+  recusa pokémon sem NENHUMA carta liberada (ele iria a campo sem ação possível e o
+  `buildDuelSnapshot` lançaria lá no matchmaking), e a escolha de skills na batalha
+  filtra pelo nível **congelado no snapshot** — subir de nível em outra aba não
+  destrava carta na partida em andamento.
+
+**Consequência que muda o começo do jogo:** pokémon novo tem ~3-4 cartas, não 6.
+`CARDS_PER_SLOT` é **teto, não obrigação**. Se ficar seco demais, as alavancas são
+`STARTING_LEVEL` e o XP por batalha — **não** voltar a liberar o learnset inteiro.
+
+## 3. Stat vem da API + nível. Nada é inventado por nós
+
+```
+HP     = floor(2 * baseHP * nível / 100) + nível + 10
+Demais = floor(2 * base   * nível / 100) + 5
+```
+
+O nível entra no jogo por três caminhos, todos fiéis à série: escala o stat, entra
+na fórmula de dano (`domain/damage.ts`) e libera skill (regra 2). **Ele NÃO
+multiplica o poder da skill** — existiu um `skillPowerMult` nosso (`1 + (nível-1)*k`)
+e foi removido: no Pokémon o nível não deixa thunderbolt mais forte por si.
+**Não reintroduzir.**
+
+XP, pela fórmula da série (gen 5+), com curva medium-fast (total pro nível n = n³):
+
+```
+xp ganho = floor(baseExperience_do_derrotado * nível_do_derrotado / 7)
+```
+
+`UserPokemon.xp` é o **total acumulado** e `level` é função dele — os dois são
+escritos SEMPRE juntos, só pelos helpers (regra 3.1 lá embaixo). **Desvio
+consciente:** o perdedor leva `LOSER_XP_SHARE` (25%). Na série quem é nocauteado
+não ganha nada; aqui isso prenderia quem perde num loop sem nunca destravar carta.
+
+## 4. Evolução é por nível, em cadeia, e retroativa
+
+Só `level-up` **com `min_level`** vira aresta (`Pokemon.evolvesToApiId`/
+`evolvesToLevel`, gravadas pelo `syncPokedex`) — pedra, troca e amizade ficam null,
+porque não são progressão por nível. `pokemon/commands/grantXp.ts` troca o
+`pokemonId` do `UserPokemon` ao cruzar o gatilho, **em cadeia** (um XP grande pode
+cruzar dois estágios), e os stats vêm de graça: derivam da espécie nova.
+
+Dois cuidados que já morderam:
+
+- **A checagem roda em TODA aplicação de XP, não só quando o nível sobe.** Um
+  pokémon que cruzasse o gatilho quando a espécie-alvo ainda não estava no espelho
+  ficava preso na forma antiga **pra sempre** — no `MAX_LEVEL` não há mais nível a
+  ganhar, então a checagem nunca voltava. E não há worker pra consertar depois.
+- **O snapshot da partida fica intacto.** O `grantXp` mexe no `UserPokemon`
+  (coleção), nunca no `BattlePokemon` (congelado): a evolução vale da PRÓXIMA
+  partida. Isso é a mesma regra do snapshot congelado (3.1).
+
+Quem **calcula** o prêmio é a batalha (`battle/commands/awardBattleXp.ts`, com a
+fórmula acima); quem **escreve** é o `pokemon`. E o `grantXp` recebe o `tx` em vez
+de abrir a própria transação: ele roda dentro da que encerra a partida, onde o
+claim otimista garante que só uma lambda chega ali. Fora dela, pagaria XP
+duplicado a cada polling de 2s.
 
 # Arquitetura
 
@@ -176,9 +276,10 @@ alternativa: não dá pra pôr num `WHERE` o que só existe em JS.
 - `BattlePokemon.stats` é a exceção, e **não é cache — é isolamento**: o
   snapshot é congelado pra um level-up no meio não mudar a partida em andamento.
 
-**Fronteira do BST:** `bstOf()`/`BST_BY_ID` (JS) é do **sorteio de pacotes**, que
-pondera as 1025 espécies — a maioria não tem linha em `Pokemon`. Quem TEM a linha
-lê `pokemon.bst`/`pokemon.rarity`. É o que garante que a raridade desenhada na
+**Fronteira do BST:** `bstOf()`/`BST_BY_ID` (`pokemon/domain/rarity.ts`) é do
+**sorteio de pacotes** (`packs/domain/draw.ts`), que pondera as 1025 espécies — a
+maioria não tem linha em `Pokemon`. Quem TEM a linha lê
+`pokemon.bst`/`pokemon.rarity`. É o que garante que a raridade desenhada na
 carta é a mesma que o filtro do banco usou pra achar ela.
 
 ### 4. Lógica de apresentação sai do componente
@@ -346,7 +447,7 @@ O que te obriga daqui pra frente (a regra completa está no `AGENTS.md`):
 - Depois de mexer no schema, rode o advisor de segurança do Supabase — o alerta
   `rls_disabled_in_public` (ERROR) acusa a tabela esquecida.
 
-> **Fronteira do Realtime (implementada — PLANO_JOGO.md §8.1) — não confunda com
+> **Fronteira do Realtime (implementada) — não confunda com
 > o acima.** O Realtime do duelo **exige uma policy** — mas em
 > `realtime.messages` (schema `realtime`), **não** nas tabelas do app (que seguem
 > deny-all). Ela vive em `supabase/migrations/20260717055605_realtime_harden_functions_private_schema.sql`
@@ -378,6 +479,27 @@ ele mesmo.
 - `src/components/` — só o que é **genuinamente global** (`NavBar`, `TypeBadge`,
   `icons`). Componente que serve um módulo só mora no `ui/` **dele**.
 - `src/modules/<mod>/` — a feature inteira: regra, leitura, escrita e tela.
+
+### Os módulos, e a linha entre eles
+
+- **`pokemon`** — o núcleo. A ESPÉCIE (espelho da PokéAPI: `syncPokedex`,
+  `refreshPokedex`, ficha) e a CARTA do jogador (`UserPokemon`), mais tudo que
+  faz ela mudar: nível/stats, XP, evolução, learnset, TM, BST/raridade. E o
+  desenho da carta (`PokeCard`, `HoloCard`, `pokeCardView`), que é o mesmo em
+  toda tela.
+- **`pokedex`** — a LISTA: filtrar, ordenar, paginar e navegar a coleção e o
+  catálogo. Não sabe o que é um nível; sabe ordenar por ele.
+- **`deck`** montar o time · **`packs`** sortear e abrir · **`battle`** a
+  partida · **`auth`** sessão · **`realtime`** o canal do duelo.
+
+**Como decidir onde uma coisa vai:** se a resposta muda quando o pokémon sobe de
+nível ou evolui, é `pokemon`. Se muda quando o jogador troca o filtro ou a
+página, é `pokedex`.
+
+`pokemon` **não importa** `pokedex`/`deck`/`packs`/`battle` — a seta só aponta
+pra ele. Se um arquivo lá dentro precisar importar de um irmão, a divisão está
+errada; pare e reveja, não adicione o import. Desenho completo e histórico da
+migração em `docs/specs/2026-08-07-pokemon-module-design.md`.
 
 ## Verificação
 

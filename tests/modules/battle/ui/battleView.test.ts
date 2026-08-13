@@ -3,6 +3,7 @@ import {
   duelCalloutFor,
   duelLogMark,
   selectDuelView,
+  turnClockView,
   type DuelLogLine,
   type DuelTurnFx,
 } from "@/src/modules/battle/ui/battleView";
@@ -36,6 +37,8 @@ function battle(over: Partial<BattleDTO> = {}): BattleDTO {
     round: 3,
     winnerId: null,
     submittedUserIds: [],
+    turnEndsInMs: 62_000,
+    turnTimeoutMs: 90_000,
     participants: [
       { id: "pm", userId: "me", activeSlot: 1, pokemons: [mon()] },
       { id: "po", userId: "opp", activeSlot: 1, pokemons: [mon({ currentHp: 10, name: "bulbasaur" })] },
@@ -278,5 +281,38 @@ describe("duelLogMark", () => {
   it("rodada e troca têm marcador próprio", () => {
     expect(duelLogMark(line({ kind: "round", actor: null })).glyph).toBe("◆");
     expect(duelLogMark(line({ kind: "switch" })).tone).toBe("energy");
+  });
+});
+
+describe("turnClockView", () => {
+  it("formata minutos:segundos e a fatia da janela que sobrou", () => {
+    const v = turnClockView(62_000, 90_000);
+    expect(v.text).toBe("1:02");
+    expect(v.pct).toBe(69);
+    expect(v.expired).toBe(false);
+  });
+
+  it("arredonda pra CIMA — no último segundo ainda dá pra jogar", () => {
+    // Com floor isto marcaria "0:00" por um segundo inteiro, dizendo que acabou
+    // quando o servidor ainda aceita a carta.
+    expect(turnClockView(400, 90_000).text).toBe("0:01");
+    expect(turnClockView(0, 90_000).text).toBe("0:00");
+  });
+
+  it("muda de urgência em 30s e em 10s", () => {
+    expect(turnClockView(45_000, 90_000).urgency).toBe("calm");
+    expect(turnClockView(30_000, 90_000).urgency).toBe("warn");
+    expect(turnClockView(10_000, 90_000).urgency).toBe("critical");
+  });
+
+  it("tempo vencido é `expired` — a tela diz 'resolvendo', não '0:00' parado", () => {
+    const v = turnClockView(0, 90_000);
+    expect(v.expired).toBe(true);
+    expect(v.pct).toBe(0);
+  });
+
+  it("aguenta valor fora da janela sem estourar a barra", () => {
+    expect(turnClockView(120_000, 90_000).pct).toBe(100);
+    expect(turnClockView(-5_000, 90_000).pct).toBe(0);
   });
 });

@@ -1,8 +1,8 @@
 // Mapper da linha crua -> DTO da carta da coleção. Whitelist EXPLÍCITA, campo a
 // campo: linha de Prisma não vai crua pro browser (CLAUDE.md, regra 3).
 
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
-import type { BaseStats } from "@/src/modules/progression";
+import type { RarityTier } from "@/src/modules/pokemon";
+import type { BaseStats } from "@/src/modules/pokemon";
 import type { CollectionCardDTO } from "../types";
 
 /** O recorte que a query pede — e tudo que o mapper tem direito de ver. */

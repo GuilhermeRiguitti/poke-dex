@@ -1,14 +1,43 @@
 # Módulo `pokemon` — desenho e plano de migração
 
-**Data:** 2026-08-07 · **Estado:** proposto, nada implementado
+**Data:** 2026-08-07 · **Estado:** ✅ EXECUTADO (etapas 1–6 e 8) em 2026-08-07
+
+> Verificação no fim: `tsc` limpo, **395 testes em 43 arquivos**, `eslint` limpo,
+> `next build` OK. As três conferências da seção 7 voltam vazias.
+>
+> **Desvios do plano** (decididos durante a execução, com o motivo):
+>
+> 1. **`weightForBst` NÃO foi pro `pokemon`.** O plano mandava mover junto com
+>    `bstOf`/`rarityTier`. Olhando de perto, ele usa `BST_CEIL` e
+>    `RARITY_EXPONENT`, que o próprio comentário chama de "botão de tuning do
+>    drop rate" — é economia de pacote, não fato da espécie. Ficou em
+>    `packs/domain/draw.ts` com o `drawPack`. O `pokemon` exporta `DEX_SIZE` pro
+>    `draw.ts` montar o pool sem alcançar a tabela gerada.
+> 2. **A apresentação da RARIDADE mudou de módulo, e isso não estava no plano.**
+>    `rarityLabel`/`rarityColor`/`isTopRarity`/`holoIntensity` viviam em
+>    `packs/ui/packView.ts`, e o `PokeCard` (agora em `pokemon/ui`) importava de
+>    lá — o que criava exatamente o ciclo que a seção 6 mandava evitar. Foram
+>    pra `pokemon/ui/rarityView.ts`, com o teste junto. Foi a conferência
+>    "nenhum arquivo em `pokemon/` importa um irmão" que pegou isso.
+> 3. **`DetailPanel.tsx` foi junto** com `PokemonStats`/`PokemonMoves` (o plano
+>    não o listava): é a moldura das seções da ficha e não tem outro consumidor.
+> 4. **Costura nova entre battle e pokemon:** `xpAwardsOf(context)` no
+>    `awardBattleXp`, que achata o par vencedor/perdedor na lista que o `grantXp`
+>    recebe. Sem ela, o `pokemon` teria que conhecer o formato `XpContext`, que é
+>    da partida.
+> 5. **`scripts/generate-rarity.mjs`** passou a escrever em
+>    `src/modules/pokemon/domain/rarity.generated.ts`. Não estava no plano e
+>    quebraria calado na próxima geração.
+>
+> A etapa 7 seguiu recusada, como planejado. A etapa 0 (commitar) ficou pro dono.
 
 Objetivo: reunir num módulo só tudo que responde *"o que é este pokémon e como
 ele muda"* — hoje espalhado por `progression`, `training`, `pokedex`, `deck`,
-`packs` e `battle`. O pokémon é o núcleo do jogo e não tem casa própria.
+`packs` e `battle`. O pokémon é o núcleo do jogo e não tem módulo próprio.
 
 ---
 
-## 1. Diagnóstico: onde o pokémon mora hoje
+## 1. Onde o pokémon mora hoje
 
 | onde está | o que é |
 |---|---|
@@ -22,27 +51,45 @@ ele muda"* — hoje espalhado por `progression`, `training`, `pokedex`, `deck`,
 | `packs/domain/rarity.ts` (`bstOf`, `weightForBst`, `rarityTier`) | BST e raridade — fato imutável da espécie |
 | `battle/commands/awardBattleXp.ts` (a metade que escreve) | aplicar XP e evoluir o `UserPokemon` |
 
-### As três provas de que a fronteira atual está errada
+### Três sinais de que a divisão atual está errada
 
-1. **Ninguém respeita o barril do `progression`.** 12 arquivos importam
-   `@/src/modules/progression/domain/leveling` por caminho direto (`deck/ui/types.ts`,
-   `packs/ui/types.ts`, `pokedex/types.ts`, `design-system/page.tsx`…). Quando todo
-   mundo fura a porta da frente, a porta está no lugar errado.
+1. **O `BaseStats` está arquivado no lugar errado.** O tipo mais compartilhado
+   do código — 10 arquivos, em 5 módulos diferentes, precisam dele — mora num
+   módulo chamado *progression*. O endereço descreve outra coisa: progressão é o
+   que ACONTECE com o pokémon; `BaseStats` é o que ele É. Por isso ninguém acha:
+   é o único tipo que aparece em `deck`, `packs`, `pokedex`, `battle` e na página
+   do design-system ao mesmo tempo.
+
+   > **Nota (2026-08-07):** a primeira versão deste doc dizia que "11 arquivos
+   > furam a API pública do módulo". Estava errado. A maioria era `import type`
+   > em `ui/`, onde o import direto é a convenção CERTA do projeto. Havia 4
+   > imports diretos de fato indevidos (`deck/queries/toDeckBoardDTO`,
+   > `packs/commands/openPack`, `packs/queries/toPackDTO`,
+   > `app/design-system/page`) — **corrigidos fora deste plano**, antes de
+   > começar. Hoje sobram 7 diretos, todos legítimos: 6 em `ui/` e o
+   > `pokedex/types.ts`, que faz o papel de `ui/types.ts`.
+
+   Sobra um detalhe que reforça a mudança: a convenção "`ui/` importa `domain/`
+   direto" existe para o `index.ts` não arrastar Prisma até o browser. Só que o
+   `progression` é 100% domínio puro — não reexporta uma query sequer. Hoje é
+   regra sem motivo, seguida por imitação dos outros módulos. No `pokemon` ela
+   passa a ter motivo de verdade, porque o módulo vai ter `queries/` e
+   `commands/` com Prisma.
 2. **O `battle` importa golpe do `deck`.** `getLoadoutOptions.ts` e
    `buildDuelSnapshot.ts` pegam `readLearnset` e `LearnsetMoveDTO` em
-   `@/src/modules/deck` — mas o learnset não tem nada a ver com montar time. A
-   própria rota `/api/training/skills/[userPokemonId]` já escreve no comentário
-   que "mora em training e não em deck porque ensinar é treino". A rota mora num
-   módulo e a query dela mora em outro.
-3. **A carta é do `pokedex` e todo mundo pede emprestado.** `PokeCard` é
-   importado por `packs/ui/PackRevealCard`, `battle/ui/ReserveHand`,
-   `pokedex/ui/CollectionGrid`, `PokedexGrid` e pela página do design-system; o
-   `dexNumber` é importado do `pokedexView` pelo `deck/ui/deckBoardView` e pelo
-   `PackRevealCard`. A carta não é da PokéDex — é do pokémon.
+   `@/src/modules/deck` — mas learnset não tem nada a ver com montar time. A rota
+   `/api/training/skills/[userPokemonId]` já escreve no comentário que "mora em
+   training e não em deck porque ensinar é treino". A rota está num módulo e a
+   query dela em outro.
+3. **A carta é do `pokedex` e todo mundo importa de lá.** `PokeCard` é usado por
+   `packs/ui/PackRevealCard`, `battle/ui/ReserveHand`, `pokedex/ui/CollectionGrid`,
+   `PokedexGrid` e pelo design-system; o `dexNumber` é importado do `pokedexView`
+   pelo `deck/ui/deckBoardView` e pelo `PackRevealCard`. A carta não é da PokéDex,
+   é do pokémon.
 
 ---
 
-## 2. A linha que separa
+## 2. O que fica em cada módulo
 
 - **`pokemon`** — a espécie (espelho da PokéAPI), a carta do jogador
   (`UserPokemon`), e as regras que fazem ela mudar: nível, stats, XP, evolução,
@@ -51,12 +98,12 @@ ele muda"* — hoje espalhado por `progression`, `training`, `pokedex`, `deck`,
   jogador e catálogo). Não sabe o que é um nível; sabe ordenar por ele.
 - **`deck`** montar o time · **`packs`** sortear e abrir · **`battle`** a partida.
 
-> **Regra de bolso:** se a resposta muda quando o pokémon sobe de nível ou
-> evolui, é `pokemon`. Se muda quando o jogador troca o filtro ou a página, é
-> `pokedex`.
+> **Como decidir onde uma coisa vai:** se a resposta muda quando o pokémon sobe
+> de nível ou evolui, é `pokemon`. Se muda quando o jogador troca o filtro ou a
+> página, é `pokedex`.
 
-Direção das dependências depois do movimento — `pokemon` não importa nenhum dos
-outros módulos de feature:
+Direção dos imports depois da mudança — `pokemon` não importa nenhum dos outros
+módulos de feature:
 
 ```
 pokedex ─┐
@@ -66,7 +113,7 @@ battle ──┘
 ```
 
 Se em algum momento um arquivo dentro de `pokemon/` precisar importar de
-`pokedex/`, `deck/` ou `battle/`, a linha foi cortada no lugar errado — pare e
+`pokedex/`, `deck/` ou `battle/`, a divisão foi feita no lugar errado — pare e
 reveja, não adicione o import.
 
 ---
@@ -118,36 +165,49 @@ O que sobra em cada vizinho:
 
 ---
 
-## 4. Plano de migração — fatias
+## 4. Plano de migração — etapas
 
-Cada fatia termina verde (`npx tsc --noEmit` · `npx vitest run` · `npx eslint` ·
+Cada etapa termina verde (`npx tsc --noEmit` · `npx vitest run` · `npx eslint` ·
 `npx next build`) e vira um commit. Use `git mv` para o histórico seguir o
-arquivo. Nenhuma fatia muda comportamento — é mudança de endereço.
+arquivo. Nenhuma etapa muda **comportamento** — é mudança de endereço.
 
-### Fatia 0 — limpar a mesa
+**Comentário não é imutável.** Ao mover um arquivo, os comentários dele podem (e
+devem) ser reescritos quando ficarem errados ou mal organizados no endereço novo:
+referência a caminho que mudou, aviso que deixou de valer, bloco grande que cabe
+melhor no `index.ts` do módulo. O que **não** pode sumir é o *porquê* de uma
+decisão — quando um comentário explica uma armadilha já vivida (o claim
+transacional, a evolução retroativa, o motivo de a barra da carta usar o base
+stat e não o derivado), esse conteúdo continua, mesmo que reescrito com outras
+palavras ou em outro arquivo.
 
-A árvore hoje tem o refactor do deck em andamento (`saveDeck`, arquivos
-apagados, `PLANO_JOGO.md`/`TODO.md` modificados). Commitar ou guardar isso
+### Etapa 0 — commitar o que está pendente
+
+A árvore hoje tem mudança em andamento no `battle` (`resolveTurn`, `battleView`,
+`DuelArena`, `toBattleDTO`) e no `PLANO_JOGO.md`. Commitar ou guardar isso
 **antes**: renomeação em massa por cima de mudança não commitada faz um diff
 que ninguém consegue revisar.
 
-### Fatia 1 — nasce o módulo com o domínio puro
+Nessa mesma leva vão os 4 imports diretos corrigidos em 2026-08-07 (ver a nota
+da seção 1) — é conserto de convenção, não faz parte desta migração.
+
+### Etapa 1 — criar o módulo com o domínio puro
 
 - `git mv src/modules/progression/domain/*` → `src/modules/pokemon/domain/`
 - `git mv src/modules/training/domain/tm.ts` → `src/modules/pokemon/domain/`
-- Criar `pokemon/index.ts` reexportando o que os dois barris exportavam,
+- Criar `pokemon/index.ts` reexportando o que os dois `index.ts` exportavam,
   agrupado por assunto com comentário (o `progression/index.ts` de hoje é o
   modelo). Apagar `progression/index.ts`.
 - Mover os testes: `tests/modules/{progression,training}/domain/*` →
   `tests/modules/pokemon/domain/`.
-- Atualizar os imports. Convenção, para não repetir o furo de hoje: **quem é de
-  fora importa do `index.ts`**; **`ui/` importa de `domain/` por caminho
-  relativo** (o barril arrasta Prisma para o bundle — é a exceção que o
-  `pokeCardView.ts` já documenta).
+- Atualizar os imports, mantendo a convenção que a árvore já respeita: **quem é
+  de fora importa do `index.ts`**; **`ui/` importa de `domain/` por caminho
+  relativo** (o `index.ts` arrasta Prisma para o bundle — é a exceção que o
+  `pokeCardView.ts` já documenta). São 12 arquivos no primeiro grupo e 7 no
+  segundo; a lista está na seção 1.
 
-*Fim da fatia:* `grep -rn "modules/progression" src tests` volta vazio.
+*Fim da etapa:* `grep -rn "modules/progression" src tests` volta vazio.
 
-### Fatia 2 — a raridade volta para a espécie
+### Etapa 2 — a raridade volta para a espécie
 
 - `git mv packs/domain/rarity.generated.ts` → `pokemon/domain/`
 - Partir `packs/domain/rarity.ts` em dois: `bstOf`, `weightForBst`,
@@ -155,11 +215,11 @@ que ninguém consegue revisar.
   bloco de comentário "FRONTEIRA", que continua valendo); `drawPack` e
   `PACK_SIZE` ficam em `packs/domain/draw.ts`, importando `bstOf`/`weightForBst`
   de `@/src/modules/pokemon`.
-- Partir `tests/modules/packs/domain/rarity.test.ts` na mesma linha.
+- Partir `tests/modules/packs/domain/rarity.test.ts` do mesmo jeito.
 - Consumidores de `RarityTier`: `pokedex/types.ts`, `pokedex/ui/pokedexView.ts`,
   `pokeCardView.ts`, `syncPokedex.ts`.
 
-### Fatia 3 — o espelho e a ficha da espécie
+### Etapa 3 — o espelho e a ficha da espécie
 
 - `git mv pokedex/commands/{syncPokedex,refreshPokedex}.ts` → `pokemon/commands/`
 - `git mv pokedex/queries/{getPokemonDetail,toPokemonDTO}.ts` → `pokemon/queries/`
@@ -173,7 +233,7 @@ que ninguém consegue revisar.
 - Testes: `tests/modules/pokedex/queries/toPokemonDTO.test.ts` →
   `tests/modules/pokemon/queries/`.
 
-### Fatia 4 — os golpes da carta (mata o `training`)
+### Etapa 4 — os golpes da carta (apaga o `training`)
 
 - `git mv pokedex/queries/getUnlockedMoveIds.ts` → `pokemon/queries/`
 - `git mv deck/queries/readLearnset.ts` → `pokemon/queries/`; `LearnsetMoveDTO`
@@ -189,18 +249,18 @@ que ninguém consegue revisar.
   `tests/modules/pokedex/queries/getUnlockedMoveIds.test.ts` →
   `tests/modules/pokemon/`.
 
-**Decisão:** as rotas continuam em `/api/training/*` nesta fatia. Renomear para
-`/api/pokemon/*` é mudança de contrato com o cliente e merece fatia própria (ou
+**Decisão:** as rotas continuam em `/api/training/*` nesta etapa. Renomear para
+`/api/pokemon/*` é mudança de contrato com o cliente e merece etapa própria (ou
 ficar como está — o nome "training" descreve bem a ação).
 
-*Fim da fatia:* `grep -rn "modules/training" src tests` volta vazio.
+*Fim da etapa:* `grep -rn "modules/training" src tests` volta vazio.
 
-### Fatia 5 — a carta
+### Etapa 5 — a carta
 
 - `git mv pokedex/ui/{PokeCard.tsx,HoloCard.tsx,pokeCardView.ts,PokemonPortrait.tsx,
   PokemonStats.tsx,PokemonMoves.tsx}` → `pokemon/ui/`
 - `dexNumber` sai do `pokedexView.ts` para o `pokeCardView.ts` (é formatação da
-  carta, e hoje o `deck` e o `packs` já vão buscar lá). `detailView` +
+  carta, e hoje o `deck` e o `packs` já importam de lá). `detailView` +
   `STAT_LABELS`/`STAT_MAX` vão para `pokemon/ui/detailView.ts`. `collectionView`
   e `CollectionCardView` **ficam** no `pokedex` — é a view da lista — passando a
   importar `dexNumber` do `pokemon`.
@@ -211,9 +271,9 @@ ficar como está — o nome "training" descreve bem a ação).
   `tests/modules/pokemon/ui/`; a parte de `detailView` sai do
   `tests/modules/pokedex/ui/pokedexView.test.ts`.
 
-### Fatia 6 — XP e evolução saem do `battle`
+### Etapa 6 — XP e evolução saem do `battle`
 
-Partir `battle/commands/awardBattleXp.ts` em dois, na costura que ele já tem:
+Partir `battle/commands/awardBattleXp.ts` em dois, na divisão que ele já tem:
 
 - **fica no `battle`:** `loadXpContext` — lê as duas linhas de combatente e
   traduz para `{ userPokemonId, gainedXp }` usando `xpFromDefeat`/`LOSER_XP_SHARE`.
@@ -222,28 +282,29 @@ Partir `battle/commands/awardBattleXp.ts` em dois, na costura que ele já tem:
   aplicar XP, reescrever o par `(xp, level)` e evoluir em cadeia. É escrita sobre
   `UserPokemon`.
 
-Cuidados que **não** podem mudar no movimento: a função continua recebendo
+Cuidados que **não** podem mudar na mudança de lugar: a função continua recebendo
 `tx: Prisma.TransactionClient` e rodando dentro da transação do `resolveTurn`
 (fora dela pagaria XP duplicado a cada polling); a evolução continua retroativa
 (checa em toda aplicação de XP, não só quando o nível sobe — não há worker para
-consertar depois); e continua sem tocar no snapshot `BattlePokemon`. Os
-comentários que explicam isso vão junto.
+consertar depois); e continua sem tocar no snapshot `BattlePokemon`. O *porquê*
+desses três continua registrado — reescrito no endereço novo se couber melhor
+(ver a nota sobre comentários no começo desta seção).
 
 Testes: `tests/modules/battle/commands/awardBattleXp.test.ts` se divide entre
 `tests/modules/battle/` (o contexto) e `tests/modules/pokemon/commands/` (a
 escrita e a cadeia de evolução).
 
-### Fatia 7 — o nascimento da carta (avaliada e recusada)
+### Etapa 7 — o nascimento da carta (avaliada e recusada)
 
 `openPack` calcula `birthLevelForSpecies` + `progressionFromLevel` e faz o
-`createMany` de `UserPokemon`. Tentador mover para
+`createMany` de `UserPokemon`. Dá vontade de mover para
 `pokemon/commands/createUserPokemon.ts`, mas **não fazer**: o `createMany` está
 dentro do claim transacional do pacote, junto do débito do token; extrair
 significa passar o `tx` para fora e espalhar o passo atômico por dois módulos,
-sem ganho. A regra pura (o nível de nascimento) já mora no `pokemon` depois da
-fatia 1, que era o que importava. Registrar a decisão e seguir.
+sem ganho. A regra pura (o nível de nascimento) já fica no `pokemon` depois da
+etapa 1, que era o que importava. Registrar a decisão e seguir.
 
-### Fatia 8 — documentação
+### Etapa 8 — documentação
 
 Parte da tarefa, não passo extra (CLAUDE.md):
 
@@ -278,33 +339,33 @@ Parte da tarefa, não passo extra (CLAUDE.md):
 
 ## 6. Riscos
 
-1. **Módulo-deus.** `pokemon` fica com ~25 arquivos. O que segura é a lista da
-   seção 5 e um `index.ts` agrupado por assunto. Se depois de tudo o
+1. **`pokemon` virar grande demais.** Fica com ~25 arquivos. O que segura isso é
+   a lista da seção 5 e um `index.ts` agrupado por assunto. Se no fim o
    `pokemon/index.ts` passar de ~80 linhas de export sem separação clara por
    assunto, é sinal de que faltou recusar alguma coisa.
 2. **Prisma no bundle do browser.** Ao trazer `PokeCard` e `SkillSheet` para
    `pokemon/ui`, manter as duas regras: componente **não** entra no `index.ts`, e
-   `ui/` importa `domain/` por caminho relativo, nunca o barril.
-3. **Ciclo `pokemon` ↔ `pokedex`.** Hoje existe uma volta (`pokedex/types.ts` →
-   `packs/domain/rarity`, e `packs` → `pokedex`). Depois da fatia 2 e 3 ela
-   desaparece. Conferir no fim: nenhum arquivo em `src/modules/pokemon/` importa
-   `modules/{pokedex,deck,packs,battle}`.
-4. **Renome em massa.** Sempre `git mv`, um commit por fatia, e rodar a
+   `ui/` importa `domain/` por caminho relativo, nunca o barrel.
+3. **Ciclo de import `pokemon` ↔ `pokedex`.** Hoje existe uma volta
+   (`pokedex/types.ts` → `packs/domain/rarity`, e `packs` → `pokedex`). Depois
+   das etapas 2 e 3 ela desaparece. Conferir no fim: nenhum arquivo em
+   `src/modules/pokemon/` importa `modules/{pokedex,deck,packs,battle}`.
+4. **Renome em massa.** Sempre `git mv`, um commit por etapa, e rodar a
    verificação completa antes de passar para a próxima.
 
 ## 7. Verificação
 
-Por fatia: `npx tsc --noEmit` · `npx vitest run` · `npx eslint` · `npx next build`.
+Por etapa: `npx tsc --noEmit` · `npx vitest run` · `npx eslint` · `npx next build`.
 
-Greps de sanidade ao fim:
+Conferências no fim:
 
 ```
-grep -rn "modules/progression" src tests   # vazio (fatia 1)
-grep -rn "modules/training"    src tests   # vazio (fatia 4)
+grep -rn "modules/progression" src tests   # vazio (etapa 1)
+grep -rn "modules/training"    src tests   # vazio (etapa 4)
 grep -rn "modules/\(pokedex\|deck\|packs\|battle\)" src/modules/pokemon  # vazio
 ```
 
-Nenhum teste novo é exigido por este refactor — os que existem já cobrem
+Nenhum teste novo é exigido por esta mudança — os que existem já cobrem
 `domain/`, os views e os mappers, e devem continuar passando **sem alteração de
-asserção**. Se um teste precisar mudar de expectativa, alguma fatia mudou
+asserção**. Se um teste precisar mudar de expectativa, alguma etapa mudou
 comportamento e isso não era para acontecer.

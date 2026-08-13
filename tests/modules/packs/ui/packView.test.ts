@@ -1,36 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatCountdown,
-  holoIntensity,
-  packStatusView,
-  rarityColor,
-  rarityLabel,
-} from "@/src/modules/packs/ui/packView";
+import { formatCountdown, packStatusView } from "@/src/modules/packs/ui/packView";
 
-describe("rarityLabel / rarityColor", () => {
-  it("rotula em PT", () => {
-    expect(rarityLabel("common")).toBe("Comum");
-    expect(rarityLabel("legendary")).toBe("Lendário");
-  });
-  it("cor é um token do design system", () => {
-    expect(rarityColor("legendary")).toBe("var(--color-gold)");
-  });
-});
-
-describe("holoIntensity", () => {
-  it("cresce com a raridade (0..1), lendário no máximo", () => {
-    expect(holoIntensity("common")).toBeLessThan(holoIntensity("uncommon"));
-    expect(holoIntensity("uncommon")).toBeLessThan(holoIntensity("rare"));
-    expect(holoIntensity("rare")).toBeLessThan(holoIntensity("legendary"));
-    expect(holoIntensity("legendary")).toBe(1);
-  });
-  it("fica no intervalo [0,1]", () => {
-    for (const t of ["common", "uncommon", "rare", "legendary"] as const) {
-      expect(holoIntensity(t)).toBeGreaterThanOrEqual(0);
-      expect(holoIntensity(t)).toBeLessThanOrEqual(1);
-    }
-  });
-});
+// A raridade (rótulo, cor, holo) saiu daqui junto com o código — os testes dela
+// estão em tests/modules/pokemon/ui/rarityView.test.ts.
 
 describe("formatCountdown", () => {
   it("acima de 1h => horas e minutos", () => {

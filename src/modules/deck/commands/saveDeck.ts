@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { PLAYABLE_LEARN_METHOD } from "@/src/modules/progression";
+import { PLAYABLE_LEARN_METHOD } from "@/src/modules/pokemon";
 import { validateDeckSlots, type DeckSlotsIssue } from "../domain/validateDeckSlots";
 import { getOrCreateDeck } from "../queries/readDeck";
 import { getDeckBoardQuery } from "../queries/getDeckBoard";

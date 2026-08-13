@@ -13,8 +13,8 @@
 // gravação não serve nem de chave de lista. Quem identifica a carta é o
 // `userPokemonId`.
 
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
+import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
+import type { BaseStats } from "@/src/modules/pokemon/domain/leveling";
 
 /**
  * Uma carta como a VAGA do deck precisa dela — tudo que a linha desenha, sem
@@ -67,18 +67,7 @@ export interface DeckSummaryDTO {
   slotCount: number;
 }
 
-/** Uma carta possível do learnset — o que o seletor de loadout mostra. */
-export interface LearnsetMoveDTO {
-  /** Move.id (cuid) */
-  moveId: string;
-  name: string;
-  type: string;
-  power: number | null;
-  damageClass: "physical" | "special" | "status";
-  /** nível em que a espécie aprende esta carta (dado real da PokéAPI); 0 para as de TM (não são por nível) */
-  levelLearnedAt: number;
-  /** já destravada pra este pokémon? (level-up pelo nível OU concedida). Travadas aparecem, mas não são selecionáveis. */
-  unlocked: boolean;
-  /** carta de MÁQUINA (TM): não vem por nível, é ensinada gastando 1 token de TM. */
-  teachableViaTm: boolean;
-}
+// `LearnsetMoveDTO` SAIU daqui (2026-08-07): quais golpes uma espécie conhece é
+// do pokémon, não da montagem de time — desde que a barra de skills passou a ser
+// escolhida dentro da batalha, o deck não tem mais nada a ver com golpe. Mora em
+// @/src/modules/pokemon/ui/types.ts, junto da query que a monta.

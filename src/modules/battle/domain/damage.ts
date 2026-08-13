@@ -38,12 +38,12 @@ const CRIT_CHANCE = 1 / 16;
 const VARIANCE_MIN = 0.85;
 const VARIANCE_SPAN = 0.15; // 0.85 .. 1.00
 
-export function rollAccuracy(move: BattleMoveDef, rng: () => number): boolean {
+function rollAccuracy(move: BattleMoveDef, rng: () => number): boolean {
   const accuracy = move.accuracy ?? 100;
   return rng() * 100 < accuracy;
 }
 
-export function rollCrit(rng: () => number, critChance = CRIT_CHANCE): boolean {
+function rollCrit(rng: () => number, critChance = CRIT_CHANCE): boolean {
   return rng() < critChance;
 }
 

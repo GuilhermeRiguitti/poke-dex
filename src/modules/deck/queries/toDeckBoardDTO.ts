@@ -7,8 +7,8 @@
 // não identifica nada. Quem identifica a carta é o `userPokemonId`, que a tela
 // precisa de verdade (é a chave do rascunho e o que marca a carta na coleção).
 
-import type { RarityTier } from "@/src/modules/packs/domain/rarity";
-import type { BaseStats } from "@/src/modules/progression/domain/leveling";
+import type { RarityTier } from "@/src/modules/pokemon";
+import type { BaseStats } from "@/src/modules/pokemon";
 import type { DeckBoardSlotDTO } from "../ui/types";
 
 /** O recorte que a query pede — e tudo que o mapper tem direito de ver. */
