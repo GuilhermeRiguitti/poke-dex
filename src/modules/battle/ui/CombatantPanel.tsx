@@ -1,5 +1,5 @@
 import TypeBadge from "@/src/layout/TypeBadge";
-import type { DuelMonView, PartyMemberView } from "./battleView";
+import type { ConditionBadgeView, DuelMonView, PartyMemberView } from "./battleView";
 
 // A placa de HP de um dos lados, flutuando sobre o palco 3D: retrato + nome +
 // nível, barra de HP segmentada e os tipos. A do OPONENTE ainda carrega os
@@ -20,6 +20,33 @@ function TeamPips({ party }: { party: PartyMemberView[] }) {
         />
       ))}
     </span>
+  );
+}
+
+// As etiquetas de estado alterado. Ficam logo abaixo da barra de HP porque é
+// isso que explica o resto da placa: por que o HP caiu sem ninguém atacar, por
+// que o golpe bateu menos, por que o oponente jogou primeiro. Sem elas, status
+// vira dado invisível — e dado invisível o jogador lê como bug.
+const CONDITION_TONE: Record<ConditionBadgeView["tone"], string> = {
+  bad: "border-bad/60 bg-bad/15 text-bad",
+  warn: "border-warn/60 bg-warn/15 text-warn",
+  energy: "border-energy/60 bg-energy/15 text-energy",
+};
+
+function ConditionBadges({ badges }: { badges: ConditionBadgeView[] }) {
+  if (badges.length === 0) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      {badges.map((b) => (
+        <span
+          key={b.key}
+          title={b.title}
+          className={`rounded-sm border px-1.5 py-px font-title text-[9px] font-bold uppercase tracking-wider ${CONDITION_TONE[b.tone]}`}
+        >
+          {b.label}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -82,6 +109,8 @@ export default function CombatantPanel({
               </span>
             )}
           </div>
+
+          <ConditionBadges badges={mon.badges} />
         </div>
       </div>
     </div>

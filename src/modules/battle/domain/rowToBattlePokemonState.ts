@@ -1,3 +1,4 @@
+import { normalizeConditions } from "./conditions";
 import type { BattleMoveDef, BattlePokemonState, BattleStats } from "./types";
 
 interface BattlePokemonRow {
@@ -12,6 +13,7 @@ interface BattlePokemonRow {
   currentHp: number;
   fainted: boolean;
   moves: unknown;
+  conditions?: unknown;
 }
 
 // Converte o formato persistido (colunas JSON do Prisma) pro tipo forte
@@ -29,5 +31,8 @@ export function rowToBattlePokemonState(row: BattlePokemonRow): BattlePokemonSta
     currentHp: row.currentHp,
     fainted: row.fainted,
     moves: row.moves as BattleMoveDef[],
+    // A coluna é anulável (partida anterior à fatia de status) e o normalize
+    // devolve o estado limpo nesse caso — o motor nunca lê o Json cru.
+    conditions: normalizeConditions(row.conditions),
   };
 }

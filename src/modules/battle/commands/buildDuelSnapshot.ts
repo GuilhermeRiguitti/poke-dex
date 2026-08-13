@@ -2,6 +2,7 @@ import { fetchAndCacheType } from "@/src/lib/pokeapiCache";
 import { DECK_LIMIT, defaultLoadout, readDeckSlots, type DeckLoadoutSlot } from "@/src/modules/deck";
 import { deriveStats, readLearnset } from "@/src/modules/pokemon";
 import { loadMoveDefs } from "../queries/loadMoveDefs";
+import { emptyConditions } from "../domain/conditions";
 import type { BattleMoveDef, BattlePokemonState } from "../domain/types";
 import type { TypeEffectivenessMap } from "../domain/typeChart";
 
@@ -35,6 +36,9 @@ function toPokemonState(slot: DeckLoadoutSlot, index: number, moves: BattleMoveD
     currentHp: derived.hp,
     fainted: false,
     moves,
+    // Todo mundo entra na partida limpo: sem status, sem estágio, sem confusão.
+    // Nada de status atravessa partidas — o snapshot é congelado por partida.
+    conditions: emptyConditions(),
   };
 }
 

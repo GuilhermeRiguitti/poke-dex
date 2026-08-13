@@ -60,10 +60,26 @@ export type DuelEvent =
       isCrit: boolean;
       missed: boolean;
       targetFainted: boolean;
+      /** golpe de múltiplos acertos: quantas vezes bateu (ausente = 1). */
+      hits?: number;
     }
   | { type: "switch"; userId: string; fromName: string; toName: string } // trocou de pokémon (voluntária ou forçada)
   | { type: "hesitate"; userId: string } // não escolheu a tempo
-  | { type: "roundStart"; round: number; firstUserId: string };
+  | { type: "roundStart"; round: number; firstUserId: string }
+  // ── efeitos (domain/conditions.ts) ────────────────────────────────────────
+  // Todos chaveados por `targetUserId` — de quem é o pokémon que SOFREU. É o
+  // dado que a tela usa pra pôr o balão na cabeça certa; quem usou o golpe já
+  // aparece no evento de ataque logo antes.
+  /** pegou um status novo (queimadura, sono, confusão, semente...) */
+  | { type: "ailment"; targetUserId: string; monName: string; ailment: string; blocked?: "immune" | "already" }
+  /** estágio de atributo mudou. `delta` 0 = já estava no teto/piso. */
+  | { type: "stage"; targetUserId: string; monName: string; stat: string; delta: number; stage: number }
+  /** perdeu o turno por causa de uma condição (dormindo, paralisado, recuou...) */
+  | { type: "blocked"; targetUserId: string; monName: string; reason: string; selfDamage?: number }
+  /** o status passou sozinho: acordou, descongelou */
+  | { type: "recovered"; targetUserId: string; monName: string; ailment: string }
+  /** dano de fim de turno (queimadura/veneno/semente) ou cura (recover/dreno) */
+  | { type: "tick"; targetUserId: string; monName: string; source: string; hp: number; fainted?: boolean };
 
 /** O pokémon em campo de um lado. Fallback pro 1º da lista se o slot sumir. */
 export function activeOf(side: DuelSide): BattlePokemonState {

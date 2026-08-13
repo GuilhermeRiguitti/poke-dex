@@ -1,4 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
+import { parseMoveEffect } from "../domain/moveEffect";
 import type { BattleMoveDef } from "../domain/types";
 
 const DAMAGE_CLASSES = new Set(["physical", "special", "status"]);
@@ -31,6 +32,7 @@ export async function loadMoveDefs(moveIds: string[]): Promise<BattleMoveDef[]> 
       damageClass: true,
       priority: true,
       pp: true,
+      effect: true,
     },
   });
 
@@ -51,5 +53,11 @@ export async function loadMoveDefs(moveIds: string[]): Promise<BattleMoveDef[]> 
       priority: r.priority,
       maxPp: r.pp,
       currentPp: r.pp,
+      // O efeito é TRADUZIDO na entrada da carta em campo, não guardado
+      // traduzido: a coluna `Move.effect` é espelho cru da PokéAPI, e a regra
+      // de jogo mora no domínio (parseMoveEffect). Uma carta que entrou em
+      // campo antes de uma mudança de regra segue com o efeito congelado no
+      // snapshot — que é o mesmo isolamento que já vale pros stats.
+      effect: parseMoveEffect(r.effect),
     }));
 }

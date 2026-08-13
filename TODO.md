@@ -1,8 +1,9 @@
 # JOGO — o que falta
 
-> Herdado do `PLANO_JOGO.md`, aposentado em 2026-08-07. As regras de jogo que
-> continuam valendo foram pro `CLAUDE.md` § "O jogo: as regras que o código já
-> assume"; o histórico de execução está no git. Aqui ficou só o que NÃO foi feito.
+> Herdado do `PLANO_JOGO.md`, apagado em 2026-08-07. As regras de jogo que
+> continuam valendo foram pro `README.md` (e o que o código tem que respeitar por
+> causa delas, pro `CLAUDE.md` § "O jogo: as regras moram no README"); o histórico
+> de execução está no git. Aqui ficou só o que NÃO foi feito.
 
 - [ ] **Energia por rodada + custo de carta.** A tensão de "descarrego agora ou
   guardo?". Encaixa no turno simultâneo sem mexer na orquestração: é custo na
@@ -14,8 +15,8 @@
   que o jogador saiu e **não voltou em X s → o oponente vence**; o timeout segue
   como backstop no `pg_cron`. Falta o dono decidir o X.
 - [ ] **Mecânica reativa (redesenhar do zero).** A "janela de reação" do plano
-  antigo pressupunha turno ALTERNADO e morreu com ele (ver `CLAUDE.md` regra 1 do
-  jogo). Se voltar, tem que ser algo escolhido às cegas — ex.: carta defensiva
+  antigo pressupunha turno ALTERNADO e morreu com ele (ver `CLAUDE.md` § "Não
+  reintroduzir"). Se voltar, tem que ser algo escolhido às cegas — ex.: carta defensiva
   resolvida na ordem do turno. **Não implementar o desenho antigo.**
 - [ ] **Troca de Pokémon entre jogadores** (módulo `trade`): oferta/aceite
   transferindo a instância de `UserPokemon`. As duplicatas na coleção já estão
@@ -32,14 +33,27 @@
 - [ ] **Curva de XP real por espécie.** Hoje todo mundo usa medium-fast (n³). O
   `growth_rate` vem de `/pokemon-species`, que já é buscado pra evolução — sai
   quase de graça.
-- [ ] **Fase D — efeitos ricos da API**: status, mudança de stat (stat stages) e
-  cooldowns. Empilha por cima do núcleo, que já está estável.
-- [ ] **Código morto da poda de loadout.** `pruneLoadout`/`refillLoadout`
-  (`pokemon/domain/evolution.ts`) e o comentário "Usado por
-  battle/pruneLoadoutForSpecies" em `pokemon/queries/getUnlockedMoveIds.ts` ficaram
-  sem consumidor quando o `DeckSlotCard` foi dropado (2026-08-03) e a escolha de
-  skills virou decisão de batalha: não há mais loadout guardado pra ficar órfão na
-  evolução. Só o barril e os testes deles chamam. Apagar.
+- [x] **Fase D — efeitos ricos da API** (feito em 2026-08-12): status
+  (queimadura/veneno/paralisia/sono/congelamento/confusão/semente), stat stages
+  (−6..+6), efeito secundário de golpe de dano, dreno/recuo, cura, recuo de
+  turno (flinch) e múltiplos acertos. O dado cru vem do `meta`/`stat_changes` do
+  `/move` e mora em `Move.effect`; a tradução em mecânica é
+  `battle/domain/moveEffect.ts` e o estado é `battle/domain/conditions.ts`
+  (persistido em `BattlePokemon.conditions`). Regras no `README.md` §"Status e
+  atributos". **Cooldown de carta NÃO entrou** — o PP já é o limitador de uso, e
+  um segundo relógio por carta só faria sentido junto com energia por rodada
+  (o item de cima).
+  - **Depende de re-sincronizar o espelho**: golpe cujo `Move.effect` ainda está
+    `null` (semeado antes desta fatia) continua inerte até o `syncPokedex`
+    passar por ele. O jeito é `npm run seed -- 1 1025` (a faixa TODA — o default
+    do seed é só a Gen 1). Não conte com o cron diário: ele gira 20 espécies por
+    passada, o que com as 1025 espelhadas dá ~51 dias pra uma volta.
+- [ ] **Efeitos que ficaram de fora** (a API dá o dado; falta a mecânica):
+  clima, barreiras (reflect/light-screen), proteção (protect), troca forçada
+  (whirlwind), OHKO e os ailments raros (`infatuation`, `trap`, `disable`…).
+  Hoje o `parseMoveEffect` devolve `null` pra eles e a carta aparece como "sem
+  efeito" na barra — honesto, mas é carta morta. Cada um é uma mecânica nova no
+  motor, não um `if` a mais.
 
 Ordem sugerida entre os três de cima: **troca** (dá uso às duplicatas e destrava
 conseguir o "pai") → **cruzamento** → **tutor** (independente das outras).

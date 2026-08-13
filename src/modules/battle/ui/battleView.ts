@@ -1,5 +1,6 @@
 import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
-import type { BattleDTO, BattleEventDTO, BattlePokemonDTO, BattleStatusDTO } from "./types";
+import type { MoveEffect } from "../domain/moveEffect";
+import type { BattleDTO, BattleEventDTO, BattlePokemonDTO, BattleStatusDTO, MonConditionsDTO } from "./types";
 
 // Mapear o BattleDTO -> o que a mesa do duelo desenha é função PURA, mora aqui e
 // tem teste (CLAUDE.md regra 4). Componente é costura. É duelo SIMULTÂNEO em
@@ -20,6 +21,169 @@ export interface DuelCardView {
   maxPp: number;
   /** sem PP enquanto ainda há outra carta com PP → não jogável */
   disabled: boolean;
+  /**
+   * O que a carta faz além de bater, em uma linha ("Paralisa · 90% acerto",
+   * "Ataque +2"). `null` quando não faz nada — e aí a tela avisa que a carta é
+   * inerte, em vez de deixar o jogador gastar o turno pra descobrir.
+   */
+  effectLabel: string | null;
+}
+
+// ── nomes em português das coisas de status ──────────────────────────────────
+// Ficam aqui (e não no componente) porque batizar o que a tela mostra é regra de
+// apresentação — a mesma razão de o resto deste arquivo existir.
+
+const AILMENT_LABEL: Record<string, string> = {
+  burn: "Queimado",
+  poison: "Envenenado",
+  paralysis: "Paralisado",
+  sleep: "Dormindo",
+  freeze: "Congelado",
+  confusion: "Confuso",
+  "leech-seed": "Semeado",
+};
+
+/** O verbo, pra descrever o que a CARTA faz (o rótulo acima é o estado). */
+const AILMENT_VERB: Record<string, string> = {
+  burn: "Queima",
+  poison: "Envenena",
+  paralysis: "Paralisa",
+  sleep: "Faz dormir",
+  freeze: "Congela",
+  confusion: "Confunde",
+  "leech-seed": "Planta semente",
+};
+
+const STAT_LABEL: Record<string, string> = {
+  attack: "Ataque",
+  defense: "Defesa",
+  specialAttack: "Atq. Esp.",
+  specialDefense: "Def. Esp.",
+  speed: "Velocidade",
+  accuracy: "Precisão",
+  evasion: "Evasão",
+};
+
+/** Por que o combatente perdeu o turno — o texto do relatório. */
+const BLOCK_LABEL: Record<string, string> = {
+  sleep: "está dormindo",
+  freeze: "está congelado",
+  paralysis: "travou de paralisia",
+  flinch: "recuou e perdeu o turno",
+  confusion: "se acertou de confuso",
+};
+
+/** De onde veio o HP que entrou/saiu fora de um golpe. */
+const TICK_LABEL: Record<string, string> = {
+  burn: "sofreu com a queimadura",
+  poison: "sofreu com o veneno",
+  "leech-seed": "foi drenado pela semente",
+  "leech-gain": "recuperou pela semente",
+  drain: "drenou HP",
+  recoil: "sofreu o recuo",
+  heal: "se curou",
+  status: "sofreu com o status",
+};
+
+export function ailmentLabel(ailment: string): string {
+  return AILMENT_LABEL[ailment] ?? ailment;
+}
+
+export function statLabel(stat: string): string {
+  return STAT_LABEL[stat] ?? stat;
+}
+
+/** "+2" / "−1" — o menos é o sinal tipográfico, não o hífen do teclado. */
+function signed(value: number): string {
+  return value > 0 ? `+${value}` : `−${Math.abs(value)}`;
+}
+
+/**
+ * A carta em UMA linha: "Paralisa", "Ataque +2", "30% de queimar · Cura 50%".
+ *
+ * Existe porque sem ela o golpe de status é ilegível — a barra de comando
+ * mostrava "STA / sem dano" e pronto, o que fazia toda carta de status parecer
+ * lixo. Descrever o efeito É o que transforma essas cartas em jogada.
+ */
+export function moveEffectLabel(effect: MoveEffect | null): string | null {
+  if (!effect) return null;
+  const partes: string[] = [];
+
+  if (effect.ailment) {
+    const verbo = AILMENT_VERB[effect.ailment] ?? effect.ailment;
+    partes.push(effect.ailmentChance >= 100 ? verbo : `${effect.ailmentChance}% de ${verbo.toLowerCase()}`);
+  }
+
+  for (const { stat, change } of effect.stageChanges) {
+    const alvo = effect.stageTarget === "self" ? "" : " do alvo";
+    const chance = effect.stageChance >= 100 ? "" : `${effect.stageChance}% · `;
+    partes.push(`${chance}${statLabel(stat)} ${signed(change)}${alvo}`);
+  }
+
+  if (effect.healPct > 0) partes.push(`Cura ${effect.healPct}% do HP`);
+  if (effect.drainPct > 0) partes.push(`Drena ${effect.drainPct}% do dano`);
+  if (effect.drainPct < 0) partes.push(`Recuo de ${Math.abs(effect.drainPct)}% do dano`);
+  if (effect.maxHits > 1) {
+    partes.push(
+      effect.minHits === effect.maxHits ? `${effect.maxHits} acertos` : `${effect.minHits} a ${effect.maxHits} acertos`
+    );
+  }
+  if (effect.critStage > 0) partes.push("Crítico fácil");
+
+  return partes.length > 0 ? partes.join(" · ") : null;
+}
+
+/** Uma etiqueta de estado alterado, como a placa de HP desenha. */
+export interface ConditionBadgeView {
+  key: string;
+  label: string;
+  tone: "bad" | "warn" | "energy";
+  /** o tooltip que explica a mecânica pra quem nunca jogou */
+  title: string;
+}
+
+const CONDITION_HINT: Record<string, string> = {
+  burn: "Queimadura: perde HP todo turno e bate metade com golpes físicos",
+  poison: "Veneno: perde HP todo turno",
+  paralysis: "Paralisia: metade da Velocidade e 25% de chance de travar",
+  sleep: "Sono: não age até acordar",
+  freeze: "Congelado: não age até descongelar (golpe de fogo derrete)",
+  confusion: "Confusão: 1 em 3 de se acertar em vez de golpear",
+  "leech-seed": "Semente: perde HP todo turno e o oponente recupera",
+};
+
+/**
+ * As etiquetas de estado de um combatente. Pura e testada: decidir o que a
+ * placa mostra é apresentação, e é ela que faz o jogador ENTENDER por que
+ * tomou 8 de dano sem ninguém atacar.
+ */
+export function conditionBadges(conditions: MonConditionsDTO): ConditionBadgeView[] {
+  const badges: ConditionBadgeView[] = [];
+
+  if (conditions.status) {
+    badges.push({
+      key: conditions.status,
+      label: ailmentLabel(conditions.status),
+      tone: conditions.status === "sleep" || conditions.status === "freeze" ? "warn" : "bad",
+      title: CONDITION_HINT[conditions.status] ?? "",
+    });
+  }
+  if (conditions.confused) {
+    badges.push({ key: "confusion", label: "Confuso", tone: "warn", title: CONDITION_HINT.confusion });
+  }
+  if (conditions.seeded) {
+    badges.push({ key: "leech-seed", label: "Semeado", tone: "bad", title: CONDITION_HINT["leech-seed"] });
+  }
+  for (const { stat, stage } of conditions.stages) {
+    badges.push({
+      key: `stage-${stat}`,
+      label: `${statLabel(stat)} ${signed(stage)}`,
+      tone: stage > 0 ? "energy" : "bad",
+      title: stage > 0 ? `${statLabel(stat)} aumentado em ${stage} estágio(s)` : `${statLabel(stat)} reduzido em ${Math.abs(stage)} estágio(s)`,
+    });
+  }
+
+  return badges;
 }
 
 export interface DuelMonView {
@@ -31,6 +195,8 @@ export interface DuelMonView {
   maxHp: number;
   hpPct: number; // 0..100
   fainted: boolean;
+  /** status, confusão, semente e estágios — as etiquetas da placa de HP. */
+  badges: ConditionBadgeView[];
 }
 
 /** Um pokémon do time, como a barra de party desenha. */
@@ -55,7 +221,21 @@ export interface PartyMemberView {
   maxHp: number;
 }
 
-export type DuelLogKind = "round" | "switch" | "attack" | "hesitate";
+export type DuelLogKind =
+  | "round"
+  | "switch"
+  | "attack"
+  | "hesitate"
+  /** pegou um status (ou ele não pegou) */
+  | "ailment"
+  /** estágio de atributo mudou */
+  | "stage"
+  /** perdeu o turno por causa de uma condição */
+  | "blocked"
+  /** o status passou: acordou, descongelou */
+  | "recovered"
+  /** HP que entrou ou saiu fora de um golpe (queimadura, semente, cura, dreno) */
+  | "tick";
 
 /**
  * Uma linha do relatório de combate, já ESTRUTURADA — o componente não lê texto
@@ -79,6 +259,13 @@ export interface DuelLogLine {
   missed: boolean;
   /** o alvo caiu NESTE golpe */
   fainted: boolean;
+  /**
+   * Se a linha é boa ou ruim PRA QUEM ELA FALA. As linhas de efeito não têm
+   * dano nem efetividade pra deduzir cor (um "Ataque +2" e um "Ataque −2" são o
+   * mesmo evento com sinais opostos), então quem monta a linha já diz o humor —
+   * e o marcador só lê. Ausente nas linhas antigas, que decidem pelo dano.
+   */
+  mood?: "good" | "bad" | "neutral";
 }
 
 /** O marcador (glifo + cor) que abre a linha do relatório. Puro, tem teste. */
@@ -87,10 +274,26 @@ export interface DuelLogMark {
   tone: "flare" | "bad" | "dim" | "energy" | "gold";
 }
 
+/** O glifo de cada tipo de linha de efeito; o tom vem do `mood`. */
+const EFFECT_GLYPH: Partial<Record<DuelLogKind, string>> = {
+  ailment: "☣",
+  stage: "⇅",
+  blocked: "✋",
+  recovered: "✚",
+  tick: "•",
+};
+
 export function duelLogMark(line: DuelLogLine): DuelLogMark {
   if (line.kind === "round") return { glyph: "◆", tone: "dim" };
   if (line.kind === "switch") return { glyph: "⇄", tone: "energy" };
   if (line.kind === "hesitate") return { glyph: "…", tone: "dim" };
+
+  const glyph = EFFECT_GLYPH[line.kind];
+  if (glyph) {
+    const tone = line.mood === "good" ? "energy" : line.mood === "bad" ? "bad" : "dim";
+    return { glyph: line.kind === "stage" && line.mood === "good" ? "▲" : line.kind === "stage" ? "▽" : glyph, tone };
+  }
+
   if (line.missed) return { glyph: "✕", tone: "dim" };
   if (line.fainted) return { glyph: "☠", tone: "bad" };
   if (line.isCrit) return { glyph: "✦", tone: "gold" };
@@ -263,6 +466,7 @@ function toMonView(m: BattlePokemonDTO): DuelMonView {
     maxHp: m.maxHp,
     hpPct: hpPctOf(m),
     fainted: m.fainted,
+    badges: conditionBadges(m.conditions),
   };
 }
 
@@ -279,6 +483,57 @@ function eventLine(ev: BattleEventDTO, myUserId: string, key: string): DuelLogLi
   if (ev.type === "roundStart") {
     return { ...base, kind: "round", actor: null, text: `Rodada ${ev.round}` };
   }
+
+  // ── as linhas de EFEITO são chaveadas por quem SOFREU, não por quem agiu ──
+  if (ev.type === "ailment") {
+    const alvo = sideOf(ev.targetUserId, myUserId);
+    if (ev.blocked) {
+      const porque = ev.blocked === "immune" ? "não foi afetado" : "já está com um status";
+      return { ...base, kind: "ailment", actor: alvo, text: porque, mood: "neutral" };
+    }
+    return { ...base, kind: "ailment", actor: alvo, text: "ficou", subject: ailmentLabel(ev.ailment), mood: "bad" };
+  }
+  if (ev.type === "stage") {
+    const alvo = sideOf(ev.targetUserId, myUserId);
+    if (ev.delta === 0) {
+      return { ...base, kind: "stage", actor: alvo, text: `não muda mais o ${statLabel(ev.stat)}`, mood: "neutral" };
+    }
+    return {
+      ...base,
+      kind: "stage",
+      actor: alvo,
+      text: ev.delta > 0 ? "aumentou" : "reduziu",
+      subject: `${statLabel(ev.stat)} ${signed(ev.stage)}`,
+      mood: ev.delta > 0 ? "good" : "bad",
+    };
+  }
+  if (ev.type === "blocked") {
+    return {
+      ...base,
+      kind: "blocked",
+      actor: sideOf(ev.targetUserId, myUserId),
+      text: BLOCK_LABEL[ev.reason] ?? "perdeu o turno",
+      damage: ev.selfDamage && ev.selfDamage > 0 ? ev.selfDamage : null,
+      mood: "bad",
+    };
+  }
+  if (ev.type === "recovered") {
+    const verbo = ev.ailment === "sleep" ? "acordou" : ev.ailment === "freeze" ? "descongelou" : "se recuperou";
+    return { ...base, kind: "recovered", actor: sideOf(ev.targetUserId, myUserId), text: verbo, mood: "good" };
+  }
+  if (ev.type === "tick") {
+    const ganhou = ev.hp > 0;
+    return {
+      ...base,
+      kind: "tick",
+      actor: sideOf(ev.targetUserId, myUserId),
+      text: TICK_LABEL[ev.source] ?? (ganhou ? "recuperou HP" : "perdeu HP"),
+      subject: ganhou ? `+${ev.hp} HP` : null,
+      damage: ganhou ? null : Math.abs(ev.hp),
+      mood: ganhou ? "good" : "bad",
+    };
+  }
+
   const actor = sideOf(ev.userId, myUserId);
   if (ev.type === "switch") {
     return { ...base, kind: "switch", actor, text: "enviou", subject: prettyName(ev.toName) };
@@ -291,7 +546,7 @@ function eventLine(ev: BattleEventDTO, myUserId: string, key: string): DuelLogLi
     kind: "attack",
     actor,
     text: ev.missed ? "errou" : "usou",
-    subject: prettyName(ev.cardName),
+    subject: prettyName(ev.cardName) + (ev.hits && ev.hits > 1 ? ` (${ev.hits}×)` : ""),
     damage: ev.missed || ev.damage <= 0 ? null : ev.damage,
     effectiveness: ev.effectiveness,
     isCrit: ev.isCrit,
@@ -410,6 +665,7 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
     currentPp: mv.currentPp,
     maxPp: mv.maxPp,
     disabled: mv.currentPp <= 0 && someUsable,
+    effectLabel: moveEffectLabel(mv.effect),
   }));
 
   // turnLogs vêm desc por turnNumber; achata em ordem cronológica pro log.

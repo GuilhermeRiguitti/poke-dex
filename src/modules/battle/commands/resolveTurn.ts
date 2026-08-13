@@ -30,16 +30,21 @@ import type { Prisma } from "@prisma/client";
 // A conta do tempo (duração da janela, janelas vencidas, faltas) mora em
 // domain/turnClock.ts — a mesma que o countdown da tela lê, pra não existirem
 // dois "quanto tempo eu tenho".
-/** O que muda num pokémon quando o turno resolve (HP, faint e o PP na coluna moves). */
+/**
+ * O que muda num pokémon quando o turno resolve: HP, desmaio, o PP na coluna
+ * `moves` e o estado alterado (status, stat stages, confusão) na `conditions`.
+ */
 function writeMonState(mon: {
   currentHp: number;
   fainted: boolean;
   moves: unknown;
+  conditions?: unknown;
 }): Prisma.BattlePokemonUpdateManyMutationInput {
   return {
     currentHp: mon.currentHp,
     fainted: mon.fainted,
     moves: mon.moves as Prisma.InputJsonValue,
+    conditions: (mon.conditions ?? {}) as Prisma.InputJsonValue,
   };
 }
 
@@ -147,7 +152,8 @@ async function persistSide(
     const same =
       b.currentHp === m.currentHp &&
       b.fainted === m.fainted &&
-      JSON.stringify(b.moves) === JSON.stringify(m.moves);
+      JSON.stringify(b.moves) === JSON.stringify(m.moves) &&
+      JSON.stringify(b.conditions) === JSON.stringify(m.conditions);
     if (same) continue;
     await tx.battlePokemon.updateMany({
       where: { participantId: participant.id, slot: m.slot },

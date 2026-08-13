@@ -12,15 +12,26 @@ time e batalha contra outro jogador em turnos.
   página) e **filtrável** por raridade, tipo e nome — busca, filtro, ordenação e
   paginação são resolvidos no banco, nunca em JS no cliente.
 - **Deck.** Você monta um time de até 6 Pokémon, e para cada um escolhe até 6
-  golpes dele. O primeiro do time começa em campo; os outros ficam na reserva.
+  golpes dele. Seis é **teto, não obrigação**: um Pokémon novo tem menos que isso
+  liberado, e vai ganhando carta conforme sobe de nível. O primeiro do time começa
+  em campo; os outros ficam na reserva.
 - **Turno simultâneo.** Os dois jogadores escolhem a jogada do round **ao mesmo
-  tempo, sem ver a escolha do outro**. Quando as duas estão na mesa, o turno é
-  resolvido: quem tem mais Velocidade ataca primeiro (alguns golpes têm prioridade
-  e furam a fila). A graça está em **ler o oponente e apostar**, não em reagir
-  depois de ver a jogada dele.
+  tempo, sem ver a escolha do outro**. Não existe "de quem é a vez": quando as duas
+  jogadas estão na mesa, o turno é resolvido inteiro. A ordem dentro do turno é
+  **prioridade do golpe** (alguns furam a fila) → **Velocidade** → e, se empatar
+  tudo, **sorteio**. Quem é nocauteado antes de agir **perde o turno** — é isso que
+  dá peso a montar um time em cima de Velocidade ou de prioridade. A graça está em
+  **ler o oponente e apostar**, não em reagir depois de ver a jogada dele.
+- **Golpes de status.** Nem todo golpe causa dano. Muitos **queimam, envenenam,
+  paralisam, fazem dormir, confundem** ou **mexem nos atributos** (o seu, pra
+  cima; o do oponente, pra baixo). Eles custam o turno inteiro e não tiram HP
+  nenhum na hora — a aposta é que o efeito vai pagar nas rodadas seguintes. Ver
+  “Status e atributos” abaixo.
 - **Troca.** A jogada do round pode ser um golpe **ou** trocar o Pokémon em campo
   por um da reserva — e trocar gasta o turno, então também é uma aposta. Quando o
   seu Pokémon desmaia, a batalha pausa até você escolher quem entra no lugar.
+  Trocar **limpa os atributos alterados e a confusão**, mas **não limpa**
+  queimadura, veneno, paralisia, sono nem congelamento: desses não se foge.
 - **Fim.** A batalha acaba quando **todo o time** de um lado desmaia.
 
 Todos os atributos e golpes vêm da [PokéAPI](https://pokeapi.co/) — nada é
@@ -34,8 +45,11 @@ saem todos de lá. O que buscamos, e de qual endpoint:
 
 - **A espécie** (`/pokemon/{id}`): os **atributos base** (HP, ataque, defesa,
   etc.), os **tipos**, a arte/sprite e a lista de golpes que ela aprende.
-- **Cada golpe** (`/move/{id}`): poder, precisão, PP, prioridade e a classe
-  (físico, especial ou status).
+- **Cada golpe** (`/move/{id}`): poder, precisão, PP, prioridade, a classe
+  (físico, especial ou status) e **o que ele faz além de bater** — qual status
+  causa e com que chance, quais atributos mexe e em quem, quanto cura, quanto
+  drena, quantas vezes bate. Tudo isso já vem descrito na API (`meta` e
+  `stat_changes`); a gente copia como está e traduz em mecânica na batalha.
 - **A efetividade de tipo** (`/type/{id}`): quem é super eficaz, pouco eficaz ou
   não tem efeito contra quem. É isso que decide o multiplicador de dano na
   batalha — não uma tabela nossa.
@@ -48,6 +62,70 @@ dados para o nosso próprio banco** (o comando `npm run seed`) e trabalhamos em
 cima dessa cópia — isso também deixa filtrar e ordenar Pokémon por atributo, coisa
 que a API crua não faz. Começamos pela 1ª geração (151 Pokémon) para não puxar os
 mais de mil de uma vez, e uma rotina diária mantém a cópia atualizada.
+
+### Os números saem da fórmula da série
+
+Nada é inventado por nós: o atributo de um Pokémon é função do **atributo base**
+(que veio da PokéAPI) e do **nível**, pela fórmula da série.
+
+```
+HP      = floor(2 * base_de_HP * nível / 100) + nível + 10
+Demais  = floor(2 * base       * nível / 100) + 5
+```
+
+O nível pesa de três formas, todas fiéis à série: **escala os atributos**, entra na
+**fórmula de dano** e **libera golpes**. O que ele **não** faz é deixar um golpe
+mais forte por si — o thunderbolt de um Pikachu nível 50 tem o mesmo poder base do
+de um nível 5; o que muda é quem está usando.
+
+A experiência ganha ao derrotar um Pokémon também é a da série (geração 5+), com
+curva *medium-fast* — o total acumulado para chegar ao nível n é n³.
+
+```
+xp ganho = floor(experiência_base_do_derrotado * nível_do_derrotado / 7)
+```
+
+Uma diferença consciente em relação à série: aqui **quem perde a batalha também
+ganha experiência** (25% do valor). Na série, quem é nocauteado não leva nada — no
+nosso jogo isso prenderia quem perde num ciclo sem nunca destravar golpe novo.
+
+### Status e atributos (os golpes que não causam dano)
+
+Boa parte do learnset de qualquer Pokémon **não é golpe de dano** — é efeito. Sem
+esses efeitos a batalha vira uma conta só: os dois batem até o mais forte sobrar,
+e o resultado já estava decidido no primeiro round. É o efeito que faz o **mesmo
+par de Pokémon** render partidas diferentes.
+
+**Os estados alterados.** Um Pokémon carrega **um** deles por vez, e nenhum passa
+por trocar de Pokémon:
+
+| Estado | O que faz |
+|---|---|
+| **Queimadura** | perde 1/16 do HP por turno e bate **metade** com golpes físicos |
+| **Veneno** | perde 1/8 do HP por turno |
+| **Paralisia** | **metade** da Velocidade e 25% de chance de perder o turno |
+| **Sono** | não age por 1 a 3 turnos |
+| **Congelamento** | não age; 20% de descongelar por turno, e **golpe de fogo derrete na hora** |
+
+O **tipo protege**, como na série: fogo não queima, elétrico não paralisa,
+veneno e aço não se envenenam, gelo não congela, grama não pega semente.
+
+Além desses existem os **passageiros**, que a troca limpa: **confusão** (1 em 3
+de se acertar em vez de golpear), **semente** (perde HP todo turno e o oponente
+recupera o mesmo tanto) e o **recuo**, que tira o turno de quem ainda não agiu —
+e só funciona se você for **mais rápido**, o que dá mais um uso à Velocidade.
+
+**Os atributos.** Ataque, Defesa, Ataque Especial, Defesa Especial, Velocidade,
+Precisão e Evasão sobem e descem em **estágios**, de −6 a +6, pela tabela da
+série: +2 dobra, −2 corta pela metade, e o teto é ×4. Subir o próprio Ataque
+custa um turno inteiro sem atacar — a aposta é que os próximos golpes cobrem o
+prejuízo. Baixar a Velocidade do oponente muda **quem bate primeiro**, o que no
+turno simultâneo é a decisão do round.
+
+Os golpes de dano também entram nessa: muitos têm **efeito secundário** (10% de
+queimar, 30% de paralisar), **drenam** parte do dano como cura, cobram **recuo**,
+batem **várias vezes** ou **criticam mais fácil**. Nada disso é inventado aqui —
+todos os números vêm da PokéAPI, golpe a golpe.
 
 ### Golpes liberados por nível (learnset)
 
@@ -82,8 +160,11 @@ mínimo). Evolução por pedra, troca, amizade ou horário fica de fora, porque 
 Para cada espécie a gente guarda a evolução por nível como uma seta simples: **em
 qual Pokémon ela vira** e **em que nível**. Quando o seu Pokémon ganha experiência
 e chega nesse nível, ele **evolui de verdade** — vira a espécie nova, e passa a
-usar os atributos e o learnset dela. As cartas que a espécie nova não aprende saem
-do deck; as que ela também conhece continuam.
+usar os atributos e o learnset dela.
+
+Não sobra nada a acertar no deck: as skills são escolhidas na hora de entrar em
+campo, a partir do que a espécie **atual** já liberou. E a batalha em andamento
+não muda — quem evolui no meio dela só entra evoluído na partida seguinte.
 
 ## Como a batalha avança por dentro
 
@@ -135,7 +216,7 @@ npx supabase start
 #    RLS/realtime, que referenciam essas tabelas (a mesma ordem do CI).
 npx prisma migrate deploy   # tabelas do app
 npx supabase db push        # RLS, extensões e os triggers do Realtime
-npm run seed
+npm run seed                # `npm run seed -- 1 1025` puxa todas as gerações
 
 # 4. sobe o app
 npm run dev

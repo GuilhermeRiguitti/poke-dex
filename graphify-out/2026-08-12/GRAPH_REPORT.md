@@ -1,16 +1,16 @@
-# Graph Report - poke-dex-next  (2026-08-12)
+# Graph Report - poke-dex-next  (2026-08-07)
 
 ## Corpus Check
-- 269 files · ~135,424 words
+- 263 files · ~122,815 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1170 nodes · 2546 edges · 89 communities (71 shown, 18 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.73)
+- 1069 nodes · 2236 edges · 79 communities (59 shown, 20 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 12 edges (avg confidence: 0.7)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2209429a`
+- Built from commit: `7c1dc024`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -88,76 +88,66 @@
 - PartyMemberView
 - TurnClock.tsx
 - { signIn, signUp, signOut }
-- buildDuelSnapshot.ts
-- duelEngineEffects.test.ts
 - @react-three/fiber
-- submitAction.ts
-- prisma.ts
 - react-hot-toast
-- auth.ts
-- toBattleDTO
-- damage.ts
-- token/route.ts
 - listPokedexPage.ts
-- app/layout.tsx
-- deckBoardView.test.ts
 
 ## God Nodes (most connected - your core abstractions)
 1. `rarityTier` - 35 edges
 2. `BaseStats` - 25 edges
 3. `auth` - 23 edges
 4. `typeColor()` - 19 edges
-5. `conditionsOf()` - 18 edges
-6. `BattleMoveDef` - 18 edges
-7. `BattlePokemonState` - 17 edges
-8. `syncPokedex()` - 17 edges
-9. `compilerOptions` - 17 edges
-10. `resolveIfDue()` - 15 edges
+5. `syncPokedex()` - 17 edges
+6. `compilerOptions` - 17 edges
+7. `BattleMoveDef` - 16 edges
+8. `resolveIfDue()` - 15 edges
+9. `DeckEditorProvider()` - 15 edges
+10. `BattlePokemonState` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `LoginForm()` --indirect_call--> `m()`  [INFERRED]
+  src/modules/auth/LoginForm.tsx → tests/modules/deck/domain/defaultLoadout.test.ts
 - `persistSide()` --indirect_call--> `m()`  [INFERRED]
   src/modules/battle/commands/resolveTurn.ts → tests/modules/deck/domain/defaultLoadout.test.ts
-- `applyEndOfTurn()` --indirect_call--> `side()`  [INFERRED]
-  src/modules/battle/domain/duelEngine.ts → tests/modules/battle/domain/duelEngineEffects.test.ts
-- `applyForcedSwitch()` --indirect_call--> `side()`  [INFERRED]
-  src/modules/battle/domain/duelEngine.ts → tests/modules/battle/domain/duelEngineEffects.test.ts
-- `StageFallbackSprites()` --indirect_call--> `side()`  [INFERRED]
-  src/modules/battle/ui/DuelArena.tsx → tests/modules/battle/domain/duelEngineEffects.test.ts
 - `selectDuelView()` --indirect_call--> `m()`  [INFERRED]
   src/modules/battle/ui/battleView.ts → tests/modules/deck/domain/defaultLoadout.test.ts
+- `main()` --calls--> `syncPokedex()`  [EXTRACTED]
+  prisma/seed.ts → src/modules/pokemon/commands/syncPokedex.ts
+- `rascunho()` --calls--> `draftFrom()`  [EXTRACTED]
+  tests/modules/deck/ui/deckBoardView.test.ts → src/modules/deck/domain/deckDraft.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (89 total, 18 thin omitted)
+## Communities (79 total, 20 thin omitted)
 
 ### Community 0 - "konva"
-Cohesion: 0.10
-Nodes (27): POST(), GET(), PacksPage(), StreakPage(), checkInLogin(), MirrorSpecies, openPack(), OpenPackResult (+19 more)
+Cohesion: 0.12
+Nodes (23): POST(), MirrorSpecies, openPack(), OpenPackResult, canOpenFree(), nextFreePackAt(), drawPack(), weightForBst() (+15 more)
 
 ### Community 1 - "resolveTurn.ts"
-Cohesion: 0.17
-Nodes (20): accuracyFactor(), accuracyStageMultiplier(), AILMENT_TYPE_IMMUNITY, AilmentBlock, AppliedAilment, BlockReason, clampStage(), clearVolatiles() (+12 more)
+Cohesion: 0.21
+Nodes (13): DeckBoardStatus, DeckSlotView, DeckBoardSlotDTO, DeckCardDTO, CollectionCardRow, CollectionCardDTO, PokedexGrid(), CollectionCardView (+5 more)
 
 ### Community 2 - "packs/index.ts"
-Cohesion: 0.07
-Nodes (50): artworkOf(), CardDemo(), CHARIZARD, CHARMELEON, DesignSystemPage(), MEWTWO, PIKACHU, RARITY_ROW (+42 more)
+Cohesion: 0.16
+Nodes (20): DesignSystemPage(), RarityRow(), PokeCard(), PokeCardDetails, PokeCardProps, SPARKLES, CARD_WIDTH, cardMetal (+12 more)
 
 ### Community 3 - "deck/index.ts"
-Cohesion: 0.17
-Nodes (18): main(), parseRange(), extractIdFromUrl(), fetchEvolutionChain(), fetchSpeciesEvolutionChainId(), RefreshPokedexOptions, RefreshPokedexSummary, mapLimit() (+10 more)
+Cohesion: 0.18
+Nodes (18): CACHE_FOREVER, extractIdFromUrl(), fetchEvolutionChain(), fetchMove(), fetchSpeciesEvolutionChainId(), MoveLearnDetail, NormalizedEvolutionNode, NormalizedMove (+10 more)
 
 ### Community 4 - "progression/index.ts"
-Cohesion: 0.13
-Nodes (20): targetsFoe(), AILMENTS, hasEffect(), isSelfDirected(), num(), optionalNum(), parseMoveEffect(), RawEffect (+12 more)
+Cohesion: 0.12
+Nodes (11): artworkOf(), CardDemo(), CHARIZARD, CHARMELEON, MEWTWO, PIKACHU, RARITY_ROW, rarityOf() (+3 more)
 
 ### Community 5 - "design-system/page.tsx"
-Cohesion: 0.11
-Nodes (16): CardsIcon(), CloseIcon(), GridIcon(), MenuIcon(), PackIcon(), PokeballIcon(), SwordsIcon(), LINKS (+8 more)
+Cohesion: 0.05
+Nodes (41): { POST, GET }, GET(), GET(), GET(), PUT(), POST(), GET(), GET() (+33 more)
 
 ### Community 6 - "battleView.ts"
-Cohesion: 0.14
-Nodes (20): AppliedStage, NonVolatileAilment, STAGE_STATS, MoveEffect, StageStat, BattleRow, toConditionsDTO(), toMoveDTO() (+12 more)
+Cohesion: 0.18
+Nodes (11): BattleRow, toMoveDTO(), toParticipantDTO(), toPokemonDTO(), BattleDTO, BattleEventDTO, BattleMoveDTO, BattlePokemonDTO (+3 more)
 
 ### Community 7 - "compilerOptions"
 Cohesion: 0.07
@@ -168,24 +158,24 @@ Cohesion: 0.07
 Nodes (26): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+18 more)
 
 ### Community 9 - "DuelStage3D.tsx"
-Cohesion: 0.13
-Nodes (13): duelCalloutFor(), DuelTurnFx, prettyName(), StageFallbackSprites(), AnimState, Callout(), CAM_POS, LOOK_AT (+5 more)
+Cohesion: 0.14
+Nodes (12): duelCalloutFor(), DuelTurnFx, StageFallbackSprites(), AnimState, Callout(), CAM_POS, LOOK_AT, ME_POS (+4 more)
 
 ### Community 10 - "collectionFilters.ts"
-Cohesion: 0.33
-Nodes (14): applyXp(), calcHp(), calcStat(), clampLevel(), DerivedStats, deriveStats(), levelFromXp(), Progress (+6 more)
+Cohesion: 0.26
+Nodes (17): grantXp(), maybeEvolve(), evolutionTargetFor(), applyXp(), calcHp(), calcStat(), clampLevel(), DerivedStats (+9 more)
 
 ### Community 11 - "5. Serverless (Vercel Hobby) não é detalhe, é restrição de projeto"
-Cohesion: 0.07
-Nodes (28): 1. Page é servidor. Sempre., 2. Nunca escreva durante o render de uma page, 3.1 Guarda no banco o que o banco precisa CONSULTAR. Deriva o resto., 3. Toda saída pro cliente passa por um DTO, 4. Lógica de apresentação sai do componente, 5. Serverless (Vercel Hobby) não é detalhe, é restrição de projeto, 6. Concorrência: assuma duas lambdas ao mesmo tempo, Arquitetura (+20 more)
+Cohesion: 0.06
+Nodes (30): 1. O turno é SIMULTÂNEO, e a ordem é priority → Speed → sorteio, 1. Page é servidor. Sempre., 2. Nunca escreva durante o render de uma page, 2. O nível LIBERA skill — e só `level-up` conta, 3.1 Guarda no banco o que o banco precisa CONSULTAR. Deriva o resto., 3. Stat vem da API + nível. Nada é inventado por nós, 3. Toda saída pro cliente passa por um DTO, 4. Evolução é por nível, em cadeia, e retroativa (+22 more)
 
 ### Community 12 - "deckBoardView.ts"
-Cohesion: 0.19
-Nodes (22): toastWarn(), clearSlot(), countFilled(), DeckDraft, DraftCard, draftFrom(), draftToSlots(), emptyDraft() (+14 more)
+Cohesion: 0.08
+Nodes (35): anton, cinzel, metadata, rajdhani, AppToaster(), toastWarn(), clearSlot(), countFilled() (+27 more)
 
 ### Community 13 - "learnset.ts"
 Cohesion: 0.23
-Nodes (10): isUnlockedAt(), LearnDetail, mergePlayableMoveIds(), METHOD_RANK, methodRank(), pickLearnEntry(), VERSION_GROUP_PREFERENCE, getUnlockedMoveIds() (+2 more)
+Nodes (10): isUnlockedAt(), LearnDetail, mergePlayableMoveIds(), METHOD_RANK, methodRank(), pickLearnEntry(), pickVersionGroup(), VERSION_GROUP_PREFERENCE (+2 more)
 
 ### Community 14 - "2. O que é usado pra calcular a raridade: **BST**"
 Cohesion: 0.10
@@ -196,28 +186,28 @@ Cohesion: 0.11
 Nodes (19): eslint, eslint-config-next, devDependencies, eslint, eslint-config-next, prisma, tsx, @types/node (+11 more)
 
 ### Community 16 - "toBattleDTO.ts"
-Cohesion: 0.14
-Nodes (14): PokemonDetailPage(), HpBar(), fetchPokemon(), NormalizedPokemon, getPokemonDetail(), toPokemonCardDTO(), toPokemonDetailDTO(), DetailPanel() (+6 more)
+Cohesion: 0.24
+Nodes (7): PokemonDetailPage(), HpBar(), DetailPanel(), detailView, STAT_LABELS, StatBarView, PokemonMoves()
 
 ### Community 17 - "dependencies"
 Cohesion: 0.12
 Nodes (17): better-auth, jose, dependencies, better-auth, jose, react, react-dom, @react-three/drei (+9 more)
 
 ### Community 18 - "syncPokedex.ts"
-Cohesion: 0.16
-Nodes (8): DuelCalloutView, turnClockView, DuelStage3D, StageBoundary, TONE, TONE, TurnClock(), useTurnClock()
+Cohesion: 0.19
+Nodes (8): DuelMonView, DuelView, turnClockView, DuelStage3D, StageBoundary, TONE, TurnClock(), useTurnClock()
 
 ### Community 19 - "typeColor"
 Cohesion: 0.39
 Nodes (5): clamp01(), computeHoloTilt(), HOLO_REST, HoloTilt, HoloCard()
 
 ### Community 20 - "listPokedexPage.ts"
-Cohesion: 0.25
-Nodes (18): actionGate, ailmentBlockedBy(), applyAilment(), applyStageChanges(), conditionsOf(), fractionOf(), leechDamage(), residualDamage() (+10 more)
+Cohesion: 0.31
+Nodes (9): CatalogPage(), fetchPokemon(), fetchPokemonIndex(), clampPage(), pageRange(), TOTAL_PAGES, listPokedexPage(), PokedexPageDTO (+1 more)
 
 ### Community 21 - "training/index.ts"
-Cohesion: 0.05
-Nodes (54): DELETE(), CatalogPage(), CollectionPageProps, HomePage(), TypeBadge(), fetchPokemonIndex(), TYPE_COLORS, typeColor() (+46 more)
+Cohesion: 0.11
+Nodes (27): CollectionFilters, collectionHref(), CollectionSort, DEFAULTS, first(), hasActiveFilter(), parseCollectionFilters(), parsePage() (+19 more)
 
 ### Community 22 - "TODO.md"
 Cohesion: 0.17
@@ -232,12 +222,12 @@ Cohesion: 0.22
 Nodes (8): 1. Desligar o auto-deploy Git da Vercel — FAÇA ISSO PRIMEIRO, 2. Secrets no GitHub, 3. Reconciliação de ledger — **nada a fazer** ✅, As duas contabilidades de migration, Deploy & Migrations, Gap conhecido: os jobs do pg_cron não são versionados, Rodar migrations localmente (dev), ⚠️ Setup obrigatório antes do PRIMEIRO push (só você faz)
 
 ### Community 25 - "Estrutura de arquivos"
-Cohesion: 0.18
-Nodes (11): deckBoardView, CartaArrastada, useDeckEditor(), DeckPanel(), DeckSlotCard(), Linha(), DeckBoardSlotDTO, DeckCardDTO (+3 more)
+Cohesion: 0.23
+Nodes (10): CollectionPageProps, HomePage(), deckBoardView, useDeckEditor(), DeckPanel(), CollectionCardActions(), CollectionCardDrag(), CollectionDropZone() (+2 more)
 
 ### Community 26 - "PokeDex"
-Cohesion: 0.18
-Nodes (10): Como a batalha avança por dentro, Evolução (usamos a modelagem da própria PokéAPI), Golpes liberados por nível (learnset), O jogo, Os números saem da fórmula da série, PokeDex, Rodando localmente, Stack (+2 more)
+Cohesion: 0.22
+Nodes (8): Como a batalha avança por dentro, Evolução (usamos a modelagem da própria PokéAPI), Golpes liberados por nível (learnset), O jogo, PokeDex, Rodando localmente, Stack, Tudo vem da PokéAPI
 
 ### Community 27 - "scripts"
 Cohesion: 0.25
@@ -252,16 +242,16 @@ Cohesion: 0.11
 Nodes (18): 1. Onde o pokémon mora hoje, 2. O que fica em cada módulo, 3. Estrutura alvo, 4. Plano de migração — etapas, 5. O que NÃO se move (e por quê), 6. Riscos, 7. Verificação, Etapa 0 — commitar o que está pendente (+10 more)
 
 ### Community 30 - "pokemon/index.ts"
-Cohesion: 0.22
-Nodes (12): GET(), GET(), resolveDueBattles(), ResolveDueSummary, loadBattleForResolve(), orderedSides(), resolveIfDue(), tryResolveTurn() (+4 more)
+Cohesion: 0.35
+Nodes (6): NormalizedPokemon, getPokemonDetail(), toPokemonDetailDTO(), PokemonCardDTO, PokemonDetailDTO, PokemonStatDTO
 
 ### Community 31 - "graphify reference: query, path, explain"
 Cohesion: 0.33
 Nodes (5): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal
 
 ### Community 32 - "resolveTurn.test.ts"
-Cohesion: 0.25
-Nodes (7): expiredTurnWindows(), nextMisses(), remainingTurnMs(), battleReadyToResolve(), pokemonRow(), prismaMock, tx
+Cohesion: 0.40
+Nodes (4): battleReadyToResolve(), pokemonRow(), prismaMock, tx
 
 ### Community 33 - "REALTIME.md"
 Cohesion: 0.40
@@ -272,8 +262,8 @@ Cohesion: 0.50
 Nodes (4): __dirname, fetchBst(), main(), OUT
 
 ### Community 35 - "(game)/page.tsx"
-Cohesion: 0.52
-Nodes (4): POST(), POST(), authorizeCron(), refreshPokedex()
+Cohesion: 0.29
+Nodes (7): POST(), POST(), authorizeCron(), refreshPokedex(), RefreshPokedexOptions, RefreshPokedexSummary, SyncPokedexSummary
 
 ### Community 36 - "resolveDueBattles.test.ts"
 Cohesion: 0.40
@@ -284,8 +274,8 @@ Cohesion: 0.40
 Nodes (4): BATTLE, loadBattleForResolve, prismaMock, resolveIfDue
 
 ### Community 38 - "StageBoundary"
-Cohesion: 0.12
-Nodes (31): loadXpContext(), xpAwardsOf(), buildTypeChart(), ActionRow, BattleForResolve, commit(), fullBattleInclude, loadoutIdsOf() (+23 more)
+Cohesion: 0.07
+Nodes (52): POST(), GET(), BattlePage(), CombatantRow, loadXpContext(), xpAwardsOf(), XpContext, buildTypeChart() (+44 more)
 
 ### Community 39 - "openPack.test.ts"
 Cohesion: 0.50
@@ -312,116 +302,68 @@ Cohesion: 0.50
 Nodes (3): name, private, version
 
 ### Community 45 - "BattleRoom.tsx"
-Cohesion: 0.29
-Nodes (7): BattleErrorToast(), BattleRoom(), BattleDTO, CHANNEL_EVENTS, useBattleRoom(), getSupabaseClient(), useRealtimeChannel()
+Cohesion: 0.31
+Nodes (6): BattleErrorToast(), BattleRoom(), CHANNEL_EVENTS, useBattleRoom(), getSupabaseClient(), useRealtimeChannel()
 
 ### Community 47 - "battleView.test.ts"
 Cohesion: 0.24
 Nodes (6): DuelLogLine, duelLogMark, CombatLog(), TONE_CLASS, battle(), mon()
 
 ### Community 53 - "LoadoutBuilder.tsx"
-Cohesion: 0.13
-Nodes (24): CommitParams, RoundParams, effectiveSpeed(), MonConditions, DamageRollParams, AttackContext, DuelResult, ForcedSwitchParams (+16 more)
+Cohesion: 0.08
+Nodes (53): RoundParams, calculateDamage(), DamageResult, DamageRollParams, rollAccuracy(), rollCrit(), applyForcedSwitch(), applyLeadLoadout() (+45 more)
 
 ### Community 56 - "applyTM.ts"
-Cohesion: 0.23
-Nodes (9): POST(), CombatantRow, XpContext, applyTM(), ApplyTmInput, ApplyTmResult, XpAward, checkTmTeachable() (+1 more)
+Cohesion: 0.31
+Nodes (6): POST(), applyTM(), ApplyTmInput, ApplyTmResult, checkTmTeachable(), TmTeachCheck
 
 ### Community 57 - "tailwindcss"
-Cohesion: 0.20
-Nodes (13): PUT(), saveDeck(), SaveDeckResult, getDeckBoardQuery(), getDeckSummary(), deckOfUser(), getOrCreateDeck(), DECK_BOARD_SLOT_SELECT (+5 more)
+Cohesion: 0.07
+Nodes (38): DELETE(), POST(), fetchType(), NormalizedType, CacheKey, fetchAndCache(), fetchAndCacheType(), globalForPrisma (+30 more)
 
 ### Community 61 - "getUnlockedMoveIds.test.ts"
 Cohesion: 0.33
 Nodes (4): BattleQueuePage(), getQueueDeck(), BattleMatchmaker(), QueueDeckDTO
 
 ### Community 63 - "getBattleState.ts"
-Cohesion: 0.27
-Nodes (9): grantXp(), maybeEvolve(), birthLevelForSpecies(), EvolutionChainNode, EvolutionDetail, EvolutionEdge, evolutionTargetFor(), parseLevelUpEvolutions() (+1 more)
+Cohesion: 0.36
+Nodes (6): birthLevelForSpecies(), EvolutionChainNode, EvolutionDetail, EvolutionEdge, parseLevelUpEvolutions(), bulbaChain
 
 ### Community 65 - "pokedex/index.ts"
-Cohesion: 0.15
-Nodes (14): CACHE_FOREVER, fetchMove(), fetchType(), MoveLearnDetail, NormalizedEvolutionNode, NormalizedMove, NormalizedMoveEffect, NormalizedType (+6 more)
-
-### Community 66 - "Pagination.tsx"
-Cohesion: 0.17
-Nodes (11): startDuel(), effectivenessMultiplier(), TypeEffectivenessMap, active(), combatant(), hitCard(), makeDuelSide(), neutralChart (+3 more)
-
-### Community 67 - "seed.ts"
-Cohesion: 0.15
-Nodes (8): isDeckFull(), DeckSlotInput, DeckSlotsIssue, validateDeckSlots(), ValidateDeckSlotsResult, boardMock, prismaMock, tx
+Cohesion: 0.53
+Nodes (3): DELETE(), removeCard(), RemoveCardResult
 
 ### Community 69 - "(game)/page.tsx"
 Cohesion: 0.50
 Nodes (3): input, prismaMock, tx
 
 ### Community 70 - "battleView.ts"
-Cohesion: 0.15
-Nodes (23): activeMon(), AILMENT_LABEL, AILMENT_VERB, ailmentLabel(), BLOCK_LABEL, CONDITION_HINT, conditionBadges(), DuelCardView (+15 more)
-
-### Community 76 - "buildDuelSnapshot.ts"
-Cohesion: 0.28
-Nodes (10): BattleTeamMember, buildDuelSnapshot(), defaultMovesFor(), toPokemonState(), enqueueBattle(), toPokemonCreateInput(), defaultLoadout(), LoadoutCandidate (+2 more)
-
-### Community 77 - "duelEngineEffects.test.ts"
-Cohesion: 0.26
-Nodes (10): resolveRound(), espera(), hitMove(), neutralChart, play(), side(), stats(), statusMove() (+2 more)
-
-### Community 79 - "submitAction.ts"
-Cohesion: 0.26
-Nodes (10): POST(), LoadoutErro, LoadoutOk, mustSwitch(), ParticipantWithMons, persist(), submitAction(), SubmitActionInput (+2 more)
-
-### Community 80 - "prisma.ts"
-Cohesion: 0.27
-Nodes (6): DELETE(), POST(), GET(), globalForPrisma, leaveQueue(), getQueueStatus()
-
-### Community 82 - "auth.ts"
-Cohesion: 0.29
-Nodes (6): { POST, GET }, GET(), POST(), auth, getLoadoutOptions(), loadEffects()
-
-### Community 83 - "toBattleDTO"
-Cohesion: 0.31
-Nodes (4): BattlePage(), readBattleState(), toBattleDTO(), BattleRoomShell()
-
-### Community 84 - "damage.ts"
-Cohesion: 0.36
-Nodes (8): effectiveStat(), calculateDamage(), confusionSelfDamage(), CRIT_CHANCE_BY_STAGE, critChanceFor(), DamageResult, rollAccuracy(), rollCrit()
-
-### Community 85 - "token/route.ts"
-Cohesion: 0.43
-Nodes (4): GET(), signRealtimeToken(), createRealtimeToken(), RealtimeToken
+Cohesion: 0.16
+Nodes (15): activeMon(), DuelCalloutView, DuelCardView, DuelLogKind, DuelMode, eventLine(), hpPctOf(), PartyMemberView (+7 more)
 
 ### Community 86 - "listPokedexPage.ts"
-Cohesion: 0.18
-Nodes (4): ConditionBadgeView, DuelMonView, PartyMemberView, CONDITION_TONE
-
-### Community 87 - "app/layout.tsx"
-Cohesion: 0.29
-Nodes (5): anton, cinzel, metadata, rajdhani, AppToaster()
-
-### Community 88 - "deckBoardView.test.ts"
-Cohesion: 0.40
-Nodes (3): BASE_STATS, PARADO, rascunho()
+Cohesion: 0.13
+Nodes (13): TypeBadge(), TYPE_COLORS, typeColor(), LoadoutPicker(), CLASS_META, MoveButton(), DeckSlotCard(), Linha() (+5 more)
 
 ## Knowledge Gaps
-- **344 isolated node(s):** `supabase`, `eslintConfig`, `nextConfig`, `name`, `version` (+339 more)
+- **316 isolated node(s):** `supabase`, `eslintConfig`, `nextConfig`, `name`, `version` (+311 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **18 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **20 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `rarityTier` connect `packs/index.ts` to `konva`, `deck/index.ts`, `battleView.ts`, `battleView.ts`, `training/index.ts`, `listPokedexPage.ts`, `applyTM.ts`, `tailwindcss`, `Estrutura de arquivos`?**
-  _High betweenness centrality (0.082) - this node is a cross-community bridge._
-- **Why does `BaseStats` connect `packs/index.ts` to `konva`, `deck/index.ts`, `collectionFilters.ts`, `buildDuelSnapshot.ts`, `training/index.ts`, `applyTM.ts`, `tailwindcss`, `Estrutura de arquivos`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
-- **Why does `auth` connect `auth.ts` to `konva`, `design-system/page.tsx`, `submitAction.ts`, `prisma.ts`, `toBattleDTO`, `training/index.ts`, `token/route.ts`, `applyTM.ts`, `tailwindcss`, `getUnlockedMoveIds.test.ts`, `pokemon/index.ts`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
+- **Why does `rarityTier` connect `resolveTurn.ts` to `konva`, `packs/index.ts`, `deck/index.ts`, `progression/index.ts`, `battleView.ts`, `battleView.ts`, `training/index.ts`, `tailwindcss`, `pokemon/index.ts`?**
+  _High betweenness centrality (0.077) - this node is a cross-community bridge._
+- **Why does `auth` connect `design-system/page.tsx` to `pokedex/index.ts`, `StageBoundary`, `listPokedexPage.ts`, `applyTM.ts`, `tailwindcss`, `getUnlockedMoveIds.test.ts`, `Estrutura de arquivos`?**
+  _High betweenness centrality (0.020) - this node is a cross-community bridge._
+- **Why does `BaseStats` connect `resolveTurn.ts` to `konva`, `packs/index.ts`, `deck/index.ts`, `progression/index.ts`, `collectionFilters.ts`, `tailwindcss`, `pokemon/index.ts`?**
+  _High betweenness centrality (0.018) - this node is a cross-community bridge._
 - **What connects `supabase`, `eslintConfig`, `nextConfig` to the rest of the system?**
-  _344 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _316 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `konva` be split into smaller, more focused modules?**
-  _Cohesion score 0.09565217391304348 - nodes in this community are weakly interconnected._
-- **Should `packs/index.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06729264475743349 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11861861861861862 - nodes in this community are weakly interconnected._
 - **Should `progression/index.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.12987012987012986 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.12418300653594772 - nodes in this community are weakly interconnected._
+- **Should `design-system/page.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.05228070175438596 - nodes in this community are weakly interconnected._

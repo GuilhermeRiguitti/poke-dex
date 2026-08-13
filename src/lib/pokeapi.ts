@@ -58,6 +58,43 @@ export interface NormalizedPokemon {
   moves: { move: { name: string; url: string }; learnDetails: MoveLearnDetail[] }[];
 }
 
+/**
+ * O que a PokéAPI diz que um golpe FAZ além de bater — `meta`, `stat_changes`,
+ * `effect_chance` e `target` do endpoint `/move`, achatados num objeto só.
+ *
+ * É ESPELHO, não regra: aqui nada é interpretado (nem "0 quer dizer sempre", nem
+ * quais ailments o jogo suporta). Guardamos o dado como a API deu e quem traduz
+ * pra mecânica é `battle/domain/moveEffect.ts` — a mesma divisão de `baseStats`,
+ * que a gente copia cru e o `deriveStats` interpreta. Sem isso, o dia em que a
+ * batalha mudar de ideia sobre uma regra obrigaria a re-sincronizar 350 moves.
+ */
+export interface NormalizedMoveEffect {
+  /** "burn" | "paralysis" | "sleep" | "none" | ... (move-ailment da API) */
+  ailment: string;
+  /** 0..100. 0 num golpe de status quer dizer "sempre" — quem decide isso é a batalha. */
+  ailmentChance: number;
+  /** "damage" | "ailment" | "net-good-stats" | "heal" | "damage+lower" | ... */
+  category: string;
+  /** estágios de crítico somados (razor-leaf = 1) */
+  critRate: number;
+  /** % do dano devolvido em cura. NEGATIVO = recuo (take-down = -25). */
+  drain: number;
+  flinchChance: number;
+  /** % do HP máximo curado no usuário (recover = 50) */
+  healing: number;
+  minHits: number | null;
+  maxHits: number | null;
+  /** duração do ailment em turnos (sleep-powder = 2..4) */
+  minTurns: number | null;
+  maxTurns: number | null;
+  statChance: number;
+  statChanges: { stat: string; change: number }[];
+  /** "user" | "selected-pokemon" | "all-opponents" | "entire-field" | ... */
+  target: string;
+  /** chance genérica do efeito; alguns golpes só preenchem esta */
+  effectChance: number | null;
+}
+
 export interface NormalizedMove {
   id: number;
   name: string;
@@ -67,6 +104,7 @@ export interface NormalizedMove {
   pp: number;
   priority: number;
   damageClass: "physical" | "special" | "status";
+  effect: NormalizedMoveEffect;
 }
 
 export interface NormalizedType {
@@ -138,6 +176,48 @@ export async function fetchPokemon(idOrName: number | string): Promise<Normalize
   };
 }
 
+interface RawMoveMeta {
+  ailment?: { name?: string };
+  ailment_chance?: number;
+  category?: { name?: string };
+  crit_rate?: number;
+  drain?: number;
+  flinch_chance?: number;
+  healing?: number;
+  min_hits?: number | null;
+  max_hits?: number | null;
+  min_turns?: number | null;
+  max_turns?: number | null;
+  stat_chance?: number;
+}
+
+/** `meta` + `stat_changes` + `target` + `effect_chance` achatados. Sem interpretar nada. */
+function toMoveEffect(data: {
+  meta?: RawMoveMeta | null;
+  stat_changes?: { change: number; stat: { name: string } }[];
+  target?: { name?: string };
+  effect_chance?: number | null;
+}): NormalizedMoveEffect {
+  const meta = data.meta ?? {};
+  return {
+    ailment: meta.ailment?.name ?? "none",
+    ailmentChance: meta.ailment_chance ?? 0,
+    category: meta.category?.name ?? "damage",
+    critRate: meta.crit_rate ?? 0,
+    drain: meta.drain ?? 0,
+    flinchChance: meta.flinch_chance ?? 0,
+    healing: meta.healing ?? 0,
+    minHits: meta.min_hits ?? null,
+    maxHits: meta.max_hits ?? null,
+    minTurns: meta.min_turns ?? null,
+    maxTurns: meta.max_turns ?? null,
+    statChance: meta.stat_chance ?? 0,
+    statChanges: (data.stat_changes ?? []).map((s) => ({ stat: s.stat?.name ?? "", change: s.change })),
+    target: data.target?.name ?? "selected-pokemon",
+    effectChance: data.effect_chance ?? null,
+  };
+}
+
 export async function fetchMove(idOrName: number | string): Promise<NormalizedMove | null> {
   const res = await fetch(`${POKEAPI_BASE}/move/${idOrName}`, CACHE_FOREVER);
   if (!res.ok) return null;
@@ -154,6 +234,7 @@ export async function fetchMove(idOrName: number | string): Promise<NormalizedMo
     pp: data.pp ?? 10,
     priority: data.priority ?? 0,
     damageClass: damageClass === "physical" || damageClass === "special" ? damageClass : "status",
+    effect: toMoveEffect(data),
   };
 }
 

@@ -16,7 +16,7 @@
 // quem usa é a UI e o command, e os dois importam de domain/ direto — o mesmo
 // caminho que o deckBoardView faz com DECK_LIMIT. A validação é a MESMA função
 // nos dois lados (o botão de salvar e o PUT); o que a torna compartilhada é ela
-// ser pura em domain/, não passar por este barril.
+// ser pura em domain/, não passar por este barrel.
 export { DECK_LIMIT, CARDS_PER_SLOT } from "./domain/rules";
 // A barra com que o pokémon ENTRA quando o jogador não escolhe a tempo. Vive no
 // deck (é regra de "qual barra montar"), mas quem usa hoje é a batalha.

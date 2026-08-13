@@ -8,6 +8,9 @@
 // modelo do turno em si — que voltou a ser simultâneo, como na série — está em
 // duelTypes.ts.
 
+import type { MonConditions } from "./conditions";
+import type { MoveEffect } from "./moveEffect";
+
 // Os 6 stats de batalha já convertidos pra valores de jogo. Os base stats crus
 // vêm do espelho (Pokemon.baseStats); a conversão por nível é deriveStats
 // (pokemon/domain/leveling.ts).
@@ -35,6 +38,13 @@ export interface BattleMoveDef {
   priority: number;
   maxPp: number;
   currentPp: number;
+  /**
+   * O que o golpe faz ALÉM de bater (queimar, baixar Defesa, curar, drenar…),
+   * já traduzido de `Move.effect` por `parseMoveEffect`. `null`/ausente = golpe
+   * inerte: ou a linha do espelho é anterior a esta fatia, ou é uma categoria
+   * que o jogo ainda não modela (clima, barreira). Ver domain/moveEffect.ts.
+   */
+  effect?: MoveEffect | null;
 }
 
 // Um pokémon dentro da batalha (snapshot mutável: HP atual, se desmaiou etc).
@@ -58,4 +68,11 @@ export interface BattlePokemonState {
   currentHp: number;
   fainted: boolean;
   moves: BattleMoveDef[]; // até 6 cartas do loadout
+  /**
+   * Status, stat stages e condições voláteis deste combatente (domain/
+   * conditions.ts). Opcional porque a coluna nasceu anulável: snapshot de
+   * partida anterior a esta fatia vem sem, e `conditionsOf` cria o estado limpo
+   * na primeira leitura.
+   */
+  conditions?: MonConditions | null;
 }

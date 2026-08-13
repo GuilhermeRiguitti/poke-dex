@@ -1,3 +1,4 @@
+import { effectiveSpeed } from "./conditions";
 import type { BattleMoveDef, BattlePokemonState } from "./types";
 
 // Ordem DENTRO do turno simultâneo — a regra da série, nesta ordem:
@@ -5,7 +6,8 @@ import type { BattleMoveDef, BattlePokemonState } from "./types";
 //   1. PRIORITY do golpe escolhido (quick-attack tem +1 e sai na frente de
 //      qualquer coisa, não importa o Speed). O dado é real: vem do campo
 //      `priority` do endpoint /move da PokéAPI, já espelhado em Move.
-//   2. SPEED efetivo do pokémon (que deriva do nível — deriveStats).
+//   2. SPEED EFETIVO do pokémon: o que deriva do nível (deriveStats), com o
+//      stat stage e a paralisia aplicados (domain/conditions.ts).
 //   3. Empate total: sorteio (é assim no jogo — "speed tie").
 //
 // É aqui que o Speed volta a ser o que ele é na série. No modelo alternado o
@@ -41,8 +43,11 @@ export function orderForTurn(a: OrderInput, b: OrderInput, rng: () => number): [
   const prioB = effectivePriority(b.mon, b.cardSlot);
   if (prioA !== prioB) return prioA > prioB ? [a, b] : [b, a];
 
-  const speedA = a.mon.stats.speed;
-  const speedB = b.mon.stats.speed;
+  // Velocidade EFETIVA: com o estágio (string-shot corta a do oponente) e com a
+  // paralisia (metade). É o que faz um golpe de status virar vantagem de ordem —
+  // e, no turno simultâneo, quem bate primeiro é quem decide o round.
+  const speedA = effectiveSpeed(a.mon);
+  const speedB = effectiveSpeed(b.mon);
   if (speedA !== speedB) return speedA > speedB ? [a, b] : [b, a];
 
   return rng() < 0.5 ? [a, b] : [b, a];

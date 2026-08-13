@@ -81,6 +81,22 @@ function MoveButton({
         </div>
       </div>
 
+      {/*
+        O QUE A CARTA FAZ ALÉM DE BATER. É a linha que tira o golpe de status da
+        inércia na hora de escolher: "STA · sem dano" fazia toda carta de efeito
+        parecer inútil, e o jogador nunca ia gastar um turno pra descobrir que
+        ela paralisa. Sem efeito conhecido, o aviso é explícito — melhor dizer
+        que a carta não faz nada do que deixar o turno ser jogado no escuro.
+      */}
+      <span
+        className={`mt-1 block min-h-3.5 text-left text-[9px] font-semibold leading-tight ${
+          card.effectLabel ? "text-energy" : "text-ink-dim/50"
+        }`}
+        title={card.effectLabel ?? "Esta carta ainda não tem efeito no jogo"}
+      >
+        {card.effectLabel ?? (card.damageClass === "status" ? "sem efeito" : "")}
+      </span>
+
       <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-panel">
         <div
           className="h-full rounded-full transition-[width] duration-500"
