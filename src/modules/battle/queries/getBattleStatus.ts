@@ -1,4 +1,6 @@
+import { prisma } from "@/src/lib/prisma";
 import { loadBattleForResolve, resolveIfDue } from "../commands/resolveTurn";
+import { PRESENCE_HEARTBEAT_MS } from "../domain/presence";
 import { isParticipant } from "./battleAccess";
 
 // GET /api/battle/[id]/status — polling leve; também é quem "empurra" a
@@ -11,6 +13,34 @@ export async function getBattleStatus(battleId: string, userId: string) {
   const battle = await loadBattleForResolve(battleId);
   if (!battle) return { error: "not_found" as const };
   if (!isParticipant(battle, userId)) return { error: "forbidden" as const };
+
+  // HEARTBEAT — depois de AUTORIZAR e antes de RESOLVER.
+  //
+  // A ordem não é detalhe: escrever antes de checar se o usuário é participante
+  // foi um achado de auditoria real neste arquivo (mexia em partida alheia). E
+  // vem antes do `resolveIfDue` porque é ele quem lê a ausência: carimbar depois
+  // faria o jogador ser dado como ausente no mesmo request em que provou estar
+  // presente.
+  //
+  // O próprio `where` é o throttle: só escreve se o último sinal já passou de
+  // metade do intervalo. `count 0` significa "sinal fresco" — e quem perde essa
+  // corrida não perde nada, porque o dado que ele ia gravar já está lá.
+  const agora = Date.now();
+  await prisma.battleParticipant.updateMany({
+    where: {
+      battleId,
+      userId,
+      OR: [
+        { lastSeenAt: null },
+        { lastSeenAt: { lt: new Date(agora - PRESENCE_HEARTBEAT_MS / 2) } },
+      ],
+    },
+    data: { lastSeenAt: new Date(agora) },
+  });
+  // A partida já lida tem o `lastSeenAt` velho; atualizar em memória evita que
+  // a resolução logo abaixo julgue ausente quem acabou de carimbar.
+  const eu = battle.participants.find((p) => p.userId === userId);
+  if (eu) eu.lastSeenAt = new Date(agora);
 
   const resolved = await resolveIfDue(battle);
   if (!resolved) return { error: "not_found" as const };

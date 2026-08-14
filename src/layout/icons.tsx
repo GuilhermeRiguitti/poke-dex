@@ -128,6 +128,47 @@ export function GridIcon({ size = 20, className = "" }: { size?: number; classNa
   );
 }
 
+/** O ovo do cruzamento. */
+export function EggIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 3c3.3 0 6 4.6 6 9a6 6 0 0 1-12 0c0-4.4 2.7-9 6-9z" />
+    </svg>
+  );
+}
+
+/** Duas setas em sentidos opostos — a troca. */
+export function TradeIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M4 8h13l-3.5-3.5" />
+      <path d="M20 16H7l3.5 3.5" />
+    </svg>
+  );
+}
+
 export function CardsIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
   return (
     <svg

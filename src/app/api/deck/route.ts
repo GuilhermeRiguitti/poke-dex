@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/modules/auth/auth";
 import { saveDeck } from "@/src/modules/deck";
+import { enforceRateLimit } from "@/src/lib/rateLimit";
 
 // PUT /api/deck — grava o TIME INTEIRO. Corpo: { slots: [{ userPokemonId, order }] }.
 //
@@ -17,6 +18,9 @@ import { saveDeck } from "@/src/modules/deck";
 export async function PUT(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limited = await enforceRateLimit("deckSave", session.user.id);
+  if (limited) return limited;
 
   // O corpo pode nem ser JSON. `saveDeck` recebe `unknown` e valida — nenhuma
   // asserção de tipo aqui estaria valendo alguma coisa.

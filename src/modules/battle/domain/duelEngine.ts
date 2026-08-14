@@ -10,8 +10,10 @@ import {
   conditionsOf,
   leechDamage,
   residualDamage,
+  protectChance,
 } from "./conditions";
 import { hasEffect, isSelfDirected, type MoveEffect } from "./moveEffect";
+import { ENERGY_START, energyCostOf, hasAffordableCard, regenEnergy } from "./energy";
 import type { BattleMoveDef, BattlePokemonState } from "./types";
 import {
   activeOf,
@@ -91,6 +93,12 @@ interface AttackContext {
   typeChart: TypeEffectivenessMap;
   rng: () => number;
   events: DuelEvent[];
+  /**
+   * O LADO de quem ataca — o motor debita a energia aqui. Vem o lado inteiro, e
+   * não um número, porque o débito tem que sobreviver ao retorno da função (o
+   * estado já é um clone; mutá-lo é como o resto do motor trabalha).
+   */
+  attackerSide: DuelSide;
 }
 
 /** Tira HP de alguém e marca o desmaio. Devolve quanto saiu de fato. */
@@ -275,10 +283,43 @@ function executeAttack(ctx: AttackContext, cardSlot: number): boolean {
   }
   if (card.currentPp <= 0) card = STRUGGLE;
 
-  // PP gasto no uso, antes de rolar acerto (errar gasta PP igual). `card` é do
-  // estado clonado; STRUGGLE é compartilhado e tem PP 0 — a guarda evita
-  // decrementá-lo pra -1 e vazar entre partidas.
+  // ENERGIA: o segundo limitador, com a MESMA forma do PP — inválida com outra
+  // pagável vira hesitação (a rede de baixo do que o submitAction já barra);
+  // NENHUMA pagável cai em STRUGGLE, que custa 0. Sem esse segundo ramo, ficar
+  // sem energia viraria derrota por abandono sem o jogador ter errado nada.
+  const energiaAntes = ctx.attackerSide.energy ?? ENERGY_START;
+  let custo = card === STRUGGLE ? 0 : energyCostOf(card);
+  if (custo > energiaAntes) {
+    if (hasAffordableCard(attacker.moves, energiaAntes)) {
+      events.push({ type: "hesitate", userId: attackerUserId });
+      return false;
+    }
+    card = STRUGGLE;
+    custo = 0;
+  }
+
+  // PP e energia saem no USO, antes de rolar acerto (errar cobra igual, como o
+  // PP sempre cobrou). `card` é do estado clonado; STRUGGLE é compartilhado e
+  // tem PP 0 — a guarda evita decrementá-lo pra -1 e vazar entre partidas.
   if (card.currentPp > 0) card.currentPp -= 1;
+  ctx.attackerSide.energy = energiaAntes - custo;
+
+  // A carta de proteção já resolveu lá em cima (1.5). Aqui ela só consome o
+  // turno: não bate, não rola precisão, não aplica efeito.
+  if (card.effect?.protects) return true;
+
+  // ESCUDO DO ALVO: PP e energia já saíram (o golpe foi usado), mas nada
+  // acontece com quem está protegido. Cobrar o custo é o que dá sentido à
+  // aposta — protect só vale a pena porque o oponente PERDE o turno junto.
+  if (conditionsOf(defender).protected) {
+    events.push({
+      type: "blocked",
+      targetUserId: ctx.defenderUserId,
+      monName: defender.name,
+      reason: "protected",
+    });
+    return true;
+  }
 
   const effectiveness = effectivenessMultiplier(typeChart, card.type, defender.types);
   const result = calculateDamage({ attacker, defender, move: card, effectiveness, rng });
@@ -433,10 +474,19 @@ function applyEndOfTurn(state: DuelState, events: DuelEvent[]): void {
     }
   }
 
-  // O recuo vale só pro turno em que foi causado. Limpar TODO o time (e não só
-  // o ativo) é barato e fecha a porta pro flag vazar num snapshot persistido.
+  // O recuo e o ESCUDO valem só pro turno em que foram levantados. Limpar TODO
+  // o time (e não só o ativo) é barato e fecha a porta pro flag vazar num
+  // snapshot persistido.
+  //
+  // ⚠️ `protectStreak` NÃO é limpo aqui: ele é o que faz a proteção repetida
+  // ficar cada vez mais fraca, e por isso precisa atravessar o turno. Quem zera
+  // é a própria carta (ao falhar) e a troca (clearVolatiles).
   for (const side of [state.sideA, state.sideB]) {
-    for (const mon of side.team) conditionsOf(mon).flinched = false;
+    for (const mon of side.team) {
+      const c = conditionsOf(mon);
+      c.flinched = false;
+      c.protected = false;
+    }
   }
 }
 
@@ -494,6 +544,37 @@ export function resolveRound(params: ResolveRoundParams): DuelResult {
     if (actionOf[side.userId].type === "NONE") events.push({ type: "hesitate", userId: side.userId });
   }
 
+  // 1.5) PROTEÇÃO, antes dos ataques e depois das trocas.
+  //
+  // Resolver aqui é o que torna a mecânica REATIVA sem ser uma janela de reação:
+  // os dois escolheram às cegas no mesmo round, e quem apostou no escudo
+  // descobre junto com o outro se acertou a aposta. Se resolvesse na ordem do
+  // turno, um protect "lento" seria inútil contra golpe de priority alta — a
+  // proteção deixaria de ser aposta e viraria função da Speed.
+  for (const side of [state.sideA, state.sideB]) {
+    const action = actionOf[side.userId];
+    const mon = activeOf(side);
+    const card = action.type === "MOVE" ? mon.moves[action.cardSlot] : undefined;
+
+    if (!card?.effect?.protects) {
+      // Fez outra coisa (ou trocou, ou hesitou) → a sequência zera. Sem isto,
+      // daria pra alternar protect/ataque e a chance nunca cairia — que é
+      // exatamente o que a chance decrescente existe pra impedir.
+      conditionsOf(mon).protectStreak = 0;
+      continue;
+    }
+
+    const c = conditionsOf(mon);
+    const chance = protectChance(c.protectStreak);
+    // O rng SÓ é tocado quando a chance não é 100 — a 1ª proteção da sequência
+    // não sorteia nada. É o que mantém a suíte determinística (CLAUDE.md).
+    const pegou = chance >= 100 || rng() * 100 < chance;
+
+    c.protected = pegou;
+    c.protectStreak = pegou ? c.protectStreak + 1 : 0;
+    events.push({ type: "protect", userId: side.userId, monName: mon.name, held: pegou });
+  }
+
   // 2) ATAQUES: só quem escolheu MOVE, na ordem do turno pelo ativo atual.
   const attackers = [state.sideA, state.sideB].filter((s) => actionOf[s.userId].type === "MOVE");
 
@@ -526,6 +607,7 @@ export function resolveRound(params: ResolveRoundParams): DuelResult {
         typeChart,
         rng,
         events,
+        attackerSide: side,
       },
       cardSlotOf(side)
     );
@@ -538,6 +620,14 @@ export function resolveRound(params: ResolveRoundParams): DuelResult {
 
   const { finished, winnerId } = outcome(state);
   if (finished) return { state, events, winnerId, finished: true };
+
+  // REGENERAÇÃO: só aqui, junto da virada do round. NÃO entra no
+  // applyForcedSwitch nem no applyLeadLoadout — os dois acontecem DENTRO da
+  // mesma rodada de jogo, e regenerar ali pagaria energia duas vezes por rodada
+  // (é a mesma razão de o applyEndOfTurn não rodar naqueles dois).
+  for (const side of [state.sideA, state.sideB]) {
+    side.energy = regenEnergy(side.energy ?? ENERGY_START);
+  }
 
   state.round += 1;
   return { state, events, winnerId: null, finished: false };

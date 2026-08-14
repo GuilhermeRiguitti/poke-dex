@@ -20,6 +20,15 @@ export interface DuelSide {
   userId: string;
   activeSlot: number;
   team: BattlePokemonState[];
+  /**
+   * Energia do LADO (não do pokémon em campo). É por jogador de propósito:
+   * fosse por pokémon, trocar viraria recarga — e trocar já é escolha cara o
+   * bastante (perde o turno) sem virar também a saída pra ficar sem energia.
+   *
+   * Opcional porque a coluna nasceu com default: partida começada antes desta
+   * fatia lê `undefined` e cai em ENERGY_START na primeira resolução.
+   */
+  energy?: number;
 }
 
 // Estado completo do duelo num instante. É o que entra e sai do engine puro.
@@ -65,6 +74,14 @@ export type DuelEvent =
     }
   | { type: "switch"; userId: string; fromName: string; toName: string } // trocou de pokémon (voluntária ou forçada)
   | { type: "hesitate"; userId: string } // não escolheu a tempo
+  /**
+   * Sumiu e não voltou (battle/domain/presence.ts). Diferente de `hesitate`:
+   * hesitar é perder UM turno, isto encerra a partida. Sem o evento, o jogador
+   * que ganha por ausência vê só o placar mudar sozinho e não entende por quê.
+   */
+  | { type: "abandoned"; userId: string }
+  /** levantou o escudo (protect e família). `held: false` = a proteção falhou. */
+  | { type: "protect"; userId: string; monName: string; held: boolean }
   | { type: "roundStart"; round: number; firstUserId: string }
   // ── efeitos (domain/conditions.ts) ────────────────────────────────────────
   // Todos chaveados por `targetUserId` — de quem é o pokémon que SOFREU. É o

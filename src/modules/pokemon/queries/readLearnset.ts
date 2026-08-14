@@ -5,6 +5,23 @@ import type { LearnsetMoveDTO } from "../ui/types";
 const DAMAGE_CLASSES = new Set(["physical", "special", "status"]);
 
 /**
+ * `learnMethod` é String livre no banco (o espelho grava o que a PokéAPI
+ * mandou). Aqui ele vira o conjunto fechado que o DTO promete — método que o
+ * jogo não conhece cai em "level-up", que é o comportamento neutro: aparece
+ * pelo nível, sem etiqueta especial.
+ */
+function toSource(learnMethod: string): LearnsetMoveDTO["source"] {
+  switch (learnMethod) {
+    case "machine":
+    case "egg":
+    case "tutor":
+      return learnMethod;
+    default:
+      return "level-up";
+  }
+}
+
+/**
  * O learnset da espécie de um UserPokemon do jogador — as cartas que ele pode
  * escolher pro loadout. Só leitura. Devolve `null` se o UserPokemon não é dele
  * (id de outro dono responde igual a inexistente).
@@ -31,24 +48,42 @@ export async function readLearnset(userId: string, userPokemonId: string): Promi
   });
   if (!up || up.userId !== userId) return null;
 
-  const [learnset, granted] = await Promise.all([
-    prisma.pokemonMove.findMany({
-      where: { pokemonId: up.pokemonId, learnMethod: { in: [PLAYABLE_LEARN_METHOD, "machine"] } },
-      select: {
-        levelLearnedAt: true,
-        learnMethod: true,
-        move: { select: { id: true, name: true, type: true, power: true, damageClass: true } },
-      },
-    }),
-    prisma.userPokemonMove.findMany({ where: { userPokemonId }, select: { moveId: true } }),
-  ]);
+  const granted = await prisma.userPokemonMove.findMany({
+    where: { userPokemonId },
+    select: { moveId: true },
+  });
   const grantedSet = new Set(granted.map((g) => g.moveId));
+
+  // O filtro leva level-up e machine SEMPRE (são o repertório visível da
+  // espécie, destravado ou não) e as CONCEDIDAS de qualquer método — que é como
+  // um egg move do cruzamento ou um tutor de quest aparecem.
+  //
+  // Sem o `OR` de baixo, um golpe `egg` concedido ficava INVISÍVEL na ficha e no
+  // seletor de loadout da batalha, mesmo com o `getUnlockedMoveIds` já o
+  // aceitando: o jogador ganhava a carta e não conseguia jogá-la. Egg/tutor NÃO
+  // concedidos continuam de fora — não há como obtê-los daqui, e mostrar porta
+  // sem maçaneta é pior que não mostrar.
+  const learnset = await prisma.pokemonMove.findMany({
+    where: {
+      pokemonId: up.pokemonId,
+      OR: [
+        { learnMethod: { in: [PLAYABLE_LEARN_METHOD, "machine"] } },
+        { moveId: { in: [...grantedSet] } },
+      ],
+    },
+    select: {
+      levelLearnedAt: true,
+      learnMethod: true,
+      move: { select: { id: true, name: true, type: true, power: true, damageClass: true } },
+    },
+  });
 
   return learnset
     .map(({ move, levelLearnedAt, learnMethod }) => {
       const teachableViaTm = learnMethod === "machine";
       // TM: só desbloqueia sendo concedida. Level-up: pelo nível OU concedida
-      // (raro, mas mantém a regra única — mergePlayableMoveIds).
+      // (raro, mas mantém a regra única — mergePlayableMoveIds). Egg/tutor: só
+      // concedidas chegam aqui, então `grantedSet` já responde.
       const unlocked = teachableViaTm
         ? grantedSet.has(move.id)
         : isUnlockedAt({ learnMethod, levelLearnedAt }, up.level) || grantedSet.has(move.id);
@@ -61,6 +96,7 @@ export async function readLearnset(userId: string, userPokemonId: string): Promi
         levelLearnedAt,
         unlocked,
         teachableViaTm,
+        source: toSource(learnMethod),
       };
     })
     .sort(

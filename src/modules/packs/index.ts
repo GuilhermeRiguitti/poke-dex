@@ -1,3 +1,5 @@
+import "server-only";
+
 // API pública do módulo packs — as rotas em app/api/** e as pages de (game) só
 // devem importar daqui, nunca de domain/queries/commands direto.
 //

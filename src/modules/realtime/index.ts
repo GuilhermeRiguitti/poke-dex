@@ -1,3 +1,5 @@
+import "server-only";
+
 // API pública do module realtime — a rota app/api/realtime/token só deve
 // importar daqui, nunca de domain/ direto.
 //

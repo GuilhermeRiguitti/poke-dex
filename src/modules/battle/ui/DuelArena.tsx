@@ -168,10 +168,24 @@ export default function DuelArena({
             />
           )}
           {!view.isOver && (
+            /* A desconexão TROCA o rótulo de "escolhendo": um oponente que sumiu
+               não está escolhendo nada, e ficar dizendo que está faz o jogador
+               esperar à toa. O contador dá a informação que falta — quanto tempo
+               até ele ganhar por ausência. */
             <span
-              className={`font-title text-[10px] uppercase tracking-widest ${view.opponentReady ? "text-ok" : "text-ink-dim"}`}
+              className={`font-title text-[10px] uppercase tracking-widest ${
+                view.oppAbsentMs !== null
+                  ? "text-bad"
+                  : view.opponentReady
+                    ? "text-ok"
+                    : "text-ink-dim"
+              }`}
             >
-              {view.opponentReady ? "● oponente pronto" : "○ oponente escolhendo"}
+              {view.oppAbsentMs !== null
+                ? `⏻ oponente sem sinal — vitória em ${Math.ceil(view.oppAbsentMs / 1000)}s`
+                : view.opponentReady
+                  ? "● oponente pronto"
+                  : "○ oponente escolhendo"}
             </span>
           )}
         </div>
@@ -189,7 +203,13 @@ export default function DuelArena({
 
         {/* ↗ placa do oponente + o time dele */}
         <div className="pointer-events-auto absolute right-3 top-4 w-[min(24rem,62vw)] sm:right-4">
-          <CombatantPanel mon={view.opp} side="opp" party={view.oppParty} />
+          <CombatantPanel
+            mon={view.opp}
+            side="opp"
+            party={view.oppParty}
+            energy={view.oppEnergy}
+            energyMax={view.energyMax}
+          />
         </div>
 
         {/* ↙ minha placa + relatório de combate.
@@ -197,7 +217,7 @@ export default function DuelArena({
             largura pra ficarem lado a lado) e o relatório sai — a informação
             que decide a jogada é a placa de HP, não o histórico. */}
         <div className="pointer-events-auto absolute bottom-28 left-3 flex w-[min(26rem,55vw)] flex-col gap-2 sm:bottom-4 sm:left-4 sm:w-[min(26rem,42vw)]">
-          <CombatantPanel mon={view.me} side="me" />
+          <CombatantPanel mon={view.me} side="me" energy={view.myEnergy} energyMax={view.energyMax} />
           <div className="hidden sm:block">
             <CombatLog lines={view.logLines} />
           </div>

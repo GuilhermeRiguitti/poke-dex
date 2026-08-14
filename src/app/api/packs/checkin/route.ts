@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/modules/auth/auth";
 import { checkInLogin } from "@/src/modules/packs";
+import { enforceRateLimit } from "@/src/lib/rateLimit";
 
 // POST /api/packs/checkin — marca a presença diária (streak de login).
 //
@@ -11,6 +12,9 @@ import { checkInLogin } from "@/src/modules/packs";
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limited = await enforceRateLimit("checkIn", session.user.id);
+  if (limited) return limited;
 
   const result = await checkInLogin(session.user.id);
   return NextResponse.json(result);

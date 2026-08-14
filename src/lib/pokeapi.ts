@@ -249,19 +249,37 @@ export interface NormalizedEvolutionNode {
 
 /**
  * GET /pokemon-species/{id} — só o que a evolução precisa: o id da cadeia de
- * evolução da espécie. Devolve null se a API não trouxe (ex.: forma sem espécie
- * própria). O `growth_rate` (curva de XP real, F4) mora aqui também, mas fica
- * pra quando F4 for encarado — hoje não é lido.
+ * evolução da espécie E a curva de XP dela.
+ *
+ * As DUAS coisas saem do mesmo request de propósito: até 2026-08-14 esta função
+ * lia só a cadeia e jogava o resto do payload fora, e a curva de XP ficava como
+ * pendência "cara" no TODO. Ela nunca foi cara — o fetch já estava aqui.
  */
-export async function fetchSpeciesEvolutionChainId(idOrName: number | string): Promise<number | null> {
+export interface NormalizedSpecies {
+  /** id da cadeia de evolução, ou null (ex.: forma sem espécie própria). */
+  evolutionChainId: number | null;
+  /** `growth_rate` da espécie ("medium-fast", "slow", …), ou null. */
+  growthRate: string | null;
+}
+
+export async function fetchSpecies(idOrName: number | string): Promise<NormalizedSpecies | null> {
   const res = await fetch(`${POKEAPI_BASE}/pokemon-species/${idOrName}`, CACHE_FOREVER);
   if (!res.ok) return null;
 
   const data = await res.json();
   const url: string | undefined = data.evolution_chain?.url;
-  if (!url) return null;
-  const id = extractIdFromUrl(url);
-  return Number.isFinite(id) ? id : null;
+  const chainId = url ? extractIdFromUrl(url) : NaN;
+  const growth: string | undefined = data.growth_rate?.name;
+
+  return {
+    evolutionChainId: Number.isFinite(chainId) ? chainId : null,
+    growthRate: typeof growth === "string" ? growth : null,
+  };
+}
+
+/** @deprecated Use `fetchSpecies` — ela traz a curva de XP no mesmo request. */
+export async function fetchSpeciesEvolutionChainId(idOrName: number | string): Promise<number | null> {
+  return (await fetchSpecies(idOrName))?.evolutionChainId ?? null;
 }
 
 /** GET /evolution-chain/{id} — a árvore de evolução normalizada, ou null. */

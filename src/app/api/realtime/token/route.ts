@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/modules/auth/auth";
 import { createRealtimeToken } from "@/src/modules/realtime";
+import { enforceRateLimit } from "@/src/lib/rateLimit";
 
 // GET /api/realtime/token — troca a sessão better-auth por um JWT curto que o
 // Supabase Realtime aceita (ver REALTIME.md). O cliente usa esse token pra
@@ -9,6 +10,9 @@ import { createRealtimeToken } from "@/src/modules/realtime";
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limited = await enforceRateLimit("realtimeToken", session.user.id);
+  if (limited) return limited;
 
   const result = await createRealtimeToken(session.user.id);
   if (!result) {

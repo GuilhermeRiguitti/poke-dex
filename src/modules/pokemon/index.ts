@@ -1,3 +1,5 @@
+import "server-only";
+
 // API pública do módulo pokemon — o núcleo do jogo: a ESPÉCIE (o espelho da
 // PokéAPI) e a CARTA do jogador (UserPokemon), mais tudo que faz ela mudar:
 // nível, stats, XP, evolução, learnset e TM.
@@ -78,6 +80,19 @@ export { getUnlockedMoveIds } from "./queries/getUnlockedMoveIds";
 // ESCREVE (gasta 1 token) — só rota de API.
 export { applyTM } from "./commands/applyTM";
 export type { ApplyTmInput } from "./commands/applyTM";
+// A 3ª forma: golpe de TUTOR, gastando 1 token de tutor — que vem de completar
+// quest diária (módulo `quests`), não do check-in. Moeda separada da do TM de
+// propósito: as duas torneiras têm ritmos diferentes.
+export { applyTutor } from "./commands/applyTutor";
+export type { ApplyTutorInput } from "./commands/applyTutor";
+
+// ─── cruzamento (ovo) ──────────────────────────────────────────────────────
+// A 2ª forma de ganhar carta por fora do nível. `getBreedingPreview` SÓ LÊ (a
+// tela testa a compatibilidade sem gastar o dia); `breedPokemon` ESCREVE.
+export { getBreedingPreview } from "./queries/getBreedingPreview";
+export type { BreedingPreviewDTO } from "./queries/getBreedingPreview";
+export { breedPokemon } from "./commands/breedPokemon";
+export type { BreedPokemonInput } from "./commands/breedPokemon";
 
 // ─── creditar XP (e evoluir) ───────────────────────────────────────────────
 // ESCREVE. Recebe o `tx` de quem chama e roda DENTRO da transação dele — quem

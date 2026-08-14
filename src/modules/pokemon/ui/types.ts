@@ -59,6 +59,16 @@ export interface LearnsetMoveDTO {
   unlocked: boolean;
   /** carta de MÁQUINA (TM): não vem por nível, é ensinada gastando 1 token de TM. */
   teachableViaTm: boolean;
+  /**
+   * COMO esta carta chega ao pokémon. `teachableViaTm` continua existindo porque
+   * é o que a UI usa pra decidir o botão "Ensinar (1 TM)"; `source` é mais
+   * amplo e diz o que a etiqueta da carta mostra.
+   *
+   * `egg` e `tutor` só aparecem CONCEDIDOS (`unlocked: true`) — ao contrário da
+   * TM, não há botão pra ganhá-los aqui: ovo vem do cruzamento e tutor de
+   * quest. Listar os não-concedidos seria mostrar uma porta sem maçaneta.
+   */
+  source: "level-up" | "machine" | "egg" | "tutor";
 }
 
 /** Resposta do POST /api/training/tm quando dá certo. */

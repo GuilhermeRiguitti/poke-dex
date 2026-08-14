@@ -151,6 +151,38 @@ respeitar por causa delas.
   em vez de abrir a própria transação — roda dentro da que encerra a partida, onde
   o claim otimista garante que só uma lambda chega ali. Fora dela, pagaria XP
   duplicado a cada polling de 2s.
+- **Tudo que se paga no fim da partida mora DENTRO daquele mesmo claim**, e recebe
+  o `tx` em vez de abrir transação própria. Hoje são dois: `grantXp` e
+  `trackBattleFinished` (quests). A regra vale pro próximo também — fora do claim,
+  o polling de 2s dos dois jogadores paga a recompensa a cada leitura, e o jogador
+  completa "vença 3 batalhas" só deixando a aba aberta.
+- **O par (xp, level) só é consistente DENTRO de uma curva.** ("Curva" = quanto XP
+  cada nível custa; `growth_rate` da PokéAPI, seis possíveis.) Cada espécie tem a
+  sua (`Pokemon.growthRate`), então quem grava nível de nascimento precisa informar
+  a curva da espécie — o `openPack` informa, porque a forma evoluída nasce em nível
+  alto. Com a curva errada, o `level` é recalculado a partir do `xp` na primeira
+  batalha e a carta **perde níveis sozinha**. O parâmetro é opcional e cai em
+  `medium-fast` (a curva única de antes), então esquecer dele não quebra o
+  build — quebra o dado.
+- **Energia é do JOGADOR (`BattleParticipant.energy`), não do pokémon.** No
+  pokémon, o `clearVolatiles` da troca limparia junto e trocar viraria recarga. E a
+  tabela de custo (`battle/domain/energy.ts`) **não vai pro banco**: é a alavanca
+  de balanceamento, e guardá-la em coluna obrigaria a re-sincronizar o espelho a
+  cada ajuste. O DTO leva o custo já calculado.
+- **Todo limitador de jogada precisa de uma saída.** PP e energia têm a mesma
+  forma: carta inválida com OUTRA disponível vira hesitação; NENHUMA disponível cai
+  em STRUGGLE. Sem o segundo ramo, ficar sem recurso é ficar sem ação — e ficar sem
+  ação três vezes é derrota por abandono. Vale pro próximo limitador que entrar.
+- **Presença é estado de SERVIDOR (`BattleParticipant.lastSeenAt`), nunca o evento
+  `leave` do WebSocket.** Declarar vitória é escrita, e o cliente não é autoridade;
+  quem fecha a aba não envia nada; e o backstop roda no `pg_cron`, dentro do banco,
+  sem WebSocket nenhum. O heartbeat pega carona no `GET /status` — **depois** do
+  `isParticipant` e **antes** do `resolveIfDue`. E o tick do polling **não pula com
+  a aba escondida**: pular faria "troquei de aba" virar "abandonou".
+- **A proteção resolve ANTES dos ataques, fora da ordem do turno.** Na ordem, um
+  protect "lento" seria inútil contra priority alta e a proteção viraria função da
+  Speed em vez de aposta. E ela é a ÚNICA mecânica reativa aceitável aqui porque é
+  escolhida às cegas — a janela de reação continua proibida (§ "Não reintroduzir").
 
 # Arquitetura
 
@@ -476,13 +508,21 @@ ele mesmo.
 
 - **`pokemon`** — o núcleo. A ESPÉCIE (espelho da PokéAPI: `syncPokedex`,
   `refreshPokedex`, ficha) e a CARTA do jogador (`UserPokemon`), mais tudo que
-  faz ela mudar: nível/stats, XP, evolução, learnset, TM, BST/raridade. E o
-  desenho da carta (`PokeCard`, `HoloCard`, `pokeCardView`), que é o mesmo em
-  toda tela.
+  faz ela mudar: nível/stats, XP e curva, evolução, learnset, TM, tutor,
+  cruzamento, BST/raridade. E o desenho da carta (`PokeCard`, `HoloCard`,
+  `pokeCardView`), que é o mesmo em toda tela.
 - **`pokedex`** — a LISTA: filtrar, ordenar, paginar e navegar a coleção e o
   catálogo. Não sabe o que é um nível; sabe ordenar por ele.
 - **`deck`** montar o time · **`packs`** sortear e abrir · **`battle`** a
-  partida · **`auth`** sessão · **`realtime`** o canal do duelo.
+  partida · **`trade`** a troca por código · **`quests`** os objetivos do dia ·
+  **`auth`** sessão · **`realtime`** o canal do duelo.
+
+> **Por que o cruzamento e o tutor moram em `pokemon`, e a troca não.** Cruzar e
+> ensinar mudam **o que a carta é** (espécie nova, golpe novo) — é a definição de
+> `pokemon`. A troca não muda a carta: muda **de quem ela é**, e por isso é
+> módulo próprio, com oferta, código e proveniência. Já `quests` é separado
+> porque conta EVENTOS do jogo (bateu, venceu, abriu pacote) e não sabe o que é
+> um pokémon — quem gasta o token que ela paga é o `pokemon`.
 
 **Como decidir onde uma coisa vai:** se a resposta muda quando o pokémon sobe de
 nível ou evolui, é `pokemon`. Se muda quando o jogador troca o filtro ou a
@@ -510,8 +550,11 @@ de propósito e confirme que o teste acusa.
 
 - `Deck.userId` não é `@unique` → requests concorrentes criam decks duplicados.
   Mitigado com `orderBy: createdAt asc` em quem lê; a cura é migration + `upsert`.
-- Não existe `error.tsx` — qualquer throw em Server Component cai na tela de erro
-  padrão do Next.
+- ~~Não existe `error.tsx`~~ — **resolvido em 2026-08-14**: `app/(game)/error.tsx`
+  cobre o throw em Server Component dentro do jogo e `app/global-error.tsx` cobre
+  o que quebra no próprio root layout. O global renderiza `<html>`/`<body>`
+  próprios e usa cor literal porque, quando ele aparece, o root layout (e com ele
+  as fontes e o `globals.css`) não está na árvore.
 
 **O que NÃO é dívida** (e por isso não está na lista acima): o **polling de 2s da
 batalha** e o **turno resolvido na leitura**. Isso é a regra 5 — a consequência

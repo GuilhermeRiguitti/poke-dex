@@ -14,11 +14,15 @@ function rowMidTurn() {
     round: 3,
     winnerId: null,
     turnStartedAt: new Date(),
+    // Piso da presença pra quem nunca carimbou.
+    createdAt: new Date(),
     participants: [
       {
         id: "part-me",
         userId: "alpha",
         activeSlot: 1,
+        energy: 3,
+        lastSeenAt: new Date(),
         pokemons: [
           {
             id: "pk1",

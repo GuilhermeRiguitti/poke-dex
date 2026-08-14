@@ -56,7 +56,9 @@ export async function getLoadoutOptions(
 async function loadEffects(learnset: LearnsetMoveDTO[]) {
   const rows = await prisma.move.findMany({
     where: { id: { in: learnset.map((c) => c.moveId) } },
-    select: { id: true, effect: true },
+    // `name` entra porque a PROTEÇÃO é decidida pelo nome do golpe: a API não
+    // distingue protect de outras coisas com `meta.category = "unique"`.
+    select: { id: true, name: true, effect: true },
   });
-  return new Map(rows.map((r) => [r.id, parseMoveEffect(r.effect)]));
+  return new Map(rows.map((r) => [r.id, parseMoveEffect(r.effect, r.name)]));
 }

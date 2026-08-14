@@ -21,6 +21,16 @@ export interface DuelCardView {
   maxPp: number;
   /** sem PP enquanto ainda há outra carta com PP → não jogável */
   disabled: boolean;
+  /** Quanta energia custa. A barra desenha isso como pips no botão. */
+  energyCost: number;
+  /**
+   * POR QUE está desabilitada. `null` = está jogável.
+   *
+   * Existe porque os dois motivos exigem reações opostas do jogador: "sem PP" só
+   * passa trocando de pokémon, "sem energia" passa sozinho no próximo round.
+   * Mostrar as duas como um botão cinza igual faz o jogador achar que travou.
+   */
+  disabledReason: "pp" | "energy" | null;
   /**
    * O que a carta faz além de bater, em uma linha ("Paralisa · 90% acerto",
    * "Ataque +2"). `null` quando não faz nada — e aí a tela avisa que a carta é
@@ -108,6 +118,11 @@ function signed(value: number): string {
 export function moveEffectLabel(effect: MoveEffect | null): string | null {
   if (!effect) return null;
   const partes: string[] = [];
+
+  // A proteção vem PRIMEIRO: é o que a carta faz, não um efeito secundário. E
+  // avisa da chance decrescente, senão o jogador acha que o escudo falhou por
+  // azar quando na verdade ele já tinha usado no turno anterior.
+  if (effect.protects) partes.push("Bloqueia o golpe deste turno (cai pela metade se repetir)");
 
   if (effect.ailment) {
     const verbo = AILMENT_VERB[effect.ailment] ?? effect.ailment;
@@ -226,6 +241,10 @@ export type DuelLogKind =
   | "switch"
   | "attack"
   | "hesitate"
+  /** sumiu e não voltou — encerra a partida (≠ hesitar, que perde um turno) */
+  | "abandoned"
+  /** levantou o escudo (protect) */
+  | "protect"
   /** pegou um status (ou ele não pegou) */
   | "ailment"
   /** estágio de atributo mudou */
@@ -287,6 +306,8 @@ export function duelLogMark(line: DuelLogLine): DuelLogMark {
   if (line.kind === "round") return { glyph: "◆", tone: "dim" };
   if (line.kind === "switch") return { glyph: "⇄", tone: "energy" };
   if (line.kind === "hesitate") return { glyph: "…", tone: "dim" };
+  if (line.kind === "abandoned") return { glyph: "⏻", tone: "bad" };
+  if (line.kind === "protect") return { glyph: "⛊", tone: "energy" };
 
   const glyph = EFFECT_GLYPH[line.kind];
   if (glyph) {
@@ -419,6 +440,18 @@ export interface DuelView {
   /** o time do oponente, só como marcadores (vivo/desmaiado) — sem revelar cartas. */
   oppParty: PartyMemberView[];
   cards: DuelCardView[];
+  /**
+   * Quanto falta pro oponente perder por sumiço, em ms. `null` = ele está aí.
+   * Existe pra tela poder dizer "oponente desconectado — vitória em Xs" em vez
+   * de a partida simplesmente acabar sozinha do nada.
+   */
+  oppAbsentMs: number | null;
+  /** minha energia agora — a barra de recurso da rodada. */
+  myEnergy: number;
+  /** a do oponente (pública, como o HP e o status). */
+  oppEnergy: number;
+  /** teto do acúmulo, pra a barra saber quantos pips desenhar. */
+  energyMax: number;
   /** slots do MEU time pros quais posso trocar agora (vivos, não o ativo). */
   switchTargets: number[];
   mode: DuelMode;
@@ -541,6 +574,17 @@ function eventLine(ev: BattleEventDTO, myUserId: string, key: string): DuelLogLi
   if (ev.type === "hesitate") {
     return { ...base, kind: "hesitate", actor, text: "hesitou — turno perdido" };
   }
+  if (ev.type === "abandoned") {
+    return { ...base, kind: "abandoned", actor, text: "saiu da partida" };
+  }
+  if (ev.type === "protect") {
+    return {
+      ...base,
+      kind: "protect",
+      actor,
+      text: ev.held ? "levantou o escudo" : "tentou o escudo — falhou",
+    };
+  }
   return {
     key,
     kind: "attack",
@@ -608,6 +652,7 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
   const oppMon = activeMon(opp);
   if (!myMon || !oppMon) return null;
 
+  const myEnergy = me.energy;
   const isOver = battle.status !== "IN_PROGRESS";
   const iSubmitted = battle.submittedUserIds.includes(myUserId);
   const opponentReady = battle.submittedUserIds.some((id) => id !== myUserId);
@@ -655,18 +700,32 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
       }));
 
   const someUsable = myMon.moves.some((mv) => mv.currentPp > 0);
-  const cards: DuelCardView[] = myMon.moves.map((mv, i) => ({
-    slot: i,
-    name: mv.name,
-    type: mv.type,
-    power: mv.power,
-    damageClass: mv.damageClass,
-    accuracy: mv.accuracy,
-    currentPp: mv.currentPp,
-    maxPp: mv.maxPp,
-    disabled: mv.currentPp <= 0 && someUsable,
-    effectLabel: moveEffectLabel(mv.effect),
-  }));
+  // "Dá pra pagar alguma?" tem que considerar PP JUNTO: uma carta barata mas
+  // sem PP não é alternativa. Sem isso, ficar sem energia com só uma carta
+  // zerada na mão desabilitaria a barra inteira em vez de cair no struggle.
+  const someAffordable = myMon.moves.some((mv) => mv.currentPp > 0 && mv.energyCost <= myEnergy);
+  const cards: DuelCardView[] = myMon.moves.map((mv, i) => {
+    const semPp = mv.currentPp <= 0 && someUsable;
+    const semEnergia = mv.energyCost > myEnergy && someAffordable;
+    return {
+      slot: i,
+      name: mv.name,
+      type: mv.type,
+      power: mv.power,
+      damageClass: mv.damageClass,
+      accuracy: mv.accuracy,
+      currentPp: mv.currentPp,
+      maxPp: mv.maxPp,
+      energyCost: mv.energyCost,
+      disabled: semPp || semEnergia,
+      // Os dois motivos são DIFERENTES na tela de propósito: sem isso, o jogador
+      // vê a carta apagada, não entende por quê, e conclui que o jogo travou.
+      // "Sem PP" some ao trocar de pokémon; "sem energia" passa sozinho no
+      // próximo round.
+      disabledReason: semPp ? ("pp" as const) : semEnergia ? ("energy" as const) : null,
+      effectLabel: moveEffectLabel(mv.effect),
+    };
+  });
 
   // turnLogs vêm desc por turnNumber; achata em ordem cronológica pro log.
   const logLines: DuelLogLine[] = [];
@@ -682,6 +741,15 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
     myParty: toParty(me, true),
     oppParty: toParty(opp, false),
     cards,
+    // Aviso de desconexão do OPONENTE. O meu não interessa: se eu sumi, não há
+    // ninguém pra ler a tela.
+    oppAbsentMs: opp.present ? null : opp.absentForMs,
+    myEnergy,
+    // A do oponente é pública, como o HP e o status: sem ver o recurso dele não
+    // dá pra ler a ameaça, e "ele tem 3, o golpe grande vem agora" é justamente
+    // a leitura que a mecânica cria.
+    oppEnergy: opp.energy,
+    energyMax: me.energyMax,
     switchTargets,
     mode,
     canPlay: mode === "choose",

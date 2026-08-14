@@ -1,3 +1,5 @@
+import "server-only";
+
 // API pública do módulo deck.
 //
 // O deck é o ponto de encontro de duas features: a PokéDex MONTA o deck, e o

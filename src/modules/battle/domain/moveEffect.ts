@@ -77,6 +77,16 @@ export interface MoveEffect {
   /** golpe de múltiplos acertos: [min, max] (double-kick = [2,2]). */
   minHits: number;
   maxHits: number;
+  /**
+   * PROTEÇÃO: anula o golpe que vier contra você NESTE turno.
+   *
+   * É a "mecânica reativa" do TODO, e o que a torna aceitável é ela ser
+   * ESCOLHIDA ÀS CEGAS, como qualquer outra carta — a janela de reação do plano
+   * antigo pressupunha turno alternado (ver a lista de "não reintroduzir" do
+   * CLAUDE.md) e morreu junto com ele. Aqui não há reação a nada: você aposta
+   * que o oponente vai atacar, e paga energia por essa aposta.
+   */
+  protects: boolean;
 }
 
 /** true se o efeito realmente MUDA alguma coisa — senão o golpe segue inerte. */
@@ -89,8 +99,33 @@ export function hasEffect(effect: MoveEffect | null | undefined): effect is Move
     effect.healPct > 0 ||
     effect.drainPct !== 0 ||
     effect.critStage > 0 ||
-    effect.maxHits > 1
+    effect.maxHits > 1 ||
+    effect.protects
   );
+}
+
+/**
+ * Os golpes que PROTEGEM. É uma lista de NOMES, e não uma leitura do `meta`,
+ * porque a API não dá o sinal: `protect`, `detect` e companhia vêm com
+ * `meta.category = "unique"` — a mesma categoria de `substitute`, `transform` e
+ * outra dúzia de coisas que não têm nada a ver. Ler "unique" como proteção
+ * transformaria vários golpes em escudo por engano, que é pior que a lista.
+ *
+ * A lista é curta e estável: a família não cresce todo ano.
+ */
+const PROTECT_MOVES = new Set([
+  "protect",
+  "detect",
+  "spiky-shield",
+  "kings-shield",
+  "baneful-bunker",
+  "obstruct",
+  "silk-trap",
+  "burning-bulwark",
+]);
+
+export function isProtectMove(moveName: string | undefined): boolean {
+  return moveName !== undefined && PROTECT_MOVES.has(moveName);
 }
 
 /** O golpe muda alguma coisa em quem USA (e por isso não precisa acertar ninguém). */
@@ -155,8 +190,16 @@ function resolveStageTarget(target: string, category: string): "self" | "foe" {
  * metade dos golpes de status inertes de novo — que é exatamente o bug que esta
  * fatia veio consertar.
  */
-export function parseMoveEffect(raw: unknown): MoveEffect | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+export function parseMoveEffect(raw: unknown, moveName?: string): MoveEffect | null {
+  const protects = isProtectMove(moveName);
+
+  // A proteção é a ÚNICA coisa aqui que não vem do Json: ela é decidida pelo
+  // NOME, porque a API não a distingue (ver PROTECT_MOVES). Então ela precisa
+  // sobreviver mesmo quando `Move.effect` está null — que é o caso de todo golpe
+  // semeado antes da fatia dos efeitos.
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return protects ? { ...EMPTY_EFFECT, protects: true } : null;
+  }
   const r = raw as RawEffect;
 
   const category = typeof r.category === "string" ? r.category : "damage";
@@ -194,7 +237,26 @@ export function parseMoveEffect(raw: unknown): MoveEffect | null {
     critStage: Math.max(0, num(r.critRate)),
     minHits: Math.max(1, num(r.minHits, 1)),
     maxHits: Math.max(1, num(r.maxHits, 1)),
+    protects,
   };
 
   return hasEffect(effect) ? effect : null;
 }
+
+/** Um efeito que não faz nada — a base pra montar um só com proteção. */
+const EMPTY_EFFECT: MoveEffect = {
+  ailment: null,
+  ailmentChance: 0,
+  ailmentMinTurns: null,
+  ailmentMaxTurns: null,
+  stageChanges: [],
+  stageChance: 0,
+  stageTarget: "foe",
+  flinchChance: 0,
+  healPct: 0,
+  drainPct: 0,
+  critStage: 0,
+  minHits: 1,
+  maxHits: 1,
+  protects: false,
+};

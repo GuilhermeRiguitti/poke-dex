@@ -58,6 +58,6 @@ export async function loadMoveDefs(moveIds: string[]): Promise<BattleMoveDef[]> 
       // de jogo mora no domínio (parseMoveEffect). Uma carta que entrou em
       // campo antes de uma mudança de regra segue com o efeito congelado no
       // snapshot — que é o mesmo isolamento que já vale pros stats.
-      effect: parseMoveEffect(r.effect),
+      effect: parseMoveEffect(r.effect, r.name),
     }));
 }

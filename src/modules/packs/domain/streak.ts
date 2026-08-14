@@ -1,28 +1,22 @@
 // Regras do streak de login. PURAS: sem Prisma, sem fetch, sem React.
 //
-// "Dia" aqui é o dia UTC (não o fuso do jogador — o servidor não sabe o fuso de
-// forma confiável, e UTC é determinístico). Um jogador perto da meia-noite pode
-// ver o dia virar "cedo/tarde" pelo relógio dele; é o trade-off consciente por
-// simplicidade e reprodutibilidade. Documentado no PACK_SYSTEM.md.
+// A fronteira do dia (dia UTC) saiu daqui em 2026-08-14 pra `lib/utcDay.ts`,
+// quando o cruzamento e as quests passaram a precisar da MESMA fronteira: como
+// `domain/` só importa a si mesmo, `pokemon` não pode puxar este arquivo, e
+// copiar a conta em cada módulo é o erro caro — bastaria uma cópia divergir pra
+// o jogador ganhar duas recompensas na virada. O trade-off do UTC continua o
+// mesmo, e está explicado lá.
 
-const DAY_MS = 86_400_000;
+import { isSameUtcDay, utcDayIndex } from "@/src/lib/utcDay";
+
+export { startOfUtcDay } from "@/src/lib/utcDay";
 
 /** A cada 7 dias seguidos, o jogador ganha 1 pacote-bônus. */
 export const STREAK_REWARD_CYCLE = 7;
 
-/** Índice do dia UTC (dias inteiros desde a época). Meia-noite UTC = fronteira. */
-function utcDayIndex(d: Date): number {
-  return Math.floor(d.getTime() / DAY_MS);
-}
-
-/** Meia-noite UTC do dia de `now` — o corte pra "já contou hoje". */
-export function startOfUtcDay(now: Date): Date {
-  return new Date(utcDayIndex(now) * DAY_MS);
-}
-
 /** O jogador já fez check-in hoje? (mesmo dia UTC do último check-in) */
 export function alreadyCheckedInToday(lastCheckIn: Date | null, now: Date): boolean {
-  return lastCheckIn !== null && utcDayIndex(lastCheckIn) === utcDayIndex(now);
+  return lastCheckIn !== null && isSameUtcDay(lastCheckIn, now);
 }
 
 /**

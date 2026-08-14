@@ -44,6 +44,7 @@ export function makeEffect(overrides: Partial<MoveEffect> = {}): MoveEffect {
     critStage: 0,
     minHits: 1,
     maxHits: 1,
+    protects: false,
     ...overrides,
   };
 }

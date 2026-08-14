@@ -51,6 +51,18 @@ export interface MonConditions {
    * do oponente, não a ação de quem hesita.
    */
   flinched: boolean;
+  /**
+   * Está protegido NESTE turno (protect e família). Volátil: nasce e morre
+   * dentro do turno, e a troca limpa.
+   */
+  protected: boolean;
+  /**
+   * Quantas vezes seguidas protegeu. Não é estatística — é o que faz a proteção
+   * ter custo: a chance cai pela metade a cada uso consecutivo, senão o jogador
+   * com energia sobrando protegeria todo turno e o duelo empataria por
+   * esgotamento de PP. Zera quando ele faz outra coisa.
+   */
+  protectStreak: number;
 }
 
 export const STAGE_STATS: StageStat[] = [
@@ -70,7 +82,16 @@ export function emptyStages(): StatStages {
 }
 
 export function emptyConditions(): MonConditions {
-  return { status: null, sleepTurns: 0, stages: emptyStages(), confusionTurns: 0, seeded: false, flinched: false };
+  return {
+    status: null,
+    sleepTurns: 0,
+    stages: emptyStages(),
+    confusionTurns: 0,
+    seeded: false,
+    flinched: false,
+    protected: false,
+    protectStreak: 0,
+  };
 }
 
 /**
@@ -97,6 +118,8 @@ export function normalizeConditions(raw: unknown): MonConditions {
     confusionTurns: typeof r.confusionTurns === "number" && r.confusionTurns > 0 ? Math.floor(r.confusionTurns) : 0,
     seeded: r.seeded === true,
     flinched: r.flinched === true,
+    protected: r.protected === true,
+    protectStreak: Math.max(0, Math.floor(Number(r.protectStreak) || 0)),
   };
 }
 
@@ -385,4 +408,18 @@ export function clearVolatiles(mon: BattlePokemonState): void {
   c.confusionTurns = 0;
   c.seeded = false;
   c.flinched = false;
+  c.protected = false;
+  // A SEQUÊNCIA também zera na troca. É consistente com o resto (trocar limpa o
+  // volátil), e sem isso dava pra burlar a chance decrescente: protege, troca,
+  // volta, e a proteção estaria cheia de novo.
+  c.protectStreak = 0;
+}
+
+/**
+ * A chance de a proteção pegar, dado quantas vezes seguidas já pegou.
+ * 100% → 50% → 25% → … É o que impede a proteção de virar a jogada padrão de
+ * quem tem energia sobrando.
+ */
+export function protectChance(streak: number): number {
+  return 100 / Math.pow(2, Math.max(0, streak));
 }

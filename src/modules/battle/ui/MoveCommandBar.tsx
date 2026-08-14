@@ -47,6 +47,23 @@ function MoveButton({
         <span className="line-clamp-2 min-h-6 text-left font-title text-[11px] uppercase leading-tight tracking-wide text-ink">
           {name}
         </span>
+        {/* CUSTO EM ENERGIA, como pips. Número seria mais compacto, mas o pip
+            se compara de relance com a barra de energia do painel — que é a
+            leitura que importa na hora de escolher ("tenho 2, isso custa 3"). */}
+        <span
+          className="flex shrink-0 gap-px pt-px"
+          title={`Custa ${card.energyCost} de energia`}
+          aria-label={`custa ${card.energyCost} de energia`}
+        >
+          {Array.from({ length: card.energyCost }, (_, i) => (
+            <span
+              key={i}
+              className={`block h-1.5 w-1.5 rounded-full ${
+                card.disabledReason === "energy" ? "bg-bad" : "bg-energy"
+              }`}
+            />
+          ))}
+        </span>
         <span
           title={cls.hint}
           className="shrink-0 rounded-sm px-1 py-px font-title text-[9px] font-bold tracking-wider text-bg"
@@ -90,11 +107,24 @@ function MoveButton({
       */}
       <span
         className={`mt-1 block min-h-3.5 text-left text-[9px] font-semibold leading-tight ${
-          card.effectLabel ? "text-energy" : "text-ink-dim/50"
+          card.disabledReason ? "text-bad" : card.effectLabel ? "text-energy" : "text-ink-dim/50"
         }`}
-        title={card.effectLabel ?? "Esta carta ainda não tem efeito no jogo"}
+        title={
+          card.disabledReason === "pp"
+            ? "Sem PP — só volta trocando de pokémon"
+            : card.disabledReason === "energy"
+              ? "Sem energia — você recupera 1 no próximo round"
+              : (card.effectLabel ?? "Esta carta ainda não tem efeito no jogo")
+        }
       >
-        {card.effectLabel ?? (card.damageClass === "status" ? "sem efeito" : "")}
+        {/* O MOTIVO tem que aparecer, não só o botão apagado: "sem PP" só passa
+            trocando de pokémon, "sem energia" passa sozinho no próximo round.
+            Cinza igual pros dois faz o jogador achar que o jogo travou. */}
+        {card.disabledReason === "pp"
+          ? "sem PP"
+          : card.disabledReason === "energy"
+            ? "sem energia"
+            : (card.effectLabel ?? (card.damageClass === "status" ? "sem efeito" : ""))}
       </span>
 
       <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-panel">

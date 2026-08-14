@@ -37,6 +37,22 @@ time e batalha contra outro jogador em turnos.
 Todos os atributos e golpes vêm da [PokéAPI](https://pokeapi.co/) — nada é
 inventado à mão.
 
+## Fora da batalha
+
+Três formas de conseguir carta além de abrir pacote:
+
+- **Troca por código.** Você oferece uma carta e recebe um código curto; quem
+  você quiser passa esse código adiante e aceita. Não existe busca de jogador,
+  perfil nem lista de amigos — o jogo nunca mostra o nome de outro treinador, e a
+  troca não foge dessa regra. O código vale 24 h.
+- **Cruzamento.** Duas cartas suas geram uma terceira quando **uma delas sabe um
+  golpe que a espécie da outra aprende por ovo**. O filhote nasce nível 1, da
+  espécie que aprende por ovo, já sabendo esse golpe. Um por dia, e dá pra testar
+  combinações antes sem gastar a tentativa.
+- **Objetivos do dia.** Três objetivos por dia (vencer, jogar, abrir pacote).
+  Cada um completo dá um token de **tutor**, que ensina a um Pokémon um golpe que
+  a espécie dele aprende por tutor. É a irmã do TM, que vem do login diário.
+
 ## Tudo vem da PokéAPI
 
 A [PokéAPI](https://pokeapi.co/) é a **fonte da verdade** do jogo. Não inventamos
@@ -78,8 +94,7 @@ O nível pesa de três formas, todas fiéis à série: **escala os atributos**, 
 mais forte por si — o thunderbolt de um Pikachu nível 50 tem o mesmo poder base do
 de um nível 5; o que muda é quem está usando.
 
-A experiência ganha ao derrotar um Pokémon também é a da série (geração 5+), com
-curva *medium-fast* — o total acumulado para chegar ao nível n é n³.
+A experiência ganha ao derrotar um Pokémon também é a da série (geração 5+):
 
 ```
 xp ganho = floor(experiência_base_do_derrotado * nível_do_derrotado / 7)
@@ -165,6 +180,56 @@ usar os atributos e o learnset dela.
 Não sobra nada a acertar no deck: as skills são escolhidas na hora de entrar em
 campo, a partir do que a espécie **atual** já liberou. E a batalha em andamento
 não muda — quem evolui no meio dela só entra evoluído na partida seguinte.
+
+Cada espécie sobe de nível no **ritmo dela**. O que define esse ritmo é a
+**curva de experiência**: a regra que diz quanto XP é preciso acumular para
+chegar a cada nível. São seis curvas na série, e cada espécie tem a sua.
+
+Na prática, o XP total para chegar ao nível 50 vai de **100.000** (curva rápida)
+a **156.250** (curva lenta) — ou seja, um Pokémon de curva rápida chega lá com
+cerca de um terço menos de batalhas. É isso que faz o "lendário demora pra
+crescer" valer aqui também.
+
+## Energia: a escolha de cada rodada
+
+Toda skill custa **energia**, e você começa a batalha com 3. A rodada devolve 1
+(até o teto de 6), e o custo vai de 1 a 3 conforme a força do golpe.
+
+Isso existe para criar uma pergunta que antes não existia: **descarrego agora ou
+guardo?** Sem energia, a jogada certa era sempre apertar o golpe mais forte que
+ainda tivesse PP. Com ela, o golpe grande não pode ser usado duas vezes seguidas,
+e escolher a rodada certa passa a valer mais que ter a carta mais forte.
+
+A energia dos **dois** lados fica visível, como o HP: ver que o oponente juntou 3
+é o que te avisa que o golpe grande vem agora.
+
+Se nenhuma skill for pagável, você não fica sem ação — entra o golpe de último
+recurso, igual a quando acaba o PP. Ficar sem energia nunca faz você perder por
+não jogar.
+
+## Escudo: apostar em vez de reagir
+
+Existem cartas de **proteção** (protect e parentes): elas anulam o golpe que vier
+contra você naquela rodada.
+
+Como os dois jogadores escolhem **às cegas e ao mesmo tempo**, isso não é
+"reagir" ao ataque — é **apostar** que ele vem. Se você acertar a aposta, o
+oponente perde o turno (e gasta PP e energia à toa). Se errar, gastou a rodada
+levantando escudo contra nada.
+
+Para não virar a jogada padrão de quem tem energia sobrando, a proteção **enfraquece
+quando repetida**: na segunda vez seguida ela só funciona metade das vezes, na
+terceira um quarto, e assim por diante. Fazer outra coisa (ou trocar de Pokémon)
+zera essa contagem.
+
+## Sair no meio da partida
+
+Se você fechar a aba e **não voltar em 60 segundos**, o oponente vence. A tela
+avisa antes: quando o outro lado para de dar sinal, aparece um contador dizendo
+quanto falta.
+
+Trocar de aba **não** conta como sair — o jogo continua avisando o servidor que
+você está aí, mesmo com a aba em segundo plano.
 
 ## Como a batalha avança por dentro
 

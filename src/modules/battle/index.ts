@@ -1,3 +1,5 @@
+import "server-only";
+
 // API pública do module battle — as rotas em app/api/battle/** e as pages de
 // (game)/battle/** só devem importar daqui, nunca de domain/queries/commands
 // diretamente.

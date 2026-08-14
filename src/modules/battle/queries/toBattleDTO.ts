@@ -1,6 +1,8 @@
 import { bstOf, rarityTier } from "@/src/modules/pokemon";
 import { TURN_TIMEOUT_MS, remainingTurnMs } from "../domain/turnClock";
 import { STAGE_STATS, normalizeConditions } from "../domain/conditions";
+import { ENERGY_MAX, energyCostOf } from "../domain/energy";
+import { absenceRemainingMs, isPresent } from "../domain/presence";
 import type { BattleMoveDef } from "../domain/types";
 import type {
   BattleDTO,
@@ -32,11 +34,15 @@ interface BattleRow {
   round: number;
   winnerId: string | null;
   turnStartedAt: Date;
+  /** Piso da presença: quem nunca carimbou é medido daqui. */
+  createdAt: Date;
   actions?: { userId: string; round: number }[];
   participants: {
     id: string;
     userId: string;
     activeSlot: number;
+    energy: number;
+    lastSeenAt: Date | null;
     pokemons: {
       id: string;
       slot: number;
@@ -66,6 +72,9 @@ function toMoveDTO(move: BattleMoveDef): BattleMoveDTO {
     priority: move.priority,
     maxPp: move.maxPp,
     currentPp: move.currentPp,
+    // Do servidor, sempre: a tabela de faixas é balanceamento e não vai pro
+    // browser (ver o comentário em BattleMoveDTO.energyCost).
+    energyCost: energyCostOf(move),
     effect: move.effect ?? null,
   };
 }
@@ -115,12 +124,25 @@ function toPokemonDTO(row: BattleRow["participants"][number]["pokemons"][number]
   };
 }
 
-function toParticipantDTO(row: BattleRow["participants"][number]): ParticipantDTO {
+function toParticipantDTO(
+  row: BattleRow["participants"][number],
+  /** Piso da presença pra quem nunca carimbou: o createdAt da PARTIDA. */
+  floor: Date,
+  now: number,
+): ParticipantDTO {
+  const present = isPresent(row.lastSeenAt, floor, new Date(now));
   return {
     id: row.id,
     userId: row.userId,
     activeSlot: row.activeSlot,
     pokemons: row.pokemons.map(toPokemonDTO),
+    energy: row.energy,
+    energyMax: ENERGY_MAX,
+    present,
+    // Só conta quando ele JÁ está fora da janela de batida — enquanto o sinal é
+    // recente, mostrar um cronômetro assustaria o jogador à toa (uma batida
+    // atrasada 21s é normal).
+    absentForMs: present ? null : absenceRemainingMs(row.lastSeenAt, floor, new Date(now)),
   };
 }
 
@@ -139,7 +161,7 @@ export function toBattleDTO(row: BattleRow, now = Date.now()): BattleDTO {
     // mesma pros dois lados e começa no mesmo instante (turnStartedAt).
     turnEndsInMs: remainingTurnMs(row.turnStartedAt, now),
     turnTimeoutMs: TURN_TIMEOUT_MS,
-    participants: row.participants.map(toParticipantDTO),
+    participants: row.participants.map((p) => toParticipantDTO(p, row.createdAt, now)),
     turnLogs: row.turnLogs.map((log) => ({
       turnNumber: log.turnNumber,
       events: (log.events as BattleEventDTO[]) ?? [],

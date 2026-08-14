@@ -1,3 +1,10 @@
+import {
+  DEFAULT_GROWTH_RATE,
+  levelFromXpOn,
+  xpForLevelOn,
+  type GrowthRate,
+} from "./growthRate";
+
 // Nível incremental + stats derivados 100% da PokéAPI (CLAUDE.md § O jogo, regra 3).
 //
 // O QUE VEM DA API: os `baseStats` (o número fixo por espécie) e o
@@ -84,32 +91,37 @@ export function deriveStats(base: BaseStats, level: number): DerivedStats {
 // xp total, então não há como o par (level, xp) divergir — não existe estado
 // inválido pra reparar, o que importa num ambiente sem worker (CLAUDE.md §5).
 //
-// Curva: `medium-fast` — total pra chegar no nível n = n³. É a curva mais comum
-// da série (~55% das espécies). SIMPLIFICAÇÃO CONSCIENTE: a PokéAPI expõe a
-// curva real de cada espécie em /pokemon-species (`growth_rate`, 6 curvas), mas
-// isso custa +1 fetch por espécie no seed. Se um dia buscarmos species (pra
-// evolução), a curva vem junto e entra aqui — o resto do código só chama
-// `levelFromXp`/`xpForLevel`.
+// CURVA POR ESPÉCIE desde 2026-08-14 (antes era `medium-fast` pra todo mundo).
+// As seis fórmulas moram em `growthRate.ts`; aqui ficou só a fachada. O dado
+// vem do `growth_rate` de /pokemon-species — endpoint que o sync já chamava pra
+// descobrir a cadeia de evolução e cujo resto do payload era descartado.
+//
+// O parâmetro `rate` é OPCIONAL em todas as funções abaixo, e cai em
+// `medium-fast`. Não é preguiça: é o que tornou a mudança aditiva, porque
+// medium-fast era a curva única de antes. Quem chamar sem informar a curva
+// recebe exatamente os mesmos números de antes.
 
-/** XP total necessário pra ESTAR no nível n (curva medium-fast: n³). */
-export function xpForLevel(level: number): number {
-  return Math.pow(clampLevel(level), 3);
+/**
+ * XP total necessário pra ESTAR no nível n, na curva da espécie.
+ *
+ * `rate` é opcional e cai em `medium-fast` — que era a curva única de todo o
+ * jogo até 2026-08-14. É isso que permitiu a mudança ser aditiva: quem chamar
+ * sem informar a curva recebe os mesmos números de antes.
+ */
+export function xpForLevel(level: number, rate: GrowthRate = DEFAULT_GROWTH_RATE): number {
+  return xpForLevelOn(rate, clampLevel(level));
 }
 
 /** O nível correspondente a um XP total. Inverso de xpForLevel. */
-export function levelFromXp(totalXp: number): number {
-  const xp = Math.max(0, Math.floor(totalXp));
-  // cbrt em float pode devolver 4.999999 pra 125; arredonda e corrige pra baixo.
-  const guess = Math.round(Math.cbrt(xp));
-  const level = xpForLevel(guess) > xp ? guess - 1 : guess;
-  return clampLevel(level);
+export function levelFromXp(totalXp: number, rate: GrowthRate = DEFAULT_GROWTH_RATE): number {
+  return clampLevel(levelFromXpOn(rate, totalXp));
 }
 
 /** Quanto falta, em XP, pro próximo nível. 0 no teto. */
-export function xpToNextLevel(totalXp: number): number {
-  const level = levelFromXp(totalXp);
+export function xpToNextLevel(totalXp: number, rate: GrowthRate = DEFAULT_GROWTH_RATE): number {
+  const level = levelFromXp(totalXp, rate);
   if (level >= MAX_LEVEL) return 0;
-  return xpForLevel(level + 1) - Math.max(0, Math.floor(totalXp));
+  return xpForLevel(level + 1, rate) - Math.max(0, Math.floor(totalXp));
 }
 
 /**
@@ -148,11 +160,15 @@ export interface Progress {
  * Soma XP a um total acumulado e diz em que nível isso põe o pokémon. Puro: não
  * toca no banco — o caller persiste. No teto o XP para de acumular.
  */
-export function applyXp(totalXp: number, gainedXp: number): Progress {
-  const before = levelFromXp(totalXp);
-  const capped = xpForLevel(MAX_LEVEL);
+export function applyXp(
+  totalXp: number,
+  gainedXp: number,
+  rate: GrowthRate = DEFAULT_GROWTH_RATE,
+): Progress {
+  const before = levelFromXp(totalXp, rate);
+  const capped = xpForLevel(MAX_LEVEL, rate);
   const next = Math.min(capped, Math.max(0, Math.floor(totalXp)) + Math.max(0, Math.floor(gainedXp)));
-  const after = levelFromXp(next);
+  const after = levelFromXp(next, rate);
   return { level: after, xp: next, gained: after - before };
 }
 
@@ -175,13 +191,19 @@ export function sumBaseStats(base: BaseStats): number {
 }
 
 /** Par consistente a partir do XP TOTAL acumulado. Nunca lança. */
-export function progressionFromXp(totalXp: number): { xp: number; level: number } {
+export function progressionFromXp(
+  totalXp: number,
+  rate: GrowthRate = DEFAULT_GROWTH_RATE,
+): { xp: number; level: number } {
   const xp = Number.isFinite(totalXp) ? Math.max(0, Math.floor(totalXp)) : 0;
-  return { xp, level: levelFromXp(xp) };
+  return { xp, level: levelFromXp(xp, rate) };
 }
 
 /** Par consistente a partir de um nível de nascimento. Nunca lança. */
-export function progressionFromLevel(level: number): { xp: number; level: number } {
+export function progressionFromLevel(
+  level: number,
+  rate: GrowthRate = DEFAULT_GROWTH_RATE,
+): { xp: number; level: number } {
   const clamped = clampLevel(level);
-  return { xp: xpForLevel(clamped), level: clamped };
+  return { xp: xpForLevel(clamped, rate), level: clamped };
 }

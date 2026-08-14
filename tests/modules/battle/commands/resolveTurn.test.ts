@@ -19,6 +19,9 @@ const tx = {
   battleTurnLog: { create: vi.fn() },
   battleAction: { deleteMany: vi.fn() },
   userPokemon: { findMany: vi.fn(), update: vi.fn() },
+  // A quest diária é incrementada DENTRO deste claim, ao lado do XP: fora dele,
+  // os dois pollings de 2s pagariam progresso a cada leitura.
+  questProgress: { upsert: vi.fn() },
 };
 
 const prismaMock = {
@@ -71,10 +74,31 @@ function battleReadyToResolve(oppHp = 100) {
     status: "IN_PROGRESS",
     round: 3,
     turnStartedAt: new Date(),
+    // `createdAt` é o PISO da presença (pra quem nunca carimbou). Sem ele o
+    // cálculo de ausência não tem referência e toda partida nasceria abandonada.
+    createdAt: new Date(),
     winnerId: null,
     participants: [
-      { id: "pa", userId: "alpha", activeSlot: 1, missedTurns: 0, pokemons: [pokemonRow(100, "up-alpha")] },
-      { id: "pb", userId: "zeta", activeSlot: 1, missedTurns: 0, pokemons: [pokemonRow(oppHp, "up-zeta")] },
+      {
+        id: "pa",
+        userId: "alpha",
+        activeSlot: 1,
+        missedTurns: 0,
+        energy: 3,
+        // `Date | null`: null = nunca carimbou, e é o caso que o teste da
+        // partida nova exercita.
+        lastSeenAt: new Date() as Date | null,
+        pokemons: [pokemonRow(100, "up-alpha")],
+      },
+      {
+        id: "pb",
+        userId: "zeta",
+        activeSlot: 1,
+        missedTurns: 0,
+        energy: 3,
+        lastSeenAt: new Date() as Date | null,
+        pokemons: [pokemonRow(oppHp, "up-zeta")],
+      },
     ],
     actions: [
       { battleId: "b1", userId: "alpha", round: 3, cardSlot: 0 },
@@ -89,7 +113,8 @@ function writeCallCount() {
     tx.battlePokemon.updateMany.mock.calls.length +
     tx.battleParticipant.update.mock.calls.length +
     tx.battleTurnLog.create.mock.calls.length +
-    tx.battleAction.deleteMany.mock.calls.length
+    tx.battleAction.deleteMany.mock.calls.length +
+    tx.questProgress.upsert.mock.calls.length
   );
 }
 
@@ -113,6 +138,7 @@ beforeEach(() => {
     { id: "up-zeta", xp: 8000, pokemon: { evolvesToApiId: null, evolvesToLevel: null } },
   ]);
   tx.userPokemon.update.mockResolvedValue({});
+  tx.questProgress.upsert.mockResolvedValue({});
 });
 
 describe("tryResolveTurn — atomicidade do turno", () => {
@@ -124,6 +150,10 @@ describe("tryResolveTurn — atomicidade do turno", () => {
     expect(tx.battle.updateMany).toHaveBeenCalledTimes(1);
     expect(writeCallCount()).toBe(0);
     expect(tx.userPokemon.update).not.toHaveBeenCalled();
+    // Explícito porque é a regra que a quest herda de graça ao morar DENTRO do
+    // claim: fora dele, cada poll de 2s dos dois jogadores contaria progresso, e
+    // "vença 3 batalhas" completaria com a aba aberta.
+    expect(tx.questProgress.upsert).not.toHaveBeenCalled();
   });
 
   it("ganhou o claim => aplica, grava o log do round e apaga AS DUAS cartas", async () => {
@@ -249,5 +279,69 @@ describe("tryResolveTurn — fim por faint, PP e XP", () => {
     expect(call![0].data).toHaveProperty("moves");
     const moves = call![0].data.moves as { name: string; currentPp: number }[];
     expect(moves[0]).toMatchObject({ name: "thunderbolt", currentPp: 14 });
+  });
+});
+
+// ── ABANDONO POR DESCONEXÃO ────────────────────────────────────────────────
+//
+// A regra encerra a partida SEM passar pelo motor. O que precisa ficar travado:
+// quem sumiu perde, quem perde o claim não escreve, e — o caso mais perigoso —
+// partida recém-criada, com ninguém tendo carimbado ainda, NÃO pode nascer
+// abandonada.
+describe("tryResolveTurn — presença", () => {
+  const FORA = 61_000; // > PRESENCE_TIMEOUT_MS
+
+  it("um jogador sumiu => ABANDONED com vitória do outro, sem tocar no motor", async () => {
+    const b = battleReadyToResolve();
+    b.participants[0].lastSeenAt = new Date(Date.now() - FORA); // alpha sumiu
+    prismaMock.battle.findUnique.mockResolvedValue(b);
+
+    await tryResolveTurn("b1");
+
+    const data = tx.battle.updateMany.mock.calls[0][0].data;
+    expect(data.status).toBe("ABANDONED");
+    expect(data.winnerId).toBe("zeta");
+    // Não passou pelo motor: ninguém "jogou" o turno de quem sumiu, então
+    // nenhum HP mudou.
+    expect(tx.battlePokemon.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("os DOIS sumiram => ABANDONED sem vencedor", async () => {
+    const b = battleReadyToResolve();
+    b.participants[0].lastSeenAt = new Date(Date.now() - FORA);
+    b.participants[1].lastSeenAt = new Date(Date.now() - FORA);
+    prismaMock.battle.findUnique.mockResolvedValue(b);
+
+    await tryResolveTurn("b1");
+
+    const data = tx.battle.updateMany.mock.calls[0][0].data;
+    expect(data.status).toBe("ABANDONED");
+    expect(data.winnerId).toBeNull();
+  });
+
+  it("partida NOVA, ninguém carimbou ainda => NÃO encerra", async () => {
+    // Sem o piso em createdAt, `lastSeenAt` null viraria "ausente desde 1970" e
+    // toda partida morreria no primeiro poll.
+    const b = battleReadyToResolve();
+    b.createdAt = new Date();
+    b.participants[0].lastSeenAt = null;
+    b.participants[1].lastSeenAt = null;
+    prismaMock.battle.findUnique.mockResolvedValue(b);
+
+    await tryResolveTurn("b1");
+
+    const data = tx.battle.updateMany.mock.calls[0][0].data;
+    expect(data.status).not.toBe("ABANDONED");
+  });
+
+  it("perdeu o claim no encerramento por ausência => não escreve nada", async () => {
+    const b = battleReadyToResolve();
+    b.participants[0].lastSeenAt = new Date(Date.now() - FORA);
+    prismaMock.battle.findUnique.mockResolvedValue(b);
+    tx.battle.updateMany.mockResolvedValue({ count: 0 });
+
+    await tryResolveTurn("b1");
+
+    expect(writeCallCount()).toBe(0);
   });
 });

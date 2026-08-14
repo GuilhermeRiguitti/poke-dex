@@ -54,11 +54,20 @@ export default function CombatantPanel({
   mon,
   side,
   party,
+  energy,
+  energyMax,
 }: {
   mon: DuelMonView;
   side: "me" | "opp";
   /** só o oponente mostra o time em marcadores */
   party?: PartyMemberView[];
+  /**
+   * Energia do LADO (não do pokémon). Aparece nos DOIS painéis: é informação
+   * pública, como HP e status, e é o que permite ler a ameaça — "ele tem 3, o
+   * golpe grande vem agora".
+   */
+  energy: number;
+  energyMax: number;
 }) {
   const tone = mon.hpPct > 50 ? "var(--color-ok)" : mon.hpPct > 20 ? "var(--color-warn)" : "var(--color-bad)";
   const name = mon.name.replace(/-/g, " ");
@@ -93,6 +102,23 @@ export default function CombatantPanel({
             </span>
             <span className="shrink-0 text-[11px] font-bold tabular-nums text-ink">
               {mon.currentHp}/{mon.maxHp}
+            </span>
+          </div>
+
+          {/* ENERGIA em pips, e não em barra contínua: o número é pequeno
+              (0..6) e o que o jogador precisa é CONTAR pra comparar com o custo
+              do botão, não estimar uma proporção. */}
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="shrink-0 font-title text-[9px] uppercase tracking-widest text-ink-dim">
+              Energia
+            </span>
+            <span className="flex gap-1" title={`${energy} de ${energyMax} de energia`}>
+              {Array.from({ length: energyMax }, (_, i) => (
+                <span
+                  key={i}
+                  className={`block h-2 w-2 rounded-full ${i < energy ? "bg-energy" : "bg-panel"}`}
+                />
+              ))}
             </span>
           </div>
 
