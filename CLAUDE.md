@@ -47,9 +47,22 @@ Fluxo, na ordem:
 Migration hand-written só pra `supabase/migrations/` (RLS/realtime) — o schema
 `realtime` não existe no Prisma. As de schema do app são sempre geradas.
 
-**O MCP do Supabase deste ambiente aponta pro PROD.** Ele é ferramenta de
-**leitura**: `list_tables`, `list_migrations`, `get_advisors`, `get_logs` e
-`execute_sql` com `SELECT`. Aí para.
+**O MCP do Supabase deste ambiente aponta pro PROD.** Desde 2026-08-13 ele NÃO
+é mais só leitura (o dono removeu o `--read-only`): além de `list_tables`,
+`list_migrations`, `get_advisors`, `get_logs` e `SELECT`, o `execute_sql`
+escreve — pra o que é **operação**, não schema: reagendar `cron.job`, conferir
+`net._http_response`, corrigir uma linha de dado.
+
+**O que continua proibido é exatamente o que está no topo desta seção, e o
+motivo não mudou nem um pouco:** nada de `apply_migration`, nada de DDL por
+`execute_sql`, nada de `CREATE`/`ALTER`/`DROP TABLE`. Poder escrever não é
+permissão pra alterar schema — os dois ledgers seguem sendo a fonte da verdade
+do CI, e um `alter table` "rapidinho" por aqui continua parando o deploy
+inteiro. Schema entra por arquivo versionado. Sempre.
+
+Regra prática pra decidir: **se o comando muda a FORMA do banco, é migration e
+não passa aqui. Se muda o ESTADO (agendamento, dado, faxina), pode.** Na dúvida,
+pergunte ao dono antes — escrita em prod não se desfaz com ctrl+Z.
 
 # Terminou a tarefa? Atualize os docs dela.
 
