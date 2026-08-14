@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/modules/auth/auth";
 import { applyTM, type ApplyTmInput } from "@/src/modules/pokemon";
+import { enforceRateLimit } from "@/src/lib/rateLimit";
 
 // POST /api/training/tm — ensina um golpe de MÁQUINA (TM) a um Pokémon do
 // jogador, gastando 1 token de TM. Casca fina: sessão → command → HTTP.
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limited = await enforceRateLimit("teachTm", session.user.id);
+  if (limited) return limited;
 
   const body = (await req.json().catch(() => ({}))) as Partial<ApplyTmInput>;
   if (!body.userPokemonId || !body.moveId) {

@@ -14,6 +14,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = {
   battlePendingMove: { findMany: vi.fn() },
+  // O heartbeat de presença escreve aqui — e escreve DEPOIS da autorização, que
+  // é justamente o que estes testes travam.
+  battleParticipant: { updateMany: vi.fn() },
 };
 
 const loadBattleForResolve = vi.fn();
@@ -31,9 +34,10 @@ const BATTLE = {
   round: 3,
   winnerId: null,
   turnStartedAt: new Date(),
+  createdAt: new Date(),
   participants: [
-    { id: "pa", userId: "alpha", activeSlot: 1, pokemons: [] },
-    { id: "pb", userId: "zeta", activeSlot: 1, pokemons: [] },
+    { id: "pa", userId: "alpha", activeSlot: 1, energy: 3, lastSeenAt: new Date(), pokemons: [] },
+    { id: "pb", userId: "zeta", activeSlot: 1, energy: 3, lastSeenAt: new Date(), pokemons: [] },
   ],
   turnLogs: [],
   // No simultâneo, `actions` é o que diz quem já escolheu a carta do round —

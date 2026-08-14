@@ -5,6 +5,8 @@ import { auth } from "@/src/modules/auth/auth";
 import { PackIcon } from "@/src/layout/icons";
 import { readPackState } from "@/src/modules/packs";
 import { streakView } from "@/src/modules/packs/ui/packView";
+import { readDailyQuests } from "@/src/modules/quests";
+import QuestPanel from "@/src/modules/quests/ui/QuestPanel";
 
 // A home é o (futuro) DASHBOARD. Por ora é um placeholder enxuto: saudação + o
 // status do pacote diário, que é o loop central do jogo, com atalho pra abrir.
@@ -17,7 +19,10 @@ export default async function StreakPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
 
-  const packState = await readPackState(session.user.id);
+  const [packState, questBoard] = await Promise.all([
+    readPackState(session.user.id),
+    readDailyQuests(session.user.id),
+  ]);
   const streak = streakView(packState.loginStreak);
 
   return (
@@ -72,13 +77,8 @@ export default async function StreakPage() {
         </span>
       </Link>
 
-      <div className="clip-card mt-6 max-w-md border border-dashed border-edge p-6 text-center">
-        <p className="font-title text-sm uppercase tracking-wide text-ink-dim">
-          Dashboard em breve
-        </p>
-        <p className="mt-1 text-xs font-semibold text-ink-dim">
-          Coleção, histórico de batalhas e recompensas de login aparecerão aqui.
-        </p>
+      <div className="mt-6 max-w-md">
+        <QuestPanel board={questBoard} />
       </div>
     </div>
   );

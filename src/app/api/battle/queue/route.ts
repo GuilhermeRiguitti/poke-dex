@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/modules/auth/auth";
 import { enqueueBattle, leaveQueue } from "@/src/modules/battle";
+import { enforceRateLimit } from "@/src/lib/rateLimit";
 
 // POST /api/battle/queue — entra na fila de matchmaking; pareia na hora se possível
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limited = await enforceRateLimit("battleQueue", session.user.id);
+  if (limited) return limited;
 
   const { deckId } = (await req.json()) as { deckId?: string };
   if (!deckId) return NextResponse.json({ error: "deckId is required" }, { status: 400 });

@@ -3,6 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { CARDS_PER_SLOT } from "@/src/modules/deck";
 import { getUnlockedMoveIds } from "@/src/modules/pokemon";
 import type { BattleMoveDef } from "../domain/types";
+import { canAfford, energyCostOf, hasAffordableCard } from "../domain/energy";
 import { toBattleDTO } from "../queries/toBattleDTO";
 import { tryResolveTurn } from "./resolveTurn";
 
@@ -119,6 +120,13 @@ export async function submitAction(battleId: string, userId: string, body: Submi
   // STRUGGLE). Enquanto sobrar outra com PP, o slot esgotado é recusado aqui.
   if (card.currentPp <= 0 && moves.some((m) => m.currentPp > 0)) {
     return { error: "validation" as const, message: "Essa carta está sem PP" };
+  }
+
+  // ENERGIA: mesma forma do PP acima — carta cara só passa quando NENHUMA é
+  // pagável (aí o engine cai em STRUGGLE). Isto é conveniência de UI; a regra
+  // de verdade está no motor, porque o POST é público.
+  if (!canAfford(me.energy, energyCostOf(card)) && hasAffordableCard(moves, me.energy)) {
+    return { error: "validation" as const, message: "Energia insuficiente pra essa carta" };
   }
 
   return persist(battleId, userId, battle.round, "MOVE", cardSlot);

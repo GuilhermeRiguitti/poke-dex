@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { DeckCardDTO } from "@/src/modules/deck/ui/types";
 import { useDeckEditor } from "@/src/modules/deck/ui/DeckEditorProvider";
 import SkillSheet from "@/src/modules/pokemon/ui/SkillSheet";
+import OfferTradeDialog from "@/src/modules/trade/ui/OfferTradeDialog";
 
 // O rodapé do card da coleção: ver as skills, e pôr/tirar do time.
 //
@@ -31,6 +32,7 @@ export default function CollectionCardActions({
 }) {
   const editor = useDeckEditor();
   const [vendoSkills, setVendoSkills] = useState(false);
+  const [oferecendo, setOferecendo] = useState(false);
 
   const vaga = editor?.vagaDe(card.userPokemonId) ?? null;
   const noTime = vaga !== null;
@@ -53,6 +55,20 @@ export default function CollectionCardActions({
         >
           ☰
         </button>
+
+        {/* ⇄ oferece a carta pra troca. Fica escondido enquanto ela está no
+            time: o servidor recusaria com `in_deck`, e botão que só serve pra
+            dar erro é pior que botão ausente. */}
+        {!noTime && (
+          <button
+            onClick={() => setOferecendo(true)}
+            aria-label={`Oferecer ${name} para troca`}
+            title="Oferecer para troca"
+            className={BOTAO}
+          >
+            ⇄
+          </button>
+        )}
 
         {editor && (
           <button
@@ -79,6 +95,14 @@ export default function CollectionCardActions({
           name={name.replace(/-/g, " ")}
           level={level}
           onClose={() => setVendoSkills(false)}
+        />
+      )}
+
+      {oferecendo && (
+        <OfferTradeDialog
+          userPokemonId={card.userPokemonId}
+          name={name}
+          onClose={() => setOferecendo(false)}
         />
       )}
     </>

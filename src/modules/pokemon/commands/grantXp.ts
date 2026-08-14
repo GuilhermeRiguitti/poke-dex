@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { applyXp, progressionFromXp } from "../domain/leveling";
+import { normalizeGrowthRate } from "../domain/growthRate";
 import { evolutionTargetFor } from "../domain/evolution";
 
 // Creditar XP num Pokémon do jogador — o que faz o nível SUBIR e, por
@@ -41,20 +42,25 @@ export async function grantXp(tx: Prisma.TransactionClient, awards: XpAward[]): 
     select: {
       id: true,
       xp: true,
-      pokemon: { select: { evolvesToApiId: true, evolvesToLevel: true } },
+      // `growthRate` entra no mesmo select da evolução: as duas são fato da
+      // ESPÉCIE e a linha já vinha junto. A curva decide QUANTO XP é preciso pra
+      // cada nível — sem ela, todo pokémon voltaria à medium-fast.
+      pokemon: { select: { evolvesToApiId: true, evolvesToLevel: true, growthRate: true } },
     },
   });
 
   for (const award of payable) {
     const row = rows.find((r) => r.id === award.userPokemonId);
     if (!row) continue; // pokémon solto da coleção no meio da partida
-    const progress = applyXp(row.xp, award.gainedXp);
+    const curva = normalizeGrowthRate(row.pokemon.growthRate);
+    const progress = applyXp(row.xp, award.gainedXp, curva);
     await tx.userPokemon.update({
       where: { id: row.id },
       // `progressionFromXp` reafirma o par por construção. `applyXp` já devolve
       // os dois casados; passar pelo helper é o que impede um escritor futuro
-      // de gravar só um dos campos.
-      data: progressionFromXp(progress.xp),
+      // de gravar só um dos campos. A curva vai junto — o par (xp, level) só é
+      // consistente DENTRO de uma curva.
+      data: progressionFromXp(progress.xp, curva),
     });
     // Evolução RETROATIVA: checa em toda aplicação de XP, não só quando subiu
     // de nível. Aqui não existe worker pra consertar estado depois (CLAUDE.md

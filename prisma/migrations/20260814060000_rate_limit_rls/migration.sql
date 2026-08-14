@@ -1,0 +1,20 @@
+-- Liga RLS na `RateLimit`, que a migration 20260814052202_rate_limit criou SEM
+-- ela (AGENTS.md: "a migration que cria a tabela liga RLS na mesma migration").
+--
+-- Por que uma migration separada em vez de consertar a de cima: aquela JÁ FOI
+-- APLICADA, e migration aplicada é imutável — editar o .sql muda o checksum e o
+-- `migrate deploy` seguinte falha. O conserto de uma migration aplicada é sempre
+-- outra migration.
+--
+-- Escrita à mão (não gerada) porque o Prisma não descreve RLS no schema — mesmo
+-- caso da 20260714010000_enable_rls_all_tables, que é o precedente do repo.
+--
+-- Sem policies = deny-all de propósito: o runtime é o Prisma como `postgres`
+-- (dono das tabelas + BYPASSRLS), que não passa por RLS; quem é barrado é a API
+-- PostgREST pública (anon/authenticated). NUNCA `FORCE` — FORCE sujeitaria o
+-- dono à RLS e, sem policy, derrubaria o app.
+--
+-- Esta tabela guarda contador de frequência: `key` (que embute userId) e
+-- `count`. Aberta, entregaria de bandeja o "zere meu contador" — que é
+-- exatamente o que o freio existe pra impedir.
+ALTER TABLE "RateLimit" ENABLE ROW LEVEL SECURITY;

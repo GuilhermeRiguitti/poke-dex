@@ -1,3 +1,5 @@
+import "server-only";
+
 // API pública do módulo pokedex — a LISTA: navegar, filtrar, ordenar e paginar
 // a coleção do jogador e o catálogo. As rotas em app/api/** e as pages de
 // (game) só devem importar daqui, nunca de domain/queries/commands direto.
@@ -23,3 +25,10 @@ export { parseCollectionFilters, collectionHref } from "./domain/collectionFilte
 // A captura direta morreu — obter pokémon é só pelo módulo packs. Só resta a
 // remoção (soltar uma carta da coleção).
 export { removeCard } from "./commands/removeCard";
+
+// O recorte + o mapper da CARTA da coleção. Saíram daqui pro módulo `trade`
+// desenhar a carta ofertada com o mesmo contrato da coleção: a whitelist de
+// campos é a parte que não pode divergir entre as duas telas, e duplicá-la seria
+// abrir a porta pra uma delas passar a vazar um campo que a outra já barra.
+export { COLLECTION_CARD_SELECT, toCollectionCardDTO } from "./queries/toCollectionPageDTO";
+export type { CollectionCardDTO } from "./types";

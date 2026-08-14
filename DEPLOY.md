@@ -73,8 +73,9 @@ aplicadas pelo CI.
 ## Gap conhecido: os jobs do pg_cron não são versionados
 
 `supabase/migrations/20260715022134_enable_pg_cron_pg_net.sql` cria as **extensões**,
-mas os **dois jobs** que rodam hoje (`resolve-battle-turns` a cada 30s e
-`refresh-pokedex` diário) foram agendados fora de qualquer migration. Um ambiente
+mas os **dois jobs** (`resolve-battle-turns` a cada 30s, ativo; e
+`refresh-pokedex`, **desativado em 2026-08-14** — ver `ROTINAS.md` §3) foram
+agendados fora de qualquer migration. Um ambiente
 novo sobe com as extensões mas **sem os jobs**. O arquivo traz o `cron.schedule`
 comentado (com a URL a preencher) — não versionamos a URL de prod de propósito
 (um staging bateria no prod). Ao subir ambiente novo, agende manualmente.

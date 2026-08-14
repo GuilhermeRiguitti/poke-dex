@@ -6,6 +6,8 @@ import {
   type BaseStats,
 } from "@/src/modules/pokemon";
 import type { PokemonCardDTO } from "@/src/modules/pokemon";
+import { normalizeGrowthRate, type GrowthRate } from "@/src/modules/pokemon/domain/growthRate";
+import { trackQuestEvent } from "@/src/modules/quests";
 import { canOpenFree, FREE_PACK_INTERVAL_MS } from "../domain/cooldown";
 import { drawPack } from "../domain/draw";
 import { toPackStateDTO } from "../queries/readPackState";
@@ -23,6 +25,14 @@ type MirrorSpecies = {
   card: PokemonCardDTO;
   /** pras 6 barras de stat da carta revelada */
   baseStats: BaseStats;
+  /**
+   * A curva de XP da espécie. Entra aqui porque a forma evoluída NASCE em nível
+   * alto (Charizard não sai nível 1), e o `xp` gravado junto tem que ser o desse
+   * nível NAQUELA curva. Usar a curva errada gravaria um par (xp, level)
+   * incoerente — e o `level` seria recalculado pra outro valor na primeira
+   * batalha, fazendo a carta "perder" níveis sozinha.
+   */
+  growthRate: GrowthRate;
 };
 
 /**
@@ -69,6 +79,7 @@ export async function openPack(userId: string, rng: () => number = Math.random):
       baseStats: true,
       evolvesToApiId: true,
       evolvesToLevel: true,
+      growthRate: true,
     },
   });
   if (species.length === 0) return { ok: false, error: "empty_pokedex" };
@@ -93,6 +104,7 @@ export async function openPack(userId: string, rng: () => number = Math.random):
         types: s.types as string[],
       },
       baseStats: s.baseStats as unknown as BaseStats,
+      growthRate: normalizeGrowthRate(s.growthRate),
     });
   }
 
@@ -153,9 +165,18 @@ export async function openPack(userId: string, rng: () => number = Math.random):
         data: drawnIds.map((apiId) => ({
           userId,
           pokemonId: byApiId.get(apiId)!.id,
-          ...progressionFromLevel(birthLevels.get(apiId)!),
+          // A curva da ESPÉCIE, não o default: a forma evoluída nasce em nível
+          // alto, e o xp gravado tem que ser o desse nível NAQUELA curva —
+          // senão o par (xp, level) fica incoerente e a carta "perde" níveis na
+          // primeira batalha, quando o level é recalculado a partir do xp.
+          ...progressionFromLevel(birthLevels.get(apiId)!, byApiId.get(apiId)!.growthRate),
         })),
       });
+
+      // Quest diária: DENTRO da mesma transação, depois do claim do pacote. É o
+      // claim que garante que só um "Abrir" passa — contar fora dele daria
+      // progresso por clique recusado.
+      await trackQuestEvent(tx, userId, "pack_opened");
 
       const updated = await tx.packState.findUniqueOrThrow({
         where: { userId },

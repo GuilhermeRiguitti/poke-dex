@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/src/modules/auth/auth";
 import { openPack } from "@/src/modules/packs";
+import { enforceRateLimit } from "@/src/lib/rateLimit";
 
 // POST /api/packs/open — abre um pacote (a ÚNICA forma de obter pokémon).
 //
@@ -11,6 +12,9 @@ import { openPack } from "@/src/modules/packs";
 export async function POST() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limited = await enforceRateLimit("openPack", session.user.id);
+  if (limited) return limited;
 
   const result = await openPack(session.user.id);
 

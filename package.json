@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "migrate:deploy": "prisma migrate deploy",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "db:reset": "supabase db reset && prisma migrate deploy && supabase db push"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -23,6 +24,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hot-toast": "^2.6.0",
+    "server-only": "^0.0.1",
     "tailwindcss": "^4.3.0",
     "three": "^0.185.1"
   },

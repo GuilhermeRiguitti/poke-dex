@@ -57,15 +57,35 @@ o cron só cobre o buraco.
   (`resolveDueBattles`). Idempotente e disputado: quem perde o claim otimista
   não escreve nada — cron × polling se cruzando é corrida controlada.
 
-## 3. Cron: `refresh-pokedex` (mensal — 6 lotes de 50, dia 1)
+## 3. Cron: `refresh-pokedex` — ⛔ **DESLIGADO no prod (2026-08-14)**
+
+> **Estado real do banco AGORA:** `active = false`. O job continua existindo com o
+> agendamento ANTIGO (`15 3 * * *`, diário) e o comando ANTIGO (sem `?batch`) —
+> nada foi apagado, só desativado a pedido do dono, que quis observar a rotina
+> antes de soltá-la no ritmo novo. **Enquanto estiver assim, o espelho não é
+> re-sincronizado por ninguém.** Consequência prática: campo novo continua vazio
+> nas linhas velhas e correção da PokéAPI não chega — pra qualquer uma das duas
+> coisas, o caminho é o seed à mão (§4), que aliás sempre foi.
+>
+> **Pra religar no esquema novo** (código já em `main` desde o PR #33): o bloco
+> de `cron.alter_job` do §6, que muda schedule, URL e timeout de uma vez. Só
+> `active => true` **não basta** — voltaria o diário de lote 20.
+
+O resto desta seção descreve o esquema PRETENDIDO, que é o que o código suporta.
 
 **O que faz:** re-sincroniza o espelho devagar — pega as **N espécies com
 `fetchedAt` mais antigo** e re-busca da PokéAPI (upsert por `pokemonApiId`).
 
-**Agendamento:** `*/10 3 1 * *` — dia 1 de cada mês, das 03:00 às 03:50 UTC, de
-10 em 10 minutos. São **6 disparos de 50 espécies = 300/mês**.
+**Agendamento pretendido:** `*/10 3 1 * *` — dia 1 de cada mês, das 03:00 às
+03:50 UTC, de 10 em 10 minutos. São **6 disparos de 50 espécies = 300/mês**.
 
 - **Chama:** `POST .../api/cron/refresh-pokedex?batch=50` (mesma auth do §2).
+- ⚠️ **O `timeout_milliseconds` do `net.http_post` tem que subir junto.** O
+  comando em prod está com **5000** (5s), herdado de quando o lote era 20 e a
+  passada era rápida. Com lote de 50 a lambda leva ~50s: o `pg_net` desiste de
+  esperar e grava **erro** no `net._http_response` — o refresh até roda (a
+  requisição já saiu; quem desistiu foi só quem esperava a resposta), mas o log
+  que o §6 manda conferir passa a mentir "falhou" em toda passada. Use 60000.
 - **A paginação é o próprio `fetchedAt`**: cada disparo carimba as que tocou, o
   seguinte encontra outras. Não há cursor, não há estado — um disparo que falhar
   só deixa aquelas espécies velhas pro mês que vem.
@@ -151,27 +171,49 @@ select * from cron.job_run_details order by start_time desc limit 10;
 select id, status_code, error_msg from net._http_response order by id desc limit 10;
 ```
 
-Reagendar / desligar:
+Desligar SEM perder o job (o que está valendo hoje pro refresh — reversível,
+preserva schedule e comando):
 ```sql
--- O agendamento ATUAL do refresh (mensal, 6 lotes de 50 de 10 em 10 min).
--- Recria o job inteiro porque a URL muda junto (ganhou ?batch=50):
-select cron.unschedule('refresh-pokedex');
-select cron.schedule('refresh-pokedex', '*/10 3 1 * *', $$
+select cron.alter_job(
+  (select jobid from cron.job where jobname = 'refresh-pokedex'),
+  active => false
+);
+```
+
+**RELIGAR o refresh no esquema novo** (mensal, 6 lotes de 50). Faz as três
+mudanças numa tacada — `active`, `schedule` e `command` (que carrega a URL com
+`?batch=50` e o timeout maior). Use `alter_job` e **não** `unschedule` +
+`schedule`: recriar o job obriga a redigitar o comando inteiro, e foi assim que
+o `Content-Type` e o `timeout_milliseconds` quase se perderam:
+```sql
+select cron.alter_job(
+  (select jobid from cron.job where jobname = 'refresh-pokedex'),
+  schedule => '*/10 3 1 * *',
+  active   => true,
+  command  => $cmd$
   select net.http_post(
     url     := 'https://poke-dex-rgt.vercel.app/api/cron/refresh-pokedex?batch=50',
     headers := jsonb_build_object(
+      'Content-Type', 'application/json',
       'Authorization',
-      'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
-    )
+        'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
+    ),
+    timeout_milliseconds := 60000
   );
-$$);
+  $cmd$
+);
+```
 
--- só a periodicidade, mantendo o comando:
+Só a periodicidade, mantendo o comando:
+```sql
 select cron.alter_job(
   (select jobid from cron.job where jobname = 'refresh-pokedex'),
   schedule => '*/10 3 1 * *'
 );
+```
 
+Apagar de vez (destrutivo — o comando some junto; prefira `active => false`):
+```sql
 select cron.unschedule('resolve-battle-turns');
 select cron.unschedule('refresh-pokedex');
 -- re-agendar do zero: o SQL completo dos dois jobs está comentado em

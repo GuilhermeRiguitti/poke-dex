@@ -11,6 +11,8 @@ import {
   GridIcon,
   MenuIcon,
   CloseIcon,
+  TradeIcon,
+  EggIcon,
 } from "./icons";
 import SignOutButton from "../modules/auth/SignOutButton";
 
@@ -20,6 +22,8 @@ const LINKS = [
   { href: "/catalog", label: "Catálogo", icon: GridIcon },
   // A coleção é a HOME desde o redesign do workspace — não existe mais /pokedex.
   { href: "/", label: "Coleção", icon: CardsIcon },
+  { href: "/trade", label: "Trocas", icon: TradeIcon },
+  { href: "/breeding", label: "Cruzar", icon: EggIcon },
 ] as const;
 
 export default function NavBar({ userName }: { userName: string }) {

@@ -80,8 +80,15 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
         clearInterval(timer);
         return;
       }
-      if (document.hidden) return; // aba em segundo plano → economiza invocação
-
+      // ⚠️ A ABA ESCONDIDA CONTINUA BATENDO AQUI, e isso mudou em 2026-08-14
+      // com a presença. O `GET /status` carrega o heartbeat: pular quando a aba
+      // some faria "troquei de aba por 1 minuto" virar "abandonou a partida" —
+      // o jogador perderia sem ter saído.
+      //
+      // A economia de invocação que a guarda dava não some: ela desceu pro
+      // `loadFullState` (o request PESADO, com o estado inteiro), logo abaixo.
+      // Este aqui é uma resposta minúscula, e é o preço de o servidor saber que
+      // você está vivo.
       const res = await fetch(`/api/battle/${battleId}/status`);
       if (!res.ok) return;
       const next = (await res.json()) as {
@@ -93,7 +100,15 @@ export function useBattleRoom(battleId: string, initialBattle: BattleDTO) {
 
       const prev = latest.current;
       const submittedCount = (next.iSubmitted ? 1 : 0) + (next.opponentSubmitted ? 1 : 0);
-      if (prev.round !== next.round || prev.status !== next.status || prev.submittedCount !== submittedCount) {
+      const mudou =
+        prev.round !== next.round ||
+        prev.status !== next.status ||
+        prev.submittedCount !== submittedCount;
+      // O request PESADO é que respeita a aba escondida: não adianta repintar
+      // uma tela que ninguém está vendo. Quando o jogador volta, o próximo tick
+      // vê a diferença e busca. Fim de partida é exceção — a tela precisa estar
+      // certa quando ele voltar.
+      if (mudou && (!document.hidden || next.status !== "IN_PROGRESS")) {
         await loadFullState();
       }
     }, intervalMs);

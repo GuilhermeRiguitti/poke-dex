@@ -7,12 +7,15 @@ import {
   activeOf,
   needsForcedSwitch,
   type DuelAction,
+  type DuelEvent,
   type DuelSide,
   type DuelState,
 } from "../domain/duelTypes";
 import { MAX_MISSES, expiredTurnWindows, nextMisses } from "../domain/turnClock";
+import { absentOutcome, isAbsent } from "../domain/presence";
 import { buildTypeChart } from "./buildDuelSnapshot";
 import { grantXp } from "@/src/modules/pokemon";
+import { trackBattleFinished } from "@/src/modules/quests";
 import { loadXpContext, xpAwardsOf, type XpContext } from "./awardBattleXp";
 import type { Prisma } from "@prisma/client";
 
@@ -86,6 +89,7 @@ function toDuelSide(participant: ParticipantRow): DuelSide {
   return {
     userId: participant.userId,
     activeSlot: participant.activeSlot,
+    energy: participant.energy,
     team: [...participant.pokemons]
       .sort((a, b) => a.slot - b.slot)
       .map(rowToBattlePokemonState),
@@ -142,8 +146,19 @@ async function persistSide(
   before: DuelSide,
   after: DuelSide
 ): Promise<void> {
-  if (after.activeSlot !== participant.activeSlot) {
-    await tx.battleParticipant.update({ where: { id: participant.id }, data: { activeSlot: after.activeSlot } });
+  // activeSlot e energy vão no MESMO update: são as duas colunas do
+  // participante que o round pode mexer, e separá-las custaria uma escrita a
+  // mais por lado por turno — num endpoint que roda a cada 2s por jogador.
+  const mudouSlot = after.activeSlot !== participant.activeSlot;
+  const mudouEnergia = after.energy !== undefined && after.energy !== participant.energy;
+  if (mudouSlot || mudouEnergia) {
+    await tx.battleParticipant.update({
+      where: { id: participant.id },
+      data: {
+        ...(mudouSlot ? { activeSlot: after.activeSlot } : {}),
+        ...(mudouEnergia ? { energy: after.energy } : {}),
+      },
+    });
   }
   const beforeBySlot = new Map(before.team.map((m) => [m.slot, m]));
   for (const m of after.team) {
@@ -213,6 +228,19 @@ async function commit(params: CommitParams) {
       await tx.battleAction.deleteMany({ where: { battleId: battle.id, round: battle.round } });
 
       if (params.xpContext) await grantXp(tx, xpAwardsOf(params.xpContext));
+
+      // Quest diária: DENTRO do claim, ao lado do XP e pelo MESMO motivo. Fora
+      // dele, os dois pollings de 2s pagariam o progresso a cada leitura — o
+      // jogador completaria "vença 3 batalhas" só deixando a aba aberta.
+      // Conta em QUALQUER desfecho (inclusive abandono): "disputou" é fato, e
+      // `winnerId` null simplesmente não credita a de vitória.
+      if (finalStatus) {
+        await trackBattleFinished(
+          tx,
+          { userIds: [pA.userId, pB.userId], winnerId: winnerId ?? null },
+          now,
+        );
+      }
     },
     { timeout: 15_000, maxWait: 5_000 }
   );
@@ -238,6 +266,41 @@ export async function resolveIfDue(battle: BattleForResolve) {
   const rowA = rowOf(pA.userId);
   const rowB = rowOf(pB.userId);
   const expiredWindows = expiredTurnWindows(battle.turnStartedAt);
+
+  // ABANDONO POR DESCONEXÃO, antes de qualquer resolução de round: quem sumiu
+  // há mais de PRESENCE_TIMEOUT_MS perde, e não faz sentido resolver um turno
+  // de uma partida que já acabou por ausência.
+  //
+  // O piso é `battle.createdAt` (e não `turnStartedAt`, que reseta a cada round
+  // e daria 60s novos de graça a cada turno). Encerra SEM passar pelo motor — o
+  // estado fica como está; ninguém "joga" o turno de quem sumiu.
+  const agora = new Date();
+  const ausenteA = isAbsent(pA.lastSeenAt, battle.createdAt, agora);
+  const ausenteB = isAbsent(pB.lastSeenAt, battle.createdAt, agora);
+  const ausencia = absentOutcome(
+    { userId: pA.userId, absent: ausenteA },
+    { userId: pB.userId, absent: ausenteB },
+  );
+  if (ausencia) {
+    // Um evento por quem sumiu — os dois, quando os dois sumiram. É o que a tela
+    // usa pra dizer "fulano abandonou" em vez de só mostrar o placar mudar.
+    const eventos: DuelEvent[] = [];
+    if (ausenteA) eventos.push({ type: "abandoned", userId: pA.userId });
+    if (ausenteB) eventos.push({ type: "abandoned", userId: pB.userId });
+
+    return commit({
+      battle,
+      pA,
+      pB,
+      sideA,
+      sideB,
+      // Sem passar pelo motor: o estado fica como está. Ninguém "joga" o turno
+      // de quem sumiu.
+      result: { state, events: eventos, winnerId: ausencia.winnerId, finished: true },
+      finalStatus: ausencia.finalStatus,
+      winnerId: ausencia.winnerId,
+    });
+  }
 
   // ROUND 0 = PREPARAÇÃO: antes de qualquer golpe, cada um monta a barra de
   // skills do pokémon que abre a partida. É o único que entra em campo sem uma

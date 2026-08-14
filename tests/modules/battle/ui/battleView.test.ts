@@ -25,8 +25,8 @@ function mon(over: Partial<BattleDTO["participants"][number]["pokemons"][number]
     currentHp: 40,
     fainted: false,
     moves: [
-      { id: 1, name: "thunderbolt", type: "electric", power: 90, accuracy: 100, damageClass: "special" as const, priority: 0, maxPp: 15, currentPp: 15, effect: null },
-      { id: 2, name: "quick-attack", type: "normal", power: 40, accuracy: 100, damageClass: "physical" as const, priority: 1, maxPp: 30, currentPp: 0, effect: null },
+      { id: 1, name: "thunderbolt", type: "electric", power: 90, accuracy: 100, damageClass: "special" as const, priority: 0, maxPp: 15, currentPp: 15, energyCost: 3, effect: null },
+      { id: 2, name: "quick-attack", type: "normal", power: 40, accuracy: 100, damageClass: "physical" as const, priority: 1, maxPp: 30, currentPp: 0, energyCost: 1, effect: null },
     ],
     conditions: { status: null, confused: false, seeded: false, stages: [] },
     rarity: "common" as const,
@@ -44,8 +44,17 @@ function battle(over: Partial<BattleDTO> = {}): BattleDTO {
     turnEndsInMs: 62_000,
     turnTimeoutMs: 90_000,
     participants: [
-      { id: "pm", userId: "me", activeSlot: 1, pokemons: [mon()] },
-      { id: "po", userId: "opp", activeSlot: 1, pokemons: [mon({ currentHp: 10, name: "bulbasaur" })] },
+      { id: "pm", userId: "me", activeSlot: 1, energy: 3, energyMax: 6, present: true, absentForMs: null, pokemons: [mon()] },
+      {
+        id: "po",
+        userId: "opp",
+        activeSlot: 1,
+        energy: 3,
+        energyMax: 6,
+        present: true,
+        absentForMs: null,
+        pokemons: [mon({ currentHp: 10, name: "bulbasaur" })],
+      },
     ],
     turnLogs: [
       { turnNumber: 4, events: [{ type: "roundStart", round: 3, firstUserId: "me" }] },
@@ -340,6 +349,7 @@ describe("moveEffectLabel — o que a carta faz, em uma linha", () => {
     critStage: 0,
     minHits: 1,
     maxHits: 1,
+    protects: false,
     ...over,
   });
 

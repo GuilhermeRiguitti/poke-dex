@@ -162,6 +162,13 @@ model Pokemon {
   bst    Int    @default(0) // soma dos 6 baseStats (sumBaseStats)
   rarity String @default("common") // rarityTier(bst) — common|uncommon|rare|legendary
 
+  // CURVA DE XP da espécie (`growth_rate` de /pokemon-species). Coluna e não
+  // conta na leitura porque é fato imutável da espécie, igual ao bst — e porque
+  // `progressionFromXp` precisa dela em todo lugar que escreve nível.
+  // O default é `medium-fast`: era a curva ÚNICA do jogo inteiro até
+  // 2026-08-14, então linha não re-sincronizada continua se comportando igual.
+  growthRate String @default("medium-fast") // slow|medium-slow|medium-fast|fast|erratic|fluctuating
+
   // Evolução POR NÍVEL (pokedex/domain/evolution.ts). Só level-up com min_level
   // vira aresta; pedra/troca/amizade ficam null. O alvo é o pokemonApiId da
   // espécie nova — o awardBattleXp resolve pra Pokemon.id quando o nível bate.
@@ -262,6 +269,10 @@ model UserPokemon {
   pokemon   Pokemon    @relation(fields: [pokemonId], references: [id])
   deckSlots DeckSlot[]
   unlockedMoves UserPokemonMove[]
+  // Oferta de troca VIVA desta carta (no máximo uma — ver TradeOffer). Cascade:
+  // soltar a carta cancela a oferta sozinho, sem o removeCard saber que troca
+  // existe.
+  tradeOffer TradeOffer?
 
   // Composto, mas NÃO único (duplicata permitida). É o mesmo índice do antigo
   // @@unique menos a unicidade: cobre `where userId` (prefixo à esquerda, ex.
@@ -352,12 +363,25 @@ model Battle {
   actions      BattleAction[]
 }
 
+/// `energy` é o recurso por RODADA (battle/domain/energy.ts): entra em
+/// ENERGY_START, cada carta custa por faixa de poder e a rodada devolve 1 (teto
+/// ENERGY_MAX). Fica no PARTICIPANTE e não no BattlePokemon porque o recurso é
+/// do JOGADOR: no pokémon, a troca limparia junto com os voláteis e trocar
+/// viraria recarga. Aditiva com default — partida em andamento nasce com o
+/// valor e não precisa de backfill (mesma manobra do `conditions`).
 model BattleParticipant {
   id          String @id @default(cuid())
   battleId    String
   userId      String
   activeSlot  Int    @default(1)
   missedTurns Int    @default(0) // faltas (turno sem ação): +1 por timeout vencido, -1 por jogada. Chegou em MAX_MISSES => ABANDONED
+  energy      Int    @default(3) // = ENERGY_START (battle/domain/energy.ts)
+  /// Último sinal de presença deste jogador (battle/domain/presence.ts). Fora por
+  /// mais de PRESENCE_TIMEOUT_MS => o oponente vence. É COLUNA e não evento de
+  /// WebSocket porque declarar vitória é escrita, e o backstop que encerra
+  /// partida abandonada roda no pg_cron — dentro do banco, sem WebSocket nenhum.
+  /// null = nunca carimbou; aí o piso é o createdAt da partida.
+  lastSeenAt  DateTime?
 
   battle   Battle          @relation(fields: [battleId], references: [id], onDelete: Cascade)
   pokemons BattlePokemon[]
@@ -475,6 +499,105 @@ model PackState {
   loginStreak    Int       @default(0)
   lastCheckIn    DateTime?
   tmTokens       Int       @default(0) // tokens de TM: gastos pra ensinar golpe `machine` (training/applyTM); ganhos no check-in diário
+  tutorTokens    Int       @default(0) // tokens de TUTOR: gastos pra ensinar golpe `tutor` (pokemon/applyTutor); ganhos ao completar quest diária
+  lastBreedAt    DateTime? // último cruzamento (pokemon/breedPokemon): um por dia UTC. null = nunca cruzou
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ──────────────────────────────────────────────
+// Freio de frequência. É TABELA e não `Map` em memória porque em serverless a
+// memória não sobrevive à invocação (CLAUDE.md consequência #1): um contador em
+// variável global é zerado por qualquer lambda nova, ou seja, não conta nada.
+//
+// UMA tabela serve aos DOIS consumidores, e o formato é ditado pelo de fora: o
+// `rateLimit: { storage: "database" }` do better-auth escreve num model chamado
+// `rateLimit` com exatamente `key`/`count`/`lastRequest` (ver
+// node_modules/better-auth/dist/api/rate-limiter — ele faz `create` sem `id` e
+// `updateMany` filtrando por `key`). Como a forma dele cabe no que a gente
+// precisava, não vale erguer uma segunda tabela com as mesmas três colunas: as
+// chaves é que separam os dois mundos — o better-auth grava as dele (rota+ip do
+// sign-in) e o nosso `lib/rateLimit.ts` prefixa as suas com `app:`.
+//
+// `lastRequest` é epoch em MILISSEGUNDOS (BigInt), não DateTime, porque quem
+// definiu a coluna foi o better-auth e ele guarda número. O `key` é @unique pra
+// dois requests simultâneos não criarem duas linhas do mesmo contador — sem
+// isso o `findMany[0]` escolheria uma das duas e o teto viraria o dobro.
+// ──────────────────────────────────────────────
+
+model RateLimit {
+  id          String @id @default(cuid())
+  key         String @unique
+  count       Int    @default(0)
+  lastRequest BigInt
+
+  @@index([key])
+}
+
+// ──────────────────────────────────────────────
+// Troca entre jogadores, por CÓDIGO. Quem oferece gera um código curto e passa
+// pra quem quiser (fora do jogo — WhatsApp, o que for); quem tem o código
+// aceita. Não existe busca de jogador, perfil nem lista de amigos, e é de
+// propósito: o único ponto multiplayer até aqui era a batalha, onde o oponente é
+// ANÔNIMO. Descoberta por email exporia "esse email joga aqui" e obrigaria a
+// mostrar o nome do dono — território que o jogo inteiro evita.
+//
+// A oferta é uma linha VIVA: aceitar ou cancelar APAGA. É isso que deixa
+// `userPokemonId` ser @unique (uma oferta viva por carta) e faz a corrida de
+// dois aceites virar um claim por delete — quem apaga a linha ganhou, quem não
+// apagou não escreve nada (mesmo padrão do MatchmakingQueueEntry).
+// ──────────────────────────────────────────────
+
+model TradeOffer {
+  id            String   @id @default(cuid())
+  code          String   @unique // normalizado (maiúsculo, sem caracteres ambíguos)
+  fromUserId    String
+  userPokemonId String   @unique
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime // now + TRADE_OFFER_TTL_MS; oferta velha não fica de pé pra sempre
+
+  userPokemon UserPokemon @relation(fields: [userPokemonId], references: [id], onDelete: Cascade)
+
+  @@index([fromUserId])
+  @@index([expiresAt])
+}
+
+// Proveniência: a ÚNICA resposta pra "de onde veio esta carta". Com duplicatas
+// liberadas, uma carta trocada é indistinguível de uma sorteada — e sem registro
+// não há como investigar uma reclamação de troca. Fica fora do TradeOffer porque
+// a oferta é apagada no aceite; o log tem que sobreviver a ela.
+// ──────────────────────────────────────────────
+// Progresso das quests DIÁRIAS — a torneira do token de tutor.
+//
+// A PK É o dia (`dayIndex` = índice do dia UTC, de lib/utcDay): linha nova a
+// cada dia, sem precisar zerar nada. Não há worker pra "virar o dia" (CLAUDE.md
+// consequência #1), então qualquer desenho que dependesse de alguém resetar
+// contador à meia-noite simplesmente não funcionaria aqui.
+//
+// Por que não um Json no PackState: o incremento precisa ser ATÔMICO
+// (`increment`) e o filtro precisa ser por dia (`WHERE`). Json não entra em
+// nenhum dos dois — e o incremento chega de duas lambdas ao mesmo tempo
+// (CLAUDE.md regra 6).
+// ──────────────────────────────────────────────
+
+model QuestProgress {
+  userId    String
+  questId   String // id do QUEST_CATALOG (quests/domain/questCatalog.ts), não texto livre
+  dayIndex  Int // lib/utcDay.utcDayIndex
+  progress  Int       @default(0)
+  claimedAt DateTime? // null = ainda não resgatou o token
+
+  @@id([userId, questId, dayIndex])
+  @@index([userId, dayIndex])
+}
+
+model TradeLog {
+  id            String   @id @default(cuid())
+  userPokemonId String
+  fromUserId    String
+  toUserId      String
+  tradedAt      DateTime @default(now())
+
+  @@index([userPokemonId])
+  @@index([toUserId])
 }

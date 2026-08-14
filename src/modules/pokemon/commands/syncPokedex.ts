@@ -5,13 +5,14 @@ import {
   fetchEvolutionChain,
   fetchMove,
   fetchPokemon,
-  fetchSpeciesEvolutionChainId,
+  fetchSpecies,
   type NormalizedPokemon,
 } from "@/src/lib/pokeapi";
 import { sumBaseStats, type BaseStats } from "../domain/leveling";
 import { pickLearnEntry, pickVersionGroup, type LearnsetEntry } from "../domain/learnset";
 import { parseLevelUpEvolutions, type EvolutionEdge } from "../domain/evolution";
 import { rarityTier } from "../domain/rarity";
+import { normalizeGrowthRate } from "../domain/growthRate";
 
 // Sincroniza o espelho da PokéAPI (Pokemon/Move/PokemonMove) — o motor único
 // da seed inicial E do cron de refresh (CLAUDE.md consequência #4). Escreve →
@@ -49,22 +50,28 @@ function toTypeNames(p: NormalizedPokemon): string[] {
  * Ivysaur e Venusaur têm uma só), então sem o cache o seed refaria o mesmo fetch
  * três vezes. Falha de rede não aborta o seed — a espécie fica sem evolução.
  */
-async function resolveEvolutionEdge(
+async function resolveSpecies(
   speciesApiId: number,
   chainCache: Map<number, Promise<Map<number, EvolutionEdge>>>,
-): Promise<EvolutionEdge | null> {
-  const chainId = await fetchSpeciesEvolutionChainId(speciesApiId);
-  if (chainId == null) return null;
+): Promise<{ edge: EvolutionEdge | null; growthRate: string | null }> {
+  // UM request traz as duas coisas: a cadeia de evolução e a curva de XP. Antes
+  // a curva era descartada aqui e ficava como pendência "cara" no TODO — nunca
+  // foi cara, o fetch já acontecia.
+  const species = await fetchSpecies(speciesApiId);
+  if (!species) return { edge: null, growthRate: null };
 
-  let edgesP = chainCache.get(chainId);
+  const growthRate = species.growthRate;
+  if (species.evolutionChainId == null) return { edge: null, growthRate };
+
+  let edgesP = chainCache.get(species.evolutionChainId);
   if (!edgesP) {
-    edgesP = fetchEvolutionChain(chainId).then((root) =>
+    edgesP = fetchEvolutionChain(species.evolutionChainId).then((root) =>
       root ? parseLevelUpEvolutions(root) : new Map<number, EvolutionEdge>(),
     );
-    chainCache.set(chainId, edgesP);
+    chainCache.set(species.evolutionChainId, edgesP);
   }
   const edges = await edgesP;
-  return edges.get(speciesApiId) ?? null;
+  return { edge: edges.get(speciesApiId) ?? null, growthRate };
 }
 
 /** Roda `task` sobre `items` com no máx. `limit` em voo — gentil com a PokéAPI. */
@@ -113,7 +120,7 @@ export async function syncPokedex(
 ): Promise<SyncPokedexSummary> {
   const failedPokemon: number[] = [];
   // Cadeia de evolução → arestas por nível, memoizada por chainId (espécies da
-  // mesma linha compartilham a cadeia). Ver resolveEvolutionEdge.
+  // mesma linha compartilham a cadeia). Ver resolveSpecies.
   const chainCache = new Map<number, Promise<Map<number, EvolutionEdge>>>();
 
   // 1) espécies: fetch + upsert, guardando o id do banco e os moveApiIds de cada.
@@ -126,7 +133,7 @@ export async function syncPokedex(
 
     // Evolução por nível desta espécie (fiel: só level-up com min_level). O alvo
     // é gravado por pokemonApiId — o awardBattleXp resolve pra Pokemon.id na hora.
-    const evolution = await resolveEvolutionEdge(p.id, chainCache);
+    const { edge: evolution, growthRate } = await resolveSpecies(p.id, chainCache);
     // Prisma exige InputJsonValue (com index signature) pra colunas Json; o
     // BaseStats/`string[]` tipados não casam sozinhos, daí o cast no ponto de
     // escrita. Hoisted pra não repetir a whitelist em create/update.
@@ -148,6 +155,9 @@ export async function syncPokedex(
       evolvesToLevel: evolution?.minLevel ?? null,
       bst,
       rarity: rarityTier(bst),
+      // Curva de XP da espécie. `normalizeGrowthRate` cai em medium-fast quando
+      // a API não trouxe — que era a curva única de todo o jogo até aqui.
+      growthRate: normalizeGrowthRate(growthRate),
     };
     const row = await prisma.pokemon.upsert({
       where: { pokemonApiId: p.id },

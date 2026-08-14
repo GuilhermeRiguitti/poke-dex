@@ -22,6 +22,14 @@ export interface BattleMoveDTO {
   maxPp: number;
   currentPp: number;
   /**
+   * Quanta energia esta carta custa. Calculado no SERVIDOR (`energyCostOf`) e
+   * não no browser: a tabela de faixas é a alavanca de balanceamento do jogo, e
+   * mandá-la pro cliente significaria que todo ajuste dela precisa esperar o
+   * cliente atualizar — além de expor o gabarito de graça. Mesma razão de a
+   * raridade ir calculada em vez de o browser derivar do BST.
+   */
+  energyCost: number;
+  /**
    * O que a carta faz além de bater. Vai INTEIRO pro cliente (é o efeito da
    * MINHA carta, que eu já poderia ler na PokéDex) porque é ele que transforma
    * "STA / sem dano" numa jogada compreensível: sem isso o jogador não tem como
@@ -73,6 +81,25 @@ export interface ParticipantDTO {
   userId: string;
   activeSlot: number;
   pokemons: BattlePokemonDTO[];
+  /**
+   * Energia do lado. É PÚBLICA (os dois lados), pelo mesmo motivo do HP e do
+   * status: sem ver o recurso do oponente não dá pra ler a ameaça — "ele tem 3,
+   * então o golpe grande vem agora" é exatamente a leitura que a mecânica
+   * existe pra criar. O que continua segredo é a CARTA escolhida (`cardSlot`),
+   * que é outra coisa.
+   */
+  energy: number;
+  /** Teto do acúmulo, pra a barra saber o tamanho dela. */
+  energyMax: number;
+  /** Deu sinal de vida dentro da janela de presença? */
+  present: boolean;
+  /**
+   * Quanto falta pra ele perder por ausência, em ms. RELATIVO, nunca o
+   * `lastSeenAt` cru — mesma razão do `turnEndsInMs`: o relógio do browser não é
+   * confiável, e uma máquina atrasada faria a tela mentir sobre o prazo.
+   * `null` quando está presente (não há contagem a mostrar).
+   */
+  absentForMs: number | null;
 }
 
 // Eventos do turno do duelo (renderização + BattleTurnLog). Chaveados por
@@ -92,6 +119,9 @@ export type BattleEventDTO =
     }
   | { type: "switch"; userId: string; fromName: string; toName: string }
   | { type: "hesitate"; userId: string }
+  /** sumiu e não voltou (presence). Encerra a partida — ≠ hesitar. */
+  | { type: "abandoned"; userId: string }
+  | { type: "protect"; userId: string; monName: string; held: boolean }
   | { type: "roundStart"; round: number; firstUserId: string }
   | { type: "ailment"; targetUserId: string; monName: string; ailment: string; blocked?: "immune" | "already" }
   | { type: "stage"; targetUserId: string; monName: string; stat: string; delta: number; stage: number }
