@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { applyForcedSwitch, resolveRound, startDuel } from "@/src/modules/battle/domain/duelEngine";
+import { applyForcedSwitch, resolveRound } from "@/src/modules/battle/domain/duelEngine";
 import { orderForTurn } from "@/src/modules/battle/domain/turnOrder";
 import { activeOf, type DuelSide, type DuelState } from "@/src/modules/battle/domain/duelTypes";
 import { TypeEffectivenessMap } from "@/src/modules/battle/domain/typeChart";
-import { makeMon, makeMove, sequenceRng, throwingRng } from "./testFixtures";
+import { makeDuelState, makeMon, makeMove, sequenceRng, throwingRng } from "./testFixtures";
 
 const neutralChart: TypeEffectivenessMap = {};
 
@@ -74,7 +74,7 @@ describe("orderForTurn — a regra da série", () => {
 
 describe("resolveRound — o turno é uma unidade", () => {
   it("as DUAS jogadas saem no mesmo round, e o round avança uma vez só", () => {
-    const state = startDuel(makeDuelSide("fast", 90), makeDuelSide("slow", 30));
+    const state = makeDuelState(makeDuelSide("fast", 90), makeDuelSide("slow", 30));
     const r = resolveRound({
       state,
       actionA: { userId: "fast", type: "MOVE", cardSlot: 0 },
@@ -90,7 +90,7 @@ describe("resolveRound — o turno é uma unidade", () => {
   });
 
   it("registra quem ganhou a ordem no roundStart (é o que dá sentido ao Speed na tela)", () => {
-    const state = startDuel(makeDuelSide("slow", 10), makeDuelSide("fast", 200));
+    const state = makeDuelState(makeDuelSide("slow", 10), makeDuelSide("fast", 200));
     const r = resolveRound({
       state,
       actionA: { userId: "slow", type: "MOVE", cardSlot: 0 },
@@ -129,7 +129,7 @@ describe("resolveRound — o turno é uma unidade", () => {
     };
 
     const r = resolveRound({
-      state: startDuel(killer, victim),
+      state: makeDuelState(killer, victim),
       actionA: { userId: "fast", type: "MOVE", cardSlot: 0 },
       actionB: { userId: "slow", type: "MOVE", cardSlot: 0 },
       typeChart: neutralChart,
@@ -147,7 +147,7 @@ describe("resolveRound — o turno é uma unidade", () => {
   });
 
   it("NONE é hesitação: o lado passa em branco e o outro age normal", () => {
-    const state = startDuel(makeDuelSide("fast", 90), makeDuelSide("slow", 30));
+    const state = makeDuelState(makeDuelSide("fast", 90), makeDuelSide("slow", 30));
     const r = resolveRound({
       state,
       actionA: { userId: "fast", type: "NONE" },
@@ -173,7 +173,7 @@ describe("resolveRound — o turno é uma unidade", () => {
       ],
     });
     const r = resolveRound({
-      state: startDuel(withPp("fast", 90), withPp("slow", 30)),
+      state: makeDuelState(withPp("fast", 90), withPp("slow", 30)),
       actionA: { userId: "fast", type: "MOVE", cardSlot: 0 },
       actionB: { userId: "slow", type: "MOVE", cardSlot: 0 },
       typeChart: neutralChart,
@@ -184,7 +184,7 @@ describe("resolveRound — o turno é uma unidade", () => {
   });
 
   it("recusa ação de quem não é do duelo, e duas ações do mesmo jogador", () => {
-    const state = startDuel(makeDuelSide("fast", 90), makeDuelSide("slow", 30));
+    const state = makeDuelState(makeDuelSide("fast", 90), makeDuelSide("slow", 30));
     expect(() =>
       resolveRound({
         state,
@@ -207,7 +207,7 @@ describe("resolveRound — o turno é uma unidade", () => {
   });
 
   it("não muta o estado recebido (o command grava o resultado, não o input)", () => {
-    const state = startDuel(makeDuelSide("fast", 90), makeDuelSide("slow", 30));
+    const state = makeDuelState(makeDuelSide("fast", 90), makeDuelSide("slow", 30));
     resolveRound({
       state,
       actionA: { userId: "fast", type: "MOVE", cardSlot: 0 },

@@ -1,5 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { isValidCodeShape, normalizeTradeCode } from "../domain/tradeCode";
+import { isExpired, isValidCodeShape, normalizeTradeCode } from "../domain/tradeCode";
 
 // Aceita a oferta de um código e TRANSFERE a instância de UserPokemon.
 // ESCREVE — só rota de API.
@@ -40,7 +40,9 @@ export async function acceptTradeOffer(
   // aceito. Diferenciar transformaria a rota num oráculo — "este código existe
   // mas venceu" já é informação que um bote usaria pra mapear o espaço.
   if (!offer) return { ok: false, error: "invalid_code" };
-  if (offer.expiresAt.getTime() <= now.getTime()) return { ok: false, error: "invalid_code" };
+  // A regra do vencimento é do domain, não daqui: repetir a comparação à mão
+  // fazia o teste de `isExpired` guardar uma cópia que ninguém executava.
+  if (isExpired(offer.expiresAt, now)) return { ok: false, error: "invalid_code" };
 
   // Aceitar a própria oferta não é ataque, é engano — vale a mensagem honesta.
   if (offer.fromUserId === userId) return { ok: false, error: "own_offer" };

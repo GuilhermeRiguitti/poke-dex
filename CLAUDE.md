@@ -199,7 +199,7 @@ src/modules/<modulo>/
 | `domain/` | só a si mesma | Prisma, `fetch`, React |
 | `queries/` | `domain/`, `lib/prisma`, `lib/pokeapi` | React, `commands/` |
 | `commands/` | `domain/`, `queries/`, `lib/*` | React |
-| `ui/` | `ui/`, tipos de `domain/` | **Prisma, `lib/auth`, `commands/`, `queries/`** |
+| `ui/` | `ui/`, tipos de `domain/` | **Prisma, `modules/auth/auth`, `commands/`, `queries/`** |
 
 `ui/` nunca importa nada que toque o banco — se importar, o Prisma vai parar no
 bundle do browser.
@@ -324,7 +324,7 @@ Toda page/rota é uma **função efêmera**: ela acorda com o request, responde,
 | `setInterval` / worker / job em background no servidor | não há processo depois da resposta | o trabalho acontece **dentro de um request** |
 | `setTimeout` pra "terminar depois de responder" | a execução morre com a resposta | faça antes de responder, ou não faça |
 | WebSocket / SSE / conexão longa | função tem teto de duração; não segura conexão | **polling** do cliente (é o que a batalha faz) |
-| `Map`/variável global como cache, fila ou rate-limit | cada invocação pode ser uma instância nova; memória **não sobrevive** | **tabela no banco** (ver `PokeApiCache`, e a fila do matchmaking) |
+| `Map`/variável global como cache, fila ou rate-limit | cada invocação pode ser uma instância nova; memória **não sobrevive** | **tabela no banco** (ver o espelho e a fila do matchmaking) |
 | escrever em arquivo / `fs` | filesystem é efêmero e read-only | banco (não há storage próprio hoje) |
 | cron pra reparar/limpar estado | **cron no Hobby roda 1x por dia** | não dependa de reparo; ver abaixo |
 | `new PrismaClient()` num módulo qualquer | esgota o pool do Postgres | importe **sempre** o `prisma` de `lib/prisma` |
@@ -418,25 +418,31 @@ não há worker pra consertar.
   instancie `PrismaClient` fora de `lib/prisma`, e não segure transação aberta
   esperando I/O.
 
-#### Consequência #4: cache tem duas camadas, e uma delas é tabela
+#### Consequência #4: cache é pra VITRINE; o que o jogo consulta vem do espelho
 
-O cache de `fetch` do Next morre a cada deploy. Por isso o que precisa
-sobreviver ao deploy mora em tabela — e a fair use policy da PokéAPI pede cache
-local de verdade.
+Essa é a linha, e ela é dura (decisão do dono, 2026-08-15):
 
-São **dois mecanismos diferentes**, e confundi-los custa caro:
+- **Espelho em tabela (`Pokemon`/`Move`/`PokemonMove`/`Type`)** — **tudo** que o
+  jogo consulta: coleção, deck, pacote, batalha. Escrito pelo `syncPokedex` e
+  pelo `syncTypes`, rodados pelo seed. É banco, não cache: não expira, não tem
+  miss, e nenhuma partida depende da PokéAPI estar de pé.
+- **Cache de `fetch` do Next** — **só vitrine**: catálogo e tela de detalhe, que
+  exibem dado da PokéAPI que o jogador ainda não tem. Serve pra aliviar chamada
+  a uma API pública e gratuita (fair use), nada além disso. Morre a cada deploy,
+  e tudo bem — é vitrine.
 
-- **Espelho (`Pokemon`/`Move`)** — o que o jogo CONSULTA. Escrito pelo
-  `syncPokedex`. É tabela relacional porque a coleção precisa filtrar e ordenar
-  por nome/tipo/raridade/nível, coisa que key-value não faz.
-- **`PokeApiCache` (key-value)** — hoje guarda **só `type:<nome>`**, usado pra
-  calcular efetividade no `buildDuelSnapshot`. Ninguém filtra por tipo no banco,
-  então uma linha de Json basta. `fetchAndCacheType` **grava** no miss: é
-  command-only, nunca render (regra 2).
+**Não misture os dois.** Cache alimentando mecânica é o erro que já foi cometido
+e desfeito: a matriz de efetividade de tipo morava numa tabela `PokeApiCache`
+key-value, e um miss dela mandava a **batalha** buscar na rede no meio da
+partida. Virou espelho (tabela `Type`), e o `PokeApiCache` — que tinha esse
+único consumidor — foi **dropado** (migration `20260815080940`). Se você sentir
+vontade de cachear algo pro jogo consultar, o que você quer é uma tabela de
+espelho e um sync que a preencha.
 
-> As funções `readCachedPokemons`/`fetchAndCachePokemon`/`fetchAndCacheMove`
-> foram removidas em 2026-08-02 — ficaram sem consumidor quando o espelho
-> assumiu pokémon e move.
+> Histórico: `readCachedPokemons`/`fetchAndCachePokemon`/`fetchAndCacheMove`
+> saíram em 2026-08-02 quando o espelho assumiu pokémon e move; o resto do
+> arquivo (`lib/pokeapiCache.ts`) saiu em 2026-08-15 com o tipo. A camada
+> key-value não existe mais.
 
 #### Consequência #5: a API PostgREST do Supabase é pública — RLS obrigatória
 
@@ -493,10 +499,12 @@ ele mesmo.
 
 ## Onde as coisas moram
 
-- `src/lib/` — infra **compartilhada** entre módulos: `prisma`, `auth`,
-  `pokeapi`, `storage`, `typeColors`. Não é módulo, não tem regra de negócio.
-- `src/components/` — só o que é **genuinamente global** (`NavBar`, `TypeBadge`,
-  `icons`). Componente que serve um módulo só mora no `ui/` **dele**.
+- `src/lib/` — infra **compartilhada** entre módulos: `prisma`, `pokeapi`,
+  `rateLimit`, `cronAuth`, `typeColors`, `utcDay`. Não é módulo, não tem regra de
+  negócio. A sessão NÃO mora aqui: é `modules/auth/auth.ts`.
+- `src/layout/` — só o que é **genuinamente global** (`NavBar`, `TypeBadge`,
+  `HpBar`, `toast`, `icons`). Componente que serve um módulo só mora no `ui/`
+  **dele**.
 - `src/modules/<mod>/` — a feature inteira: regra, leitura, escrita e tela.
 
 ### Os módulos, e a linha entre eles

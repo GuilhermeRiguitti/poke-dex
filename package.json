@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "migrate:deploy": "prisma migrate deploy",
-    "seed": "tsx prisma/seed.ts",
+    "seed": "tsx --conditions=react-server prisma/seed.ts",
     "db:reset": "supabase db reset && prisma migrate deploy && supabase db push"
   },
   "dependencies": {

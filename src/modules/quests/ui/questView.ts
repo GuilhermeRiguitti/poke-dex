@@ -37,8 +37,3 @@ export function questView(quest: QuestDTO): QuestView {
 export function questBoardView(quests: QuestDTO[]): QuestView[] {
   return quests.map(questView);
 }
-
-/** Quantas ainda dão token — é o que o resumo do topo mostra. */
-export function claimableCount(quests: QuestDTO[]): number {
-  return quests.filter((q) => q.completed && !q.claimed).length;
-}

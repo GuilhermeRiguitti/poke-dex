@@ -1,4 +1,4 @@
-import { fetchAndCacheType } from "@/src/lib/pokeapiCache";
+import { prisma } from "@/src/lib/prisma";
 import { DECK_LIMIT, defaultLoadout, readDeckSlots, type DeckLoadoutSlot } from "@/src/modules/deck";
 import { deriveStats, readLearnset } from "@/src/modules/pokemon";
 import { loadMoveDefs } from "../queries/loadMoveDefs";
@@ -9,8 +9,9 @@ import type { TypeEffectivenessMap } from "../domain/typeChart";
 // Tradutor entre o ESPELHO LOCAL (Pokemon/Move/UserPokemon/DeckSlot) e o
 // snapshot de batalha. Diferença de fundo pro antigo buildTeamSnapshot: NÃO
 // bate mais na PokéAPI ao vivo pra montar o time — tudo vem do nosso banco
-// (Fase 0 semeou o espelho). Só o buildTypeChart ainda lê /type (cache-backed),
-// e mesmo assim fora da transação. Os stats derivam do NÍVEL do UserPokemon via
+// (Fase 0 semeou o espelho). Desde 2026-08-15 isso vale pro arquivo INTEIRO: a
+// matriz de tipos também virou espelho (tabela `Type`), então não sobrou nenhum
+// caminho de rede aqui. Os stats derivam do NÍVEL do UserPokemon via
 // deriveStats (não mais nível 50 fixo), e as cartas são o loadout escolhido
 // (DeckSlotCard → Move), não os "4 primeiros moves de dano" da API.
 
@@ -91,9 +92,14 @@ export async function buildDuelSnapshot(userId: string, deckId: string): Promise
 }
 
 // Matriz de efetividade cobrindo os tipos (de corpo e de carta) presentes no
-// time. Dado real do endpoint /type da PokéAPI (via cache). A única coisa nossa
-// é buscar só os tipos relevantes pra essa partida, não os 18 do jogo. Roda
-// ANTES da transação em resolveTurn — I/O de rede não segura transação aberta.
+// time. Dado real do endpoint /type da PokéAPI, lido do ESPELHO (tabela `Type`,
+// escrita pelo syncTypes) — UMA consulta, zero rede. Desde 2026-08-15 esta era a
+// última função da batalha capaz de chamar a PokéAPI: com o espelho, a partida
+// não tem mais nenhum caminho de rede.
+//
+// Linha faltando (ambiente sem seed) = tipo sem multiplicador, e o
+// `effectivenessMultiplier` cai em 1x. Melhor um dano neutro que uma partida que
+// não resolve — mas o seed é quem evita isso, não a sorte.
 export async function buildTypeChart(pokemons: BattlePokemonState[]): Promise<TypeEffectivenessMap> {
   const typeNames = new Set<string>();
   for (const mon of pokemons) {
@@ -101,18 +107,16 @@ export async function buildTypeChart(pokemons: BattlePokemonState[]): Promise<Ty
     for (const mv of mon.moves) typeNames.add(mv.type);
   }
 
+  const rows = await prisma.type.findMany({ where: { name: { in: Array.from(typeNames) } } });
+
   const chart: TypeEffectivenessMap = {};
-  await Promise.all(
-    Array.from(typeNames).map(async (typeName) => {
-      const type = await fetchAndCacheType(typeName);
-      if (!type) return;
-      const row: Record<string, number> = {};
-      for (const t of type.doubleDamageTo) row[t] = 2;
-      for (const t of type.halfDamageTo) row[t] = 0.5;
-      for (const t of type.noDamageTo) row[t] = 0;
-      chart[typeName] = row;
-    })
-  );
+  for (const type of rows) {
+    const row: Record<string, number> = {};
+    for (const t of type.doubleDamageTo as string[]) row[t] = 2;
+    for (const t of type.halfDamageTo as string[]) row[t] = 0.5;
+    for (const t of type.noDamageTo as string[]) row[t] = 0;
+    chart[type.name] = row;
+  }
 
   return chart;
 }

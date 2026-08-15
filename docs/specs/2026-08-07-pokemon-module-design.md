@@ -323,8 +323,9 @@ Parte da tarefa, não passo extra (CLAUDE.md):
 
 ## 5. O que NÃO se move (e por quê)
 
-- **`src/lib/pokeapi.ts` e `lib/pokeapiCache.ts`** — cliente HTTP e cache são
-  infra compartilhada, não regra de pokémon. `syncPokedex` continua consumindo.
+- **`src/lib/pokeapi.ts`** — o cliente HTTP é infra compartilhada, não regra de
+  pokémon. `syncPokedex` continua consumindo. (O `lib/pokeapiCache.ts` que estava
+  nesta linha foi removido em 2026-08-15 junto com a tabela `PokeApiCache`.)
 - **`battle/domain/typeChart.ts`** — efetividade de tipo é regra de DANO e só a
   batalha usa. Mover criaria dependência nova sem consumidor novo.
 - **`battle/queries/loadMoveDefs.ts`** — lê `Move` do espelho, mas o formato de

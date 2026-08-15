@@ -31,7 +31,8 @@ const prismaMock = {
 };
 
 vi.mock("@/src/lib/prisma", () => ({ prisma: prismaMock }));
-// buildTypeChart bate na PokéAPI num cache miss — fora do teste.
+// buildTypeChart lê a tabela `Type` (espelho) — banco, fora do teste. Chart
+// vazio = tudo neutro (1x), que é o que estes casos querem.
 vi.mock("@/src/modules/battle/commands/buildDuelSnapshot", () => ({
   buildTypeChart: vi.fn(async () => ({})),
 }));

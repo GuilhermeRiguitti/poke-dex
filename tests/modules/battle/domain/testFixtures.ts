@@ -1,4 +1,5 @@
 import { emptyConditions } from "@/src/modules/battle/domain/conditions";
+import type { DuelSide, DuelState } from "@/src/modules/battle/domain/duelTypes";
 import type { MoveEffect } from "@/src/modules/battle/domain/moveEffect";
 import { BattleMoveDef, BattlePokemonState } from "@/src/modules/battle/domain/types";
 
@@ -72,6 +73,18 @@ export function makeMon(overrides: Partial<BattlePokemonState> = {}): BattlePoke
     conditions: emptyConditions(),
     ...overrides,
   };
+}
+
+/**
+ * Estado de duelo na rodada 1, com os dois lados intactos.
+ *
+ * Mora AQUI, e não no motor, porque o jogo não abre partida por esta porta: o
+ * `enqueueBattle` grava `round: 1` na linha do `Battle` e o `resolveTurn`
+ * remonta o estado a partir das linhas do banco. Como função exportada do
+ * `duelEngine`, ela parecia um caminho de produção que nenhum request percorre.
+ */
+export function makeDuelState(sideA: DuelSide, sideB: DuelSide): DuelState {
+  return { round: 1, sideA, sideB };
 }
 
 /** RNG que devolve valores fixos, na ordem, e falha se consumida além do esperado (protege contra rolagens não intencionais). */

@@ -28,9 +28,12 @@ PokéAPI fora do ar **não para nenhuma partida**.
 | Página de detalhe | PokéAPI via cache do `fetch` do Next | no miss² |
 | Seed / refresh | PokéAPI (é o trabalho deles) | sim |
 
-¹ Exceção: a matriz de tipos (`buildTypeChart`, endpoint `/type`) — 18 tipos,
-cacheados pra sempre na tabela `PokeApiCache`; rede só no primeiro miss, e
-sempre FORA da transação.
+¹ Zero rede mesmo, sem asterisco. A matriz de tipos era a última exceção: vinha
+do cache `PokeApiCache` e um miss mandava a **batalha** na PokéAPI. Em
+2026-08-15 ela virou espelho (tabela `Type`, escrita pelo `syncTypes` — §4), o
+`PokeApiCache` ficou sem consumidor e foi **dropado** (migration
+`20260815080940`). Regra que ficou: **cache é pra vitrine; o que o jogo consulta
+vem do espelho.**
 ² O cache do `fetch` do Next morre a cada deploy — o catálogo re-busca conforme
 navegação real. É o maior ponto de tráfego recorrente (ver §5).
 
@@ -116,12 +119,19 @@ O resto desta seção descreve o esquema PRETENDIDO, que é o que o código supo
 ## 4. Rotina manual: seed do espelho (por geração)
 
 ```bash
-npm run seed              # Gen 1 (#1–#151) — padrão
-npm run seed -- 152 251   # Gen 2
-npm run seed -- 252 386   # Gen 3, etc.
-npm run seed -- 1 1025    # TUDO — é isto que faz backfill de campo novo (~20 min)
+npm run seed                 # Gen 1 (#1–#151) — padrão
+npm run seed -- 152 251      # Gen 2
+npm run seed -- 252 386      # Gen 3, etc.
+npm run seed -- 1 1025       # TUDO — é isto que faz backfill de campo novo (~20 min)
+npm run seed -- --types-only # SÓ a matriz de tipos, sem tocar nas espécies
 ```
 
+- **Toda passada semeia a matriz de tipos** (`syncTypes`: as 18 linhas da tabela
+  `Type`) antes das espécies — 18 requests, sempre re-buscados. É o que tira a
+  PokéAPI de dentro da partida: o `buildTypeChart` lê essa tabela, não a rede.
+- `--types-only` faz só isso e sai. É o que rodar num espelho já semeado, pra não
+  re-varrer as 1025 espécies à toa — e é também o único jeito de **atualizar** a
+  matriz, já que nenhum cron passa por ela.
 - Idempotente (upsert por `pokemonApiId`/`moveApiId`; learnset via
   `createMany + skipDuplicates`) — re-rodar completa o que faltou.
 - **Concorrência máx. 8 requests em voo** (`syncPokedex`, `mapLimit`) — gentil
@@ -134,8 +144,10 @@ npm run seed -- 1 1025    # TUDO — é isto que faz backfill de campo novo (~20
 A policy pede: *"locally cache resources whenever you request them"* + não
 martelar. Cumprimos com folga:
 
-- **Cache em 3 camadas:** espelho (definitivo — gameplay nunca re-busca),
-  `PokeApiCache` (tabela, sobrevive a deploy), cache do `fetch` do Next.
+- **Espelho + 1 camada de cache, com papéis separados:** o espelho em tabela
+  (`Pokemon`/`Move`/`PokemonMove`/`Type`) atende **tudo que o jogo consulta** e
+  nunca re-busca; o cache de `fetch` do Next atende **só a vitrine** (catálogo e
+  detalhe). O `PokeApiCache`, que ficava no meio dos dois, saiu em 2026-08-15.
 - **Volume gentil:** seed por geração com concorrência 8; refresh de 20/dia;
   batalha com zero rede; catálogo guiado por navegação real (20 cards/página,
   cacheados) — nunca scraping em massa.

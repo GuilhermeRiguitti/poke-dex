@@ -2,11 +2,11 @@ import { prisma } from "@/src/lib/prisma";
 import { toBattleDTO } from "./toBattleDTO";
 
 // É o que o render server-side da página usa. getBattleState (o irmão desta
-// função) chama tryResolveTurn, que além de escrever pode bater na PokéAPI
-// pra montar a matriz de tipos num cache miss. Isso é aceitável dentro de uma
-// rota de API — o client fica esperando o fetch — mas dentro do render da
-// página significaria: PokéAPI lenta ou fora do ar => a página inteira falha,
-// e o jogador vê tela de erro em vez da batalha (não há error.tsx).
+// função) resolve o turno, o que além de escrever pode fazer I/O de rede pra
+// montar a matriz de tipos. Isso é aceitável dentro de uma rota de API — o
+// client fica esperando o fetch — mas dentro do render da página significaria:
+// dependência lenta ou fora do ar => a página inteira falha, e o jogador cai no
+// error.tsx do jogo em vez de ver a batalha.
 //
 // A resolução do turno não depende deste caminho: o polling de /status chama
 // tryResolveTurn a cada 2s, então qualquer turno pendente resolve em no
