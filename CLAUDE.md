@@ -48,7 +48,7 @@ Migration hand-written só pra `supabase/migrations/` (RLS/realtime) — o schem
 `realtime` não existe no Prisma. As de schema do app são sempre geradas.
 
 **O MCP do Supabase deste ambiente aponta pro PROD.** Desde 2026-08-13 ele NÃO
-é mais só leitura (o dono removeu o `--read-only`): além de `list_tables`,
+é mais só leitura: além de `list_tables`,
 `list_migrations`, `get_advisors`, `get_logs` e `SELECT`, o `execute_sql`
 escreve — pra o que é **operação**, não schema: reagendar `cron.job`, conferir
 `net._http_response`, corrigir uma linha de dado.
@@ -67,8 +67,7 @@ pergunte ao dono antes — escrita em prod não se desfaz com ctrl+Z.
 # Terminou a tarefa? Atualize os docs dela.
 
 Antes de dar uma tarefa por pronta, procure os documentos, TODOs e planos que
-falam dela (README, `DEPLOY.md`, `TODO.md`, `CLAUDE.md`,
-`AGENTS.md`) e **atualize cada um pra refletir o que foi feito**: marque o TODO
+falam dela (README, `DEPLOY.md`, `TODO.md`) e **atualize cada um pra refletir o que foi feito**: marque o TODO
 como concluído, corrija o que mudou de comportamento, registre a decisão nova.
 Isso faz parte da tarefa, não é passo extra — um doc que descreve o mundo antigo
 manda o próximo agente pro caminho errado.
@@ -78,20 +77,8 @@ manda o próximo agente pro caminho errado.
 **As regras do jogo estão no `README.md`** — turno simultâneo, nível libera golpe,
 as fórmulas de atributo e de XP, evolução por nível. Leia lá antes de mexer em
 qualquer coisa que mude o jogo. Aqui fica só o que o **código** é obrigado a
-respeitar por causa delas.
-
-## Não reintroduzir (já tentamos, e voltou atrás)
-
-- **Turno alternado** (revertido em 2026-07-21). Com vez definida, quem jogava em
-  segundo escolhia **depois de ver** a jogada do outro, e Speed virava "quem começa
-  a rodada" em vez de "quem bate primeiro". Morre junto a "janela de reação" (ver a
-  carta do oponente e responder): só faz sentido com vez definida. Se um dia
-  quisermos algo reativo, tem que ser outra mecânica, escolhida às cegas.
-- **`skillPowerMult`** (`1 + (nível-1)*k`), removido: no Pokémon o nível não deixa
-  o golpe mais forte por si.
-- **Liberar o learnset inteiro** pra compensar pokémon novo com poucas cartas
-  (~3-4, não 6 — `CARDS_PER_SLOT` é teto). As alavancas são `STARTING_LEVEL` e o XP
-  por batalha.
+respeitar por causa delas. E apos mexer se na alteracao 
+for solicitado alteracao de alguma regra atualize o README
 
 ## O que o código é obrigado a fazer
 
@@ -105,6 +92,8 @@ respeitar por causa delas.
   `cardSlot` nunca sai no DTO nem no payload do Realtime (regra 3 da arquitetura).
   O 2º trigger `battle_action_submitted` existe porque escolher a carta não mexe no
   `Battle`. Ordem do turno em `domain/turnOrder.ts`, dano em `domain/damage.ts`.
+
+`parei aqui`
 - **A trava do learnset é do SERVIDOR, não da UI.** `PUT /api/deck` é público:
   `saveDeck` recusa pokémon sem NENHUMA carta liberada (iria a campo sem ação
   possível e o `buildDuelSnapshot` lançaria no matchmaking), e a batalha filtra
@@ -241,6 +230,12 @@ componente cliente que é a página inteira. Isso não é refatorar, é mover o
 `fetch` de cliente que só existiam porque a page era cliente**. Se depois da
 refatoração ainda sobrou um `useEffect` buscando os dados da primeira pintura,
 com estado `loading` e um texto "Carregando...", **o trabalho não foi feito**.
+
+**O sintoma é de BUNDLE, não de contagem de filhos** — não se cura embrulhando
+o cliente num componente de servidor vazio. Wrapper de servidor só se paga se
+ele busca dado ou renderiza conteúdo que antes ia no browser. Sem `await`, sem
+prop além de `children` e com um uso só, ele não existe: escreva o `div` na
+própria page.
 
 ### 2. Nunca escreva durante o render de uma page
 

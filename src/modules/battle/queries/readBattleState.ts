@@ -1,8 +1,6 @@
 import { prisma } from "@/src/lib/prisma";
 import { toBattleDTO } from "./toBattleDTO";
 
-// Leitura PURA da partida — não resolve turno, não escreve, não toca a rede.
-//
 // É o que o render server-side da página usa. getBattleState (o irmão desta
 // função) chama tryResolveTurn, que além de escrever pode bater na PokéAPI
 // pra montar a matriz de tipos num cache miss. Isso é aceitável dentro de uma
@@ -17,8 +15,17 @@ export async function readBattleState(battleId: string, userId: string) {
   const battle = await prisma.battle.findUnique({
     where: { id: battleId },
     include: {
-      participants: { include: { pokemons: { orderBy: { slot: "asc" } } } },
-      turnLogs: { orderBy: { turnNumber: "desc" }, take: 10 },
+      participants: {
+        include: {
+          pokemons: {
+            orderBy: { slot: "asc" }
+          }
+        }
+      },
+      turnLogs: {
+        orderBy: { turnNumber: "desc" },
+        take: 10
+      },
     },
   });
   if (!battle) return { error: "not_found" as const };

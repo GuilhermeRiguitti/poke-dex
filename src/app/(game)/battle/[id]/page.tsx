@@ -4,30 +4,27 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/src/modules/auth/auth";
 import { readBattleState } from "@/src/modules/battle";
 import BattleRoom from "@/src/modules/battle/ui/BattleRoom";
-import BattleRoomShell from "@/src/modules/battle/ui/BattleRoomShell";
 
-export default async function BattlePage({ params }: { params: Promise<{ id: string }> }) {
+type BattlePageProps = {
+  params: Promise<{ id: string }>;
+}
+
+export default async function BattlePage({ params }: BattlePageProps) {
   const { id } = await params;
 
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
 
-  // Leitura PURA, de propósito: o render não resolve turno e não toca a rede.
-  // Resolver aqui significaria pendurar a página numa possível chamada à
-  // PokéAPI (cache miss da matriz de tipos) — PokéAPI lenta = página de erro
-  // em vez da batalha. Quem resolve o turno é o polling de /status, a cada 2s,
-  // com a mesa já desenhada. Ver readBattleState.
-  //
-  // Efeito colateral bom: sem escrita no render, a página é inofensiva mesmo
-  // se um dia for pré-renderizada ou prefetchada.
   const result = await readBattleState(id, session.user.id);
 
   // Não sou participante → 404, não 403: não vazo nem a existência da partida.
   if ("error" in result) notFound();
 
   return (
-    <BattleRoomShell>
+    // Full-bleed abaixo da navbar (h-16). Sem max-width de propósito — o palco 3D é
+    // o CENÁRIO da tela toda, e travar a largura deixaria tarja preta em monitor largo.
+    <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden bg-bg">
       <BattleRoom battleId={id} myUserId={session.user.id} initialBattle={result.battle} />
-    </BattleRoomShell>
+    </div>
   );
 }
