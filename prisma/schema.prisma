@@ -312,10 +312,28 @@ model UserPokemonMove {
 // pra uma geração já lançada — cache "eterno" entre invocações serverless)
 // ──────────────────────────────────────────────
 
-model PokeApiCache {
-  key       String   @id // ex: "pokemon:25", "move:33", "type:4"
-  payload   Json
-  fetchedAt DateTime @default(now())
+// Matriz de efetividade de tipo — ESPELHO do endpoint /type (damage_relations),
+// as 18 linhas do jogo. É dado de API copiado cru, igual a Pokemon e Move.
+//
+// POR QUE VIROU ESPELHO E NÃO CACHE (2026-08-15): morava no `PokeApiCache`
+// key-value, que ERA a última coisa capaz de puxar rede DENTRO de uma partida —
+// um cache miss no `buildTypeChart` mandava a batalha na PokéAPI. Cache serve
+// pra aliviar chamada de VITRINE (catálogo, tela de detalhe, que usam o cache de
+// `fetch` do Next); o que o JOGO consulta vem do espelho, sempre. Com a tabela,
+// a batalha é rede zero por construção — não por sorte de estar cacheado.
+// Aliás, o tipo era o ÚNICO consumidor do `PokeApiCache`: a tabela saiu junto.
+//
+// As relações são Json de NOMES e não FKs pra si mesma: ninguém filtra por
+// efetividade no banco (regra 3.1) — `buildTypeChart` lê as linhas dos tipos da
+// partida e monta um mapa em JS. Mesma escolha de `Pokemon.types`.
+model Type {
+  id           String   @id @default(cuid())
+  typeApiId    Int      @unique // id do /type — chave de refetch/dedup
+  name         String   @unique // "fire", "water"… é por ele que o chart procura
+  doubleDamageTo Json // string[] — tipos em que este bate 2x
+  halfDamageTo   Json // string[] — 0.5x
+  noDamageTo     Json // string[] — 0x (imunidade)
+  fetchedAt    DateTime @default(now())
 }
 
 // ──────────────────────────────────────────────

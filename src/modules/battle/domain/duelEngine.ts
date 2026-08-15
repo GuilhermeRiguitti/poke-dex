@@ -79,11 +79,6 @@ export interface DuelResult {
   finished: boolean;
 }
 
-/** Monta o estado inicial do duelo: rodada 1, os dois lados intactos. */
-export function startDuel(sideA: DuelSide, sideB: DuelSide): DuelState {
-  return { round: 1, sideA, sideB };
-}
-
 /** Tudo que UM golpe precisa saber pra sair: quem bate, em quem, e onde anotar. */
 interface AttackContext {
   attacker: BattlePokemonState;

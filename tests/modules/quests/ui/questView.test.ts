@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { claimableCount, questView } from "@/src/modules/quests/ui/questView";
+import { questView } from "@/src/modules/quests/ui/questView";
 import { toQuestDTO } from "@/src/modules/quests/queries/toQuestDTO";
 
 const quest = { id: "win-3", event: "battle_won" as const, goal: 3, label: "Vença 3 batalhas" };
@@ -58,16 +58,5 @@ describe("questView", () => {
 
   it("goal 0 não vira NaN (a barra sumiria sem erro nenhum)", () => {
     expect(questView(dto({ goal: 0, progress: 0 })).percent).toBe(0);
-  });
-});
-
-describe("claimableCount", () => {
-  it("conta só as completas e ainda não resgatadas", () => {
-    const quests = [
-      { questId: "a", label: "", goal: 1, progress: 1, completed: true, claimed: false },
-      { questId: "b", label: "", goal: 1, progress: 1, completed: true, claimed: true },
-      { questId: "c", label: "", goal: 3, progress: 1, completed: false, claimed: false },
-    ];
-    expect(claimableCount(quests)).toBe(1);
   });
 });

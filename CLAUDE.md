@@ -48,7 +48,7 @@ Migration hand-written só pra `supabase/migrations/` (RLS/realtime) — o schem
 `realtime` não existe no Prisma. As de schema do app são sempre geradas.
 
 **O MCP do Supabase deste ambiente aponta pro PROD.** Desde 2026-08-13 ele NÃO
-é mais só leitura (o dono removeu o `--read-only`): além de `list_tables`,
+é mais só leitura: além de `list_tables`,
 `list_migrations`, `get_advisors`, `get_logs` e `SELECT`, o `execute_sql`
 escreve — pra o que é **operação**, não schema: reagendar `cron.job`, conferir
 `net._http_response`, corrigir uma linha de dado.
@@ -67,8 +67,7 @@ pergunte ao dono antes — escrita em prod não se desfaz com ctrl+Z.
 # Terminou a tarefa? Atualize os docs dela.
 
 Antes de dar uma tarefa por pronta, procure os documentos, TODOs e planos que
-falam dela (README, `DEPLOY.md`, `TODO.md`, `CLAUDE.md`,
-`AGENTS.md`) e **atualize cada um pra refletir o que foi feito**: marque o TODO
+falam dela (README, `DEPLOY.md`, `TODO.md`) e **atualize cada um pra refletir o que foi feito**: marque o TODO
 como concluído, corrija o que mudou de comportamento, registre a decisão nova.
 Isso faz parte da tarefa, não é passo extra — um doc que descreve o mundo antigo
 manda o próximo agente pro caminho errado.
@@ -78,20 +77,8 @@ manda o próximo agente pro caminho errado.
 **As regras do jogo estão no `README.md`** — turno simultâneo, nível libera golpe,
 as fórmulas de atributo e de XP, evolução por nível. Leia lá antes de mexer em
 qualquer coisa que mude o jogo. Aqui fica só o que o **código** é obrigado a
-respeitar por causa delas.
-
-## Não reintroduzir (já tentamos, e voltou atrás)
-
-- **Turno alternado** (revertido em 2026-07-21). Com vez definida, quem jogava em
-  segundo escolhia **depois de ver** a jogada do outro, e Speed virava "quem começa
-  a rodada" em vez de "quem bate primeiro". Morre junto a "janela de reação" (ver a
-  carta do oponente e responder): só faz sentido com vez definida. Se um dia
-  quisermos algo reativo, tem que ser outra mecânica, escolhida às cegas.
-- **`skillPowerMult`** (`1 + (nível-1)*k`), removido: no Pokémon o nível não deixa
-  o golpe mais forte por si.
-- **Liberar o learnset inteiro** pra compensar pokémon novo com poucas cartas
-  (~3-4, não 6 — `CARDS_PER_SLOT` é teto). As alavancas são `STARTING_LEVEL` e o XP
-  por batalha.
+respeitar por causa delas. E apos mexer se na alteracao 
+for solicitado alteracao de alguma regra atualize o README
 
 ## O que o código é obrigado a fazer
 
@@ -105,6 +92,8 @@ respeitar por causa delas.
   `cardSlot` nunca sai no DTO nem no payload do Realtime (regra 3 da arquitetura).
   O 2º trigger `battle_action_submitted` existe porque escolher a carta não mexe no
   `Battle`. Ordem do turno em `domain/turnOrder.ts`, dano em `domain/damage.ts`.
+
+`parei aqui`
 - **A trava do learnset é do SERVIDOR, não da UI.** `PUT /api/deck` é público:
   `saveDeck` recusa pokémon sem NENHUMA carta liberada (iria a campo sem ação
   possível e o `buildDuelSnapshot` lançaria no matchmaking), e a batalha filtra
@@ -210,7 +199,7 @@ src/modules/<modulo>/
 | `domain/` | só a si mesma | Prisma, `fetch`, React |
 | `queries/` | `domain/`, `lib/prisma`, `lib/pokeapi` | React, `commands/` |
 | `commands/` | `domain/`, `queries/`, `lib/*` | React |
-| `ui/` | `ui/`, tipos de `domain/` | **Prisma, `lib/auth`, `commands/`, `queries/`** |
+| `ui/` | `ui/`, tipos de `domain/` | **Prisma, `modules/auth/auth`, `commands/`, `queries/`** |
 
 `ui/` nunca importa nada que toque o banco — se importar, o Prisma vai parar no
 bundle do browser.
@@ -241,6 +230,12 @@ componente cliente que é a página inteira. Isso não é refatorar, é mover o
 `fetch` de cliente que só existiam porque a page era cliente**. Se depois da
 refatoração ainda sobrou um `useEffect` buscando os dados da primeira pintura,
 com estado `loading` e um texto "Carregando...", **o trabalho não foi feito**.
+
+**O sintoma é de BUNDLE, não de contagem de filhos** — não se cura embrulhando
+o cliente num componente de servidor vazio. Wrapper de servidor só se paga se
+ele busca dado ou renderiza conteúdo que antes ia no browser. Sem `await`, sem
+prop além de `children` e com um uso só, ele não existe: escreva o `div` na
+própria page.
 
 ### 2. Nunca escreva durante o render de uma page
 
@@ -329,7 +324,7 @@ Toda page/rota é uma **função efêmera**: ela acorda com o request, responde,
 | `setInterval` / worker / job em background no servidor | não há processo depois da resposta | o trabalho acontece **dentro de um request** |
 | `setTimeout` pra "terminar depois de responder" | a execução morre com a resposta | faça antes de responder, ou não faça |
 | WebSocket / SSE / conexão longa | função tem teto de duração; não segura conexão | **polling** do cliente (é o que a batalha faz) |
-| `Map`/variável global como cache, fila ou rate-limit | cada invocação pode ser uma instância nova; memória **não sobrevive** | **tabela no banco** (ver `PokeApiCache`, e a fila do matchmaking) |
+| `Map`/variável global como cache, fila ou rate-limit | cada invocação pode ser uma instância nova; memória **não sobrevive** | **tabela no banco** (ver o espelho e a fila do matchmaking) |
 | escrever em arquivo / `fs` | filesystem é efêmero e read-only | banco (não há storage próprio hoje) |
 | cron pra reparar/limpar estado | **cron no Hobby roda 1x por dia** | não dependa de reparo; ver abaixo |
 | `new PrismaClient()` num módulo qualquer | esgota o pool do Postgres | importe **sempre** o `prisma` de `lib/prisma` |
@@ -423,25 +418,31 @@ não há worker pra consertar.
   instancie `PrismaClient` fora de `lib/prisma`, e não segure transação aberta
   esperando I/O.
 
-#### Consequência #4: cache tem duas camadas, e uma delas é tabela
+#### Consequência #4: cache é pra VITRINE; o que o jogo consulta vem do espelho
 
-O cache de `fetch` do Next morre a cada deploy. Por isso o que precisa
-sobreviver ao deploy mora em tabela — e a fair use policy da PokéAPI pede cache
-local de verdade.
+Essa é a linha, e ela é dura (decisão do dono, 2026-08-15):
 
-São **dois mecanismos diferentes**, e confundi-los custa caro:
+- **Espelho em tabela (`Pokemon`/`Move`/`PokemonMove`/`Type`)** — **tudo** que o
+  jogo consulta: coleção, deck, pacote, batalha. Escrito pelo `syncPokedex` e
+  pelo `syncTypes`, rodados pelo seed. É banco, não cache: não expira, não tem
+  miss, e nenhuma partida depende da PokéAPI estar de pé.
+- **Cache de `fetch` do Next** — **só vitrine**: catálogo e tela de detalhe, que
+  exibem dado da PokéAPI que o jogador ainda não tem. Serve pra aliviar chamada
+  a uma API pública e gratuita (fair use), nada além disso. Morre a cada deploy,
+  e tudo bem — é vitrine.
 
-- **Espelho (`Pokemon`/`Move`)** — o que o jogo CONSULTA. Escrito pelo
-  `syncPokedex`. É tabela relacional porque a coleção precisa filtrar e ordenar
-  por nome/tipo/raridade/nível, coisa que key-value não faz.
-- **`PokeApiCache` (key-value)** — hoje guarda **só `type:<nome>`**, usado pra
-  calcular efetividade no `buildDuelSnapshot`. Ninguém filtra por tipo no banco,
-  então uma linha de Json basta. `fetchAndCacheType` **grava** no miss: é
-  command-only, nunca render (regra 2).
+**Não misture os dois.** Cache alimentando mecânica é o erro que já foi cometido
+e desfeito: a matriz de efetividade de tipo morava numa tabela `PokeApiCache`
+key-value, e um miss dela mandava a **batalha** buscar na rede no meio da
+partida. Virou espelho (tabela `Type`), e o `PokeApiCache` — que tinha esse
+único consumidor — foi **dropado** (migration `20260815080940`). Se você sentir
+vontade de cachear algo pro jogo consultar, o que você quer é uma tabela de
+espelho e um sync que a preencha.
 
-> As funções `readCachedPokemons`/`fetchAndCachePokemon`/`fetchAndCacheMove`
-> foram removidas em 2026-08-02 — ficaram sem consumidor quando o espelho
-> assumiu pokémon e move.
+> Histórico: `readCachedPokemons`/`fetchAndCachePokemon`/`fetchAndCacheMove`
+> saíram em 2026-08-02 quando o espelho assumiu pokémon e move; o resto do
+> arquivo (`lib/pokeapiCache.ts`) saiu em 2026-08-15 com o tipo. A camada
+> key-value não existe mais.
 
 #### Consequência #5: a API PostgREST do Supabase é pública — RLS obrigatória
 
@@ -498,10 +499,12 @@ ele mesmo.
 
 ## Onde as coisas moram
 
-- `src/lib/` — infra **compartilhada** entre módulos: `prisma`, `auth`,
-  `pokeapi`, `storage`, `typeColors`. Não é módulo, não tem regra de negócio.
-- `src/components/` — só o que é **genuinamente global** (`NavBar`, `TypeBadge`,
-  `icons`). Componente que serve um módulo só mora no `ui/` **dele**.
+- `src/lib/` — infra **compartilhada** entre módulos: `prisma`, `pokeapi`,
+  `rateLimit`, `cronAuth`, `typeColors`, `utcDay`. Não é módulo, não tem regra de
+  negócio. A sessão NÃO mora aqui: é `modules/auth/auth.ts`.
+- `src/layout/` — só o que é **genuinamente global** (`NavBar`, `TypeBadge`,
+  `HpBar`, `toast`, `icons`). Componente que serve um módulo só mora no `ui/`
+  **dele**.
 - `src/modules/<mod>/` — a feature inteira: regra, leitura, escrita e tela.
 
 ### Os módulos, e a linha entre eles

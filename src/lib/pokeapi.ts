@@ -12,12 +12,17 @@ export function extractIdFromUrl(url: string): number {
 // hospedagem deles. Cachear não é otimização aqui — é a contrapartida de usar
 // uma API pública e gratuita.
 //
-// São duas camadas, de propósito:
-//  - esta (cache de fetch do Next): read-through, por deploy. Cobre a listagem
-//    da PokéDex, onde não dá pra pré-aquecer nada — o usuário navega 1025
-//    pokémon que ele justamente NÃO tem.
-//  - pokeapiCache.ts (tabela PokeApiCache): persiste entre deploys, e é ela que
-//    atende o que o usuário JÁ capturou. Ver o comentário lá.
+// CACHE É SÓ PRA VITRINE, e desde 2026-08-15 isso é literal: a única camada de
+// cache que sobrou é esta (o cache de `fetch` do Next), e ela atende só o
+// catálogo e a tela de detalhe — telas que EXIBEM dado da PokéAPI, onde não dá
+// pra pré-aquecer nada porque o usuário navega 1025 pokémon que ele justamente
+// NÃO tem.
+//
+// O que o JOGO consulta nunca passa por aqui: vem do espelho em tabela
+// (`Pokemon`/`Move`/`PokemonMove`/`Type`, escritos por syncPokedex e syncTypes).
+// A tabela `PokeApiCache`, que misturava as duas coisas, foi dropada na
+// migration 20260815080940 — o último consumidor dela era a matriz de tipos da
+// batalha, que virou espelho.
 //
 // force-cache explícito, e sem revalidate: dado de uma geração já lançada é
 // imutável, então revalidar é re-buscar 1025 recursos pra receber byte a byte a
@@ -275,11 +280,6 @@ export async function fetchSpecies(idOrName: number | string): Promise<Normalize
     evolutionChainId: Number.isFinite(chainId) ? chainId : null,
     growthRate: typeof growth === "string" ? growth : null,
   };
-}
-
-/** @deprecated Use `fetchSpecies` — ela traz a curva de XP no mesmo request. */
-export async function fetchSpeciesEvolutionChainId(idOrName: number | string): Promise<number | null> {
-  return (await fetchSpecies(idOrName))?.evolutionChainId ?? null;
 }
 
 /** GET /evolution-chain/{id} — a árvore de evolução normalizada, ou null. */

@@ -23,7 +23,8 @@ Cliente                     Servidor
                      1. upsert PackState  (garante a linha, lê o estado)
                      2. pré-check de elegibilidade  ──► 409 on_cooldown (early)
                      3. drawPack()        (sorteia 6 ids, ponderado por BST)
-                     4. fetchAndCachePokemon ×6   (aquece cache — FORA da tx)
+                     4. (não existe mais — era fetchAndCachePokemon ×6; o pacote
+                        lê o ESPELHO e não toca a rede desde 2026-08-02)
                      5. $transaction:
                           a. CLAIM atômico (updateMany condicionado)
                              └─ perdeu a corrida? count 0 ► não escreve nada
@@ -208,15 +209,14 @@ estão corretas por construção (ver 4.3).
 
 O pré-check barato (passo 2) faz o caminho de spam em cooldown retornar 409 sem
 sortear nem tocar a PokéAPI. Mas, na **janela em que o jogador ESTÁ elegível**,
-o sorteio (passo 3) e o aquecimento de cache (passo 4, até 6 `fetchAndCachePokemon`)
-acontecem **antes** do claim atômico (passo 5). Se o jogador dispara N requests
-concorrentes nesse instante, cada um roda o sorteio + até 6 buscas antes de o
+o sorteio (passo 3) acontece **antes** do claim atômico (passo 5). Se o jogador
+dispara N requests concorrentes nesse instante, cada um roda o sorteio antes de o
 claim decidir — mesmo que só **um** pacote seja concedido.
 
-**Impacto:** limitado. É 1 vez a cada 24h por jogador (assim que um request
-vence o claim, os outros e os próximos caem no cooldown). O `PokeApiCache`
-absorve as buscas repetidas. Pior caso: um cold cache + rajada = alguns ×6
-fetches numa janela por dia por jogador.
+**Impacto:** hoje, quase nenhum — o sorteio é CPU e leitura do espelho, sem
+rede. O passo 4 (aquecer o cache da PokéAPI) existia quando isto foi escrito e
+saiu em 2026-08-02; o `PokeApiCache` que ele alimentava foi dropado em
+2026-08-15.
 
 **Por que está assim:** o I/O de rede tem que ficar **fora** da transação
 (CLAUDE.md, consequência #2 — transação aberta esperando rede estoura e segura
@@ -292,9 +292,9 @@ alguém mexer, quebra:
   função morrendo no meio faz o Postgres dar rollback — não existe estado onde o
   cooldown foi cobrado mas as cartas não entraram, ou vice-versa. Não há worker
   pra reparar, então isso **tem** que ser atômico.
-- **I/O lento antes e fora da transação.** O `fetchAndCachePokemon` (rede) roda
-  antes do claim; a transação abre só pra escrever. É o que evita segurar
-  conexão do pooler esperando rede.
+- **I/O lento antes e fora da transação.** Valia pro `fetchAndCachePokemon`
+  (rede), que rodava antes do claim. Ele não existe mais — o pacote lê o espelho
+  — mas a regra fica: transação abre só pra escrever, nunca esperando rede.
 - **Check-in idempotente por dia.** `checkInLogin` credita o streak/bônus num
   único `updateMany` condicionado a `lastCheckIn < todayStart` (ou null). Duas
   abas no mesmo dia → o segundo reavalia o `WHERE` (lastCheckIn já é hoje) e sai

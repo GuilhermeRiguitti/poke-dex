@@ -58,6 +58,9 @@ export type { PokemonCardDTO, LearnsetMoveDTO } from "./ui/types";
 // cron chama. Ambos ESCREVEM — só command/rota, nunca render (CLAUDE.md regra 2).
 export { syncPokedex } from "./commands/syncPokedex";
 export { refreshPokedex } from "./commands/refreshPokedex";
+// A matriz de tipos (tabela `Type`) é espelho como os outros dois — quem lê é o
+// buildTypeChart da batalha, e quem escreve é o seed.
+export { syncTypes } from "./commands/syncTypes";
 
 // ─── leitura da espécie ────────────────────────────────────────────────────
 // SÓ LEEM — podem ser chamadas do render de uma page.
