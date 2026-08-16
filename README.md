@@ -68,7 +68,10 @@ saem todos de lá. O que buscamos, e de qual endpoint:
   `stat_changes`); a gente copia como está e traduz em mecânica na batalha.
 - **A efetividade de tipo** (`/type/{id}`): quem é super eficaz, pouco eficaz ou
   não tem efeito contra quem. É isso que decide o multiplicador de dano na
-  batalha — não uma tabela nossa.
+  batalha — não uma tabela nossa. Na batalha, cada golpe já mostra **antes** se
+  é super eficaz, pouco eficaz ou não afeta quem está em campo do outro lado:
+  ler o matchup é jogada, e descobrir isso só depois de gastar o turno seria
+  jogar no escuro.
 - **A evolução** (`/pokemon-species/{id}` → `/evolution-chain/{id}`): a cadeia de
   evolução da espécie (explicado abaixo).
 

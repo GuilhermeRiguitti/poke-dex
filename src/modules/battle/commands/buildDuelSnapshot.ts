@@ -1,7 +1,7 @@
-import { prisma } from "@/src/lib/prisma";
 import { DECK_LIMIT, defaultLoadout, readDeckSlots, type DeckLoadoutSlot } from "@/src/modules/deck";
 import { deriveStats, readLearnset } from "@/src/modules/pokemon";
 import { loadMoveDefs } from "../queries/loadMoveDefs";
+import { loadTypeChart } from "../queries/loadTypeChart";
 import { emptyConditions } from "../domain/conditions";
 import type { BattleMoveDef, BattlePokemonState } from "../domain/types";
 import type { TypeEffectivenessMap } from "../domain/typeChart";
@@ -92,31 +92,15 @@ export async function buildDuelSnapshot(userId: string, deckId: string): Promise
 }
 
 // Matriz de efetividade cobrindo os tipos (de corpo e de carta) presentes no
-// time. Dado real do endpoint /type da PokéAPI, lido do ESPELHO (tabela `Type`,
-// escrita pelo syncTypes) — UMA consulta, zero rede. Desde 2026-08-15 esta era a
-// última função da batalha capaz de chamar a PokéAPI: com o espelho, a partida
-// não tem mais nenhum caminho de rede.
-//
-// Linha faltando (ambiente sem seed) = tipo sem multiplicador, e o
-// `effectivenessMultiplier` cai em 1x. Melhor um dano neutro que uma partida que
-// não resolve — mas o seed é quem evita isso, não a sorte.
+// time. Quem lê a tabela é `loadTypeChart` (queries) — aqui só se decide QUAIS
+// tipos interessam. Desde 2026-08-15 esta era a última função da batalha capaz
+// de chamar a PokéAPI: com o espelho, a partida não tem mais nenhum caminho de
+// rede.
 export async function buildTypeChart(pokemons: BattlePokemonState[]): Promise<TypeEffectivenessMap> {
   const typeNames = new Set<string>();
   for (const mon of pokemons) {
     for (const t of mon.types) typeNames.add(t);
     for (const mv of mon.moves) typeNames.add(mv.type);
   }
-
-  const rows = await prisma.type.findMany({ where: { name: { in: Array.from(typeNames) } } });
-
-  const chart: TypeEffectivenessMap = {};
-  for (const type of rows) {
-    const row: Record<string, number> = {};
-    for (const t of type.doubleDamageTo as string[]) row[t] = 2;
-    for (const t of type.halfDamageTo as string[]) row[t] = 0.5;
-    for (const t of type.noDamageTo as string[]) row[t] = 0;
-    chart[type.name] = row;
-  }
-
-  return chart;
+  return loadTypeChart(typeNames);
 }

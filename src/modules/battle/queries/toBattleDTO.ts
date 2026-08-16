@@ -3,6 +3,7 @@ import { TURN_TIMEOUT_MS, remainingTurnMs } from "../domain/turnClock";
 import { STAGE_STATS, normalizeConditions } from "../domain/conditions";
 import { ENERGY_MAX, energyCostOf } from "../domain/energy";
 import { absenceRemainingMs, isPresent } from "../domain/presence";
+import { effectivenessMultiplier, type TypeEffectivenessMap } from "../domain/typeChart";
 import type { BattleMoveDef } from "../domain/types";
 import type {
   BattleDTO,
@@ -61,7 +62,29 @@ interface BattleRow {
   turnLogs: { turnNumber: number; events: unknown }[];
 }
 
-function toMoveDTO(move: BattleMoveDef): BattleMoveDTO {
+/**
+ * Efetividade da carta contra quem está EM CAMPO do outro lado. `null` quando
+ * não há o que medir — carta de status/sem poder, sem matriz, ou sem defensor.
+ *
+ * É a MESMA conta que o motor faz na hora do golpe (`effectivenessMultiplier`),
+ * só que antecipada: sem ela o jogador só descobre que o golpe era pouco eficaz
+ * DEPOIS de gastar o turno e a energia, e "ler o matchup" deixa de ser jogada.
+ */
+function effectivenessOf(
+  move: BattleMoveDef,
+  chart: TypeEffectivenessMap | null,
+  defenderTypes: string[] | null,
+): number | null {
+  if (!chart || !defenderTypes || defenderTypes.length === 0) return null;
+  if (move.damageClass === "status" || move.power == null) return null;
+  return effectivenessMultiplier(chart, move.type, defenderTypes);
+}
+
+function toMoveDTO(
+  move: BattleMoveDef,
+  chart: TypeEffectivenessMap | null,
+  defenderTypes: string[] | null,
+): BattleMoveDTO {
   return {
     id: move.id,
     name: move.name,
@@ -76,6 +99,7 @@ function toMoveDTO(move: BattleMoveDef): BattleMoveDTO {
     // browser (ver o comentário em BattleMoveDTO.energyCost).
     energyCost: energyCostOf(move),
     effect: move.effect ?? null,
+    effectiveness: effectivenessOf(move, chart, defenderTypes),
   };
 }
 
@@ -96,7 +120,12 @@ function toConditionsDTO(raw: unknown): MonConditionsDTO {
   };
 }
 
-function toPokemonDTO(row: BattleRow["participants"][number]["pokemons"][number]): BattlePokemonDTO {
+function toPokemonDTO(
+  row: BattleRow["participants"][number]["pokemons"][number],
+  chart: TypeEffectivenessMap | null,
+  /** tipos do ativo ADVERSÁRIO — é contra ele que a efetividade é medida */
+  defenderTypes: string[] | null,
+): BattlePokemonDTO {
   // types/moves são colunas Json; quem escreveu foi buildDuelSnapshot, então a
   // forma é conhecida — o cast é a leitura desse contrato.
   const moves = (row.moves as BattleMoveDef[]) ?? [];
@@ -111,7 +140,7 @@ function toPokemonDTO(row: BattleRow["participants"][number]["pokemons"][number]
     maxHp: row.maxHp,
     currentHp: row.currentHp,
     fainted: row.fainted,
-    moves: moves.map(toMoveDTO),
+    moves: moves.map((mv) => toMoveDTO(mv, chart, defenderTypes)),
     conditions: toConditionsDTO(row.conditions),
     // Raridade pela fortitude: pinta o metal da moldura da carta de reserva.
     // NÃO é informação nova — sai de `pokemonId`, que já está aqui. Vem
@@ -129,13 +158,15 @@ function toParticipantDTO(
   /** Piso da presença pra quem nunca carimbou: o createdAt da PARTIDA. */
   floor: Date,
   now: number,
+  chart: TypeEffectivenessMap | null,
+  defenderTypes: string[] | null,
 ): ParticipantDTO {
   const present = isPresent(row.lastSeenAt, floor, new Date(now));
   return {
     id: row.id,
     userId: row.userId,
     activeSlot: row.activeSlot,
-    pokemons: row.pokemons.map(toPokemonDTO),
+    pokemons: row.pokemons.map((p) => toPokemonDTO(p, chart, defenderTypes)),
     energy: row.energy,
     energyMax: ENERGY_MAX,
     present,
@@ -146,10 +177,31 @@ function toParticipantDTO(
   };
 }
 
+/** Tipos de quem está em campo por participante — o defensor de cada lado. */
+function activeTypesOf(p: BattleRow["participants"][number]): string[] | null {
+  const active = p.pokemons.find((m) => m.slot === p.activeSlot);
+  return active ? ((active.types as string[]) ?? []) : null;
+}
+
 // `now` é parâmetro pra o teste poder cravar o instante — em produção é sempre
 // o relógio do servidor, que é justamente o ponto do countdown (ver turnEndsInMs
 // em ui/types.ts).
-export function toBattleDTO(row: BattleRow, now = Date.now()): BattleDTO {
+//
+// `chart` é OPCIONAL de propósito: quem não passa a matriz recebe
+// `effectiveness: null` em toda carta e a tela simplesmente não desenha o selo
+// de vantagem — em vez de o mapper virar assíncrono e arrastar uma consulta pra
+// dentro da fronteira de serialização, que tem que continuar pura e testável.
+export function toBattleDTO(
+  row: BattleRow,
+  now = Date.now(),
+  chart: TypeEffectivenessMap | null = null,
+): BattleDTO {
+  // A efetividade de um lado se mede contra o ATIVO do outro. Em partida de 2
+  // isso é só "o outro participante"; com um lado só (estado degenerado), fica
+  // sem defensor e o campo vira null em vez de mentir 1x.
+  const defenderTypes = row.participants.map((_, i) =>
+    row.participants.length === 2 ? activeTypesOf(row.participants[1 - i]) : null,
+  );
   return {
     id: row.id,
     status: row.status as BattleStatusDTO,
@@ -161,7 +213,9 @@ export function toBattleDTO(row: BattleRow, now = Date.now()): BattleDTO {
     // mesma pros dois lados e começa no mesmo instante (turnStartedAt).
     turnEndsInMs: remainingTurnMs(row.turnStartedAt, now),
     turnTimeoutMs: TURN_TIMEOUT_MS,
-    participants: row.participants.map((p) => toParticipantDTO(p, row.createdAt, now)),
+    participants: row.participants.map((p, i) =>
+      toParticipantDTO(p, row.createdAt, now, chart, defenderTypes[i]),
+    ),
     turnLogs: row.turnLogs.map((log) => ({
       turnNumber: log.turnNumber,
       events: (log.events as BattleEventDTO[]) ?? [],

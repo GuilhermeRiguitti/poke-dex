@@ -17,6 +17,7 @@ import HpBar from "@/src/layout/HpBar";
 import { PokeballIcon, SwordsIcon, CardsIcon } from "@/src/layout/icons";
 import TypeBadge from "@/src/layout/TypeBadge";
 import { TYPE_COLORS } from "@/src/lib/typeColors";
+import { MoveCellGallery, MoveConsoleDemo } from "./MoveConsoleShowcase";
 
 const SWATCHES = [
   { name: "bg", cls: "bg-bg", use: "fundo do jogo" },
@@ -360,6 +361,81 @@ export default function DesignSystemPage() {
         </div>
       </Section>
 
+      {/* 5.1 Console de comando */}
+      <Section title="Console de comando">
+        <p className="mb-8 max-w-2xl text-sm font-semibold text-ink-dim">
+          A decisão do round. Os golpes <strong className="text-ink">não são cartas</strong> — a carta
+          virou o Pokémon —, e também não são seis botões soltos: são células de{" "}
+          <strong className="text-ink">uma máquina só</strong>. Casco chanfrado nos quatro cantos,
+          nervura no lugar de borda entre as células e um trilho de energia compartilhado no rodapé.
+          Esta página monta o <Code>MoveCommandBar</Code> de verdade, o mesmo que a batalha usa.
+        </p>
+
+        <Sub title="A ilha completa">
+          O trilho embaixo e o custo dentro da célula usam a{" "}
+          <strong className="text-ink">mesma gema</strong>. É de propósito: a pergunta do turno é
+          &quot;tenho 3, isso custa 3?&quot;, e comparar duas peças com desenhos diferentes custa um
+          segundo que o jogador não tem. O cabeçalho diz o que se espera dele; o rodapé diz com o que
+          ele conta.
+        </Sub>
+        <div className="flex justify-center overflow-x-auto pb-2 pt-4">
+          <MoveConsoleDemo />
+        </div>
+        <p className="mt-4 max-w-2xl text-xs font-semibold text-ink-dim">
+          <strong className="text-ink">Sem barra de força.</strong> Poder não tem máximo pra medir —
+          uma barra ali seria decoração fingindo que existe teto. Poder é número, PP é contagem, e o
+          único medidor da tela é o trilho de energia, que tem máximo real (<Code>energyMax</Code>).
+          Teclas <Code>1</Code>–<Code>6</Code> jogam a célula da posição.
+        </p>
+
+        <Sub title="A célula — os quatro estados">
+          O motivo do bloqueio é <strong className="text-ink">escrito</strong>, não só o botão
+          apagado: &quot;sem energia&quot; passa sozinho na próxima rodada, &quot;sem PP&quot; só
+          passa trocando de Pokémon. Cinza igual pros dois faz o jogador achar que o jogo travou. A
+          célula é exportada à parte (<Code>MoveCell</Code>) — é ela que a página mostra aqui e é ela
+          que um casco mobile reaproveitaria.
+        </Sub>
+        <MoveCellGallery />
+
+        <Sub title="Anatomia">
+          Quatro linhas, sempre na mesma ordem — a leitura é vertical e sempre igual, então o olho
+          aprende onde olhar depois do primeiro turno.
+        </Sub>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-120 text-left text-xs font-semibold">
+            <thead className="text-ink-dim">
+              <tr className="border-b border-edge">
+                <Th>linha</Th>
+                <Th>o que mostra</Th>
+                <Th>por quê</Th>
+              </tr>
+            </thead>
+            <tbody>
+              <AnatomyRow
+                part="1 · identificação"
+                shows="tecla · nome · classe (FÍS/ESP/STA)"
+                why="Quem é o golpe e qual stat ele usa pra bater."
+              />
+              <AnatomyRow
+                part="2 · o número"
+                shows="emblema do tipo · poder · vantagem"
+                why="O dado que decide. O emblema diz o tipo sem depender de ler a palavra."
+              />
+              <AnatomyRow
+                part="3 · usos"
+                shows="PP restante · efeito ou precisão"
+                why="Contagem, não barra. Tira o golpe de status da inércia."
+              />
+              <AnatomyRow
+                part="4 · custo"
+                shows="gemas de energia · rótulo"
+                why="Alinha com o trilho do rodapé — é a comparação do turno."
+              />
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
       {/* 6. Motion */}
       <Section title="Motion">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -425,6 +501,16 @@ function Code({ children }: { children: React.ReactNode }) {
 
 function Th({ children }: { children: React.ReactNode }) {
   return <th className="py-2 pr-4 font-bold uppercase tracking-wider">{children}</th>;
+}
+
+function AnatomyRow({ part, shows, why }: { part: string; shows: string; why: string }) {
+  return (
+    <tr className="border-b border-edge/60">
+      <td className="py-2 pr-4 font-title uppercase tracking-wide">{part}</td>
+      <td className="py-2 pr-4 text-ink-dim">{shows}</td>
+      <td className="py-2 pr-4 text-ink-dim">{why}</td>
+    </tr>
+  );
 }
 
 function RarityRow({ tier, bst, extra }: { tier: RarityTier; bst: string; extra: string }) {

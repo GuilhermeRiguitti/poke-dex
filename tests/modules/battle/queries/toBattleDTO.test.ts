@@ -166,6 +166,56 @@ describe("toBattleDTO", () => {
     expect(toBattleDTO(row, now).turnEndsInMs).toBe(0);
   });
 
+  // A efetividade vem MASTIGADA do servidor porque a matriz mora na tabela
+  // `Type` — o browser não tem como calcular. Sem ela o jogador só descobre que
+  // o golpe era pouco eficaz depois de gastar o turno.
+  describe("efetividade de tipo", () => {
+    // electric -> water = 2x; electric -> grass = 0.5x (matriz recortada, é o
+    // formato exato que loadTypeChart devolve).
+    const chart = { electric: { water: 2, grass: 0.5, ground: 0 } };
+
+    function duel(oppTypes: string[]) {
+      const row = rowMidTurn();
+      const opp = JSON.parse(JSON.stringify(row.participants[0])) as (typeof row.participants)[number];
+      opp.id = "part-opp";
+      opp.userId = "zeta";
+      opp.pokemons[0].types = oppTypes;
+      opp.lastSeenAt = new Date();
+      row.participants.push(opp);
+      return row;
+    }
+
+    it("mede a carta contra quem está EM CAMPO do outro lado", () => {
+      const dto = toBattleDTO(duel(["water"]), Date.now(), chart);
+      expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBe(2);
+    });
+
+    it("multiplica os dois tipos do defensor", () => {
+      // water 2x × grass 0.5x = 1x — neutro de verdade, e a tela não desenha selo.
+      const dto = toBattleDTO(duel(["water", "grass"]), Date.now(), chart);
+      expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBe(1);
+    });
+
+    it("imunidade chega como 0, não como neutro", () => {
+      const dto = toBattleDTO(duel(["ground"]), Date.now(), chart);
+      expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBe(0);
+    });
+
+    it("sem matriz o campo é null — a célula não desenha selo em vez de chutar 1x", () => {
+      const dto = toBattleDTO(duel(["water"]));
+      expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBeNull();
+    });
+
+    it("carta de status não tem efetividade pra medir", () => {
+      const row = duel(["water"]);
+      const move = (row.participants[0].pokemons[0].moves as Record<string, unknown>[])[0];
+      move.damageClass = "status";
+      move.power = null;
+      const dto = toBattleDTO(row, Date.now(), chart);
+      expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBeNull();
+    });
+  });
+
   it("mantém tudo que a mesa precisa desenhar", () => {
     const dto = toBattleDTO(rowMidTurn());
     const pokemon = dto.participants[0].pokemons[0];

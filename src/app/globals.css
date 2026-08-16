@@ -1166,44 +1166,197 @@ a { color: inherit; text-decoration: none; }
 }
 .hand-card--cast { animation: card-launch 0.5s var(--ease-snap) forwards; z-index: 70 !important; }
 
-/* ── barra de comando de golpes (batalha) ─────────────────────────
-   Substitui o leque de cartas: os golpes não são mais "cartas" (a carta virou
-   o Pokémon). Botão de comando com acento do tipo, poder, classe e PP. */
-.move-btn {
+/* ── console de comando dos golpes (batalha) ──────────────────────
+   Os golpes não são cartas — a carta virou o Pokémon. Em vez de seis botões
+   soltos (que davam cara de formulário), UMA máquina: casco chanfrado nos
+   quatro cantos, células divididas por nervura e um trilho de energia
+   compartilhado no rodapé. O custo de cada célula usa a MESMA gema do trilho,
+   então "tenho 3, isso custa 3" se lê de relance.
+
+   Nada de barra de progresso pra poder: poder não tem máximo pra medir. O
+   único medidor aqui é o trilho de energia, que tem máximo real (energyMax). */
+
+.cmd-console {
+  background: linear-gradient(180deg, #20293a 0%, var(--color-panel-2) 34%, #0d131e 100%);
+  border: 1px solid color-mix(in srgb, var(--color-edge) 78%, var(--color-ink));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.07) inset,
+    0 20px 44px rgba(0, 0, 0, 0.62);
+  clip-path: polygon(
+    20px 0, calc(100% - 20px) 0, 100% 20px, 100% calc(100% - 20px),
+    calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px), 0 20px
+  );
+}
+
+.cmd-head {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-edge) 70%, var(--color-bg));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-energy) 12%, transparent), transparent);
+}
+
+.cmd-rail {
+  border-top: 1px solid color-mix(in srgb, var(--color-edge) 70%, var(--color-bg));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), color-mix(in srgb, var(--color-energy) 7%, transparent));
+}
+
+/* nervura pontilhada que preenche o vão do cabeçalho e do trilho */
+.cmd-dash {
+  height: 1px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-ink-dim) 25%, transparent) 0 6px, transparent 6px 12px);
+}
+.cmd-dash--flow {
+  height: 2px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-energy) 35%, transparent) 0 10px, transparent 10px 20px);
+  animation: cmd-rail-flow 3s linear infinite;
+}
+@keyframes cmd-rail-flow {
+  from { background-position: 0 0; }
+  to { background-position: 120px 0; }
+}
+
+/* ── a célula ─────────────────────────────────────────────────────
+   Sem borda própria: quem separa é a nervura (border-right). É isso que faz
+   parecer uma máquina só, e não seis cards empilhados lado a lado. */
+.cmd-cell {
   position: relative;
-  flex: 0 0 auto;
-  width: 118px;
+  overflow: hidden;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 8px;
-  background: var(--color-panel-2);
-  border: 1px solid var(--color-edge);
-  border-top: 3px solid var(--type-c, var(--color-edge));
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  padding: 11px 13px 9px;
+  border: 0;
+  border-right: 1px solid color-mix(in srgb, var(--color-edge) 70%, var(--color-bg));
+  background: linear-gradient(180deg, transparent 38%, color-mix(in srgb, var(--type-c) 16%, transparent) 100%);
   cursor: pointer;
-  transition: transform 0.15s var(--ease-snap), border-color 0.15s, filter 0.15s, background 0.15s;
+  text-align: left;
+  transition: background 0.18s, transform 0.18s var(--ease-snap);
 }
-.move-btn:not(:disabled):hover,
-.move-btn:not(:disabled):focus-visible {
-  transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--type-c) 60%, var(--color-edge));
-  background: color-mix(in srgb, var(--type-c) 12%, var(--color-panel-2));
-  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--type-c) 45%, transparent))
-    drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+.cmd-cell:last-child { border-right: 0; }
+
+/* filete do tipo no topo — o acento que estava no border-top do botão antigo */
+.cmd-cell::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--type-c, var(--color-edge));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--type-c) 55%, transparent);
 }
-.move-btn:disabled {
-  opacity: 0.45;
+/* halo de energia do tipo saindo do canto — a "arte" da célula */
+.cmd-cell::after {
+  content: "";
+  position: absolute;
+  right: -22px;
+  bottom: -34px;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--type-c), transparent 68%);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.cmd-cell:not(:disabled):hover,
+.cmd-cell:not(:disabled):focus-visible {
+  transform: translateY(-3px);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--type-c) 10%, transparent) 0%,
+    color-mix(in srgb, var(--type-c) 34%, transparent) 100%
+  );
+  outline: none;
+}
+
+.cmd-cell:disabled {
+  opacity: 0.44;
   cursor: not-allowed;
   filter: grayscale(0.5);
 }
-@keyframes move-cast {
-  0% { transform: translateY(0) scale(1); }
-  30% { transform: translateY(-12px) scale(1.06); filter: brightness(1.3); }
-  100% { transform: translateY(-4px) scale(1); }
+
+/* selecionada, esperando confirmação (Enter) */
+.cmd-cell[data-armed] {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-flare) 20%, transparent) 0%,
+    color-mix(in srgb, var(--color-flare) 6%, transparent) 55%,
+    color-mix(in srgb, var(--type-c) 24%, transparent) 100%
+  );
+  animation: cmd-armed 1.6s ease-in-out infinite;
 }
-.move-btn--cast {
-  animation: move-cast 0.5s var(--ease-snap);
+.cmd-cell[data-armed]::before { background: var(--color-flare); }
+@keyframes cmd-armed {
+  0%, 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-flare) 65%, transparent); }
+  50% { box-shadow: inset 0 0 0 1px var(--color-flare), 0 0 22px 2px color-mix(in srgb, var(--color-flare) 35%, transparent); }
+}
+
+/* ── peças internas ─────────────────────────────────────────────── */
+
+/* emblema de energia do tipo: o selo redondo que o TCG usa pra dizer o tipo
+   sem depender de ler a palavra */
+.cmd-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 34% 26%,
+    #fff 2%,
+    var(--type-c) 46%,
+    color-mix(in srgb, var(--type-c) 65%, transparent) 68%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.22),
+    0 0 16px color-mix(in srgb, var(--type-c) 55%, transparent),
+    inset 0 -5px 9px rgba(0, 0, 0, 0.5);
+}
+.cmd-orb::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+/* a gema de energia. Mesma peça na célula (custo) e no trilho (disponível) —
+   é a comparação que decide a jogada, então não podem ser desenhos diferentes. */
+.cmd-pip {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d8f7ff, var(--color-energy) 60%, #0b5f80);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--color-energy) 70%, transparent);
+}
+.cmd-pip[data-empty] {
+  background: var(--color-bg);
+  box-shadow: inset 0 0 0 1px var(--color-edge);
+}
+.cmd-pip[data-bad] {
+  background: radial-gradient(circle at 35% 30%, #ffd4d4, var(--color-bad) 60%, #7a1f1f);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-bad) 60%, transparent);
+}
+.cmd-pip--rail { width: 15px; height: 15px; }
+
+@keyframes cmd-cast {
+  0% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-12px) scale(1.06); filter: brightness(1.35); }
+  100% { transform: translateY(-3px) scale(1); }
+}
+.cmd-cell--cast {
+  animation: cmd-cast 0.5s var(--ease-snap);
   z-index: 5;
+}
+
+/* No celular seis células em fila viram tiras ilegíveis: quebra em 3 + 3 e a
+   nervura passa a existir também na horizontal. */
+@media (max-width: 640px) {
+  .cmd-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .cmd-cell:nth-child(3n) { border-right: 0; }
+  .cmd-cell:nth-child(-n + 3) { border-bottom: 1px solid color-mix(in srgb, var(--color-edge) 70%, var(--color-bg)); }
 }
 
 /* relatório de combate: a linha mais recente entra com um flash da cor de ação */

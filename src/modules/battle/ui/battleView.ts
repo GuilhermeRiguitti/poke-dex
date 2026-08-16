@@ -37,6 +37,15 @@ export interface DuelCardView {
    * inerte, em vez de deixar o jogador gastar o turno pra descobrir.
    */
   effectLabel: string | null;
+  /**
+   * Multiplicador de tipo contra quem está em campo do outro lado (2, 0.5, 0…).
+   * `null` = não há o que medir (carta de status/sem poder) — e aí a célula não
+   * desenha selo nenhum, em vez de chutar "neutro".
+   *
+   * Vem calculado do servidor (a matriz mora na tabela `Type`); aqui só se
+   * decide como isso vira selo na tela.
+   */
+  effectiveness: number | null;
 }
 
 // ── nomes em português das coisas de status ──────────────────────────────────
@@ -724,6 +733,7 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
       // próximo round.
       disabledReason: semPp ? ("pp" as const) : semEnergia ? ("energy" as const) : null,
       effectLabel: moveEffectLabel(mv.effect),
+      effectiveness: mv.effectiveness,
     };
   });
 
