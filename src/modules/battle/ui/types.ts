@@ -37,6 +37,16 @@ export interface BattleMoveDTO {
    * no battleView — regra de apresentação não mora no componente.
    */
   effect: MoveEffect | null;
+  /**
+   * Multiplicador de tipo desta carta contra o pokémon que está EM CAMPO do
+   * outro lado (2, 0.5, 0…). `null` quando não há o que medir: carta de status,
+   * carta sem poder, ou a matriz não veio junto da leitura.
+   *
+   * Vem do SERVIDOR e não do browser porque a matriz mora na tabela `Type` — o
+   * mesmo motivo do `energyCost`. E não entrega nada de novo: os tipos dos dois
+   * ativos já estão neste DTO, isso é a conta que o jogador faria de cabeça.
+   */
+  effectiveness: number | null;
 }
 
 /**

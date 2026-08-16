@@ -226,11 +226,20 @@ export default function DuelArena({
         {/* ↓ a decisão do round: a barra de golpes */}
         {!forcedSwitch && !view.isOver && (
           <div
-            className={`pointer-events-auto absolute bottom-4 left-1/2 max-w-[min(52rem,96vw)] -translate-x-1/2 transition-opacity ${
+            className={`pointer-events-auto absolute bottom-4 left-1/2 -translate-x-1/2 transition-opacity ${
               locked && casting === null ? "opacity-60" : ""
             }`}
           >
-            <MoveCommandBar cards={view.cards} locked={locked} casting={casting} onPlay={handlePlay} />
+            {/* O console já se mede sozinho (w-[min(66rem,96vw)]) — o wrapper só
+                centraliza e apaga quando a jogada está travada. */}
+            <MoveCommandBar
+              cards={view.cards}
+              locked={locked}
+              casting={casting}
+              energy={view.myEnergy}
+              energyMax={view.energyMax}
+              onPlay={handlePlay}
+            />
           </div>
         )}
 
