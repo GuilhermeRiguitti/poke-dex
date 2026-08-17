@@ -123,6 +123,16 @@ for solicitado alteracao de alguma regra atualize o README
   ideia obrigaria a re-sincronizar tudo contra a PokéAPI. Efeito que o jogo não
   modela vira `null`, e a carta aparece como "sem efeito" — **nunca** finja que
   fez algo.
+- **O que o servidor MASTIGA pro DTO, e o que ele nunca manda.** A matriz de
+  tipos e os base stats moram no banco, então quem calcula é o servidor
+  (`BattleDTOContext`, em `queries/toBattleDTO.ts`): a `effectiveness` de cada
+  carta contra o ativo do outro lado, e o `baseStats` pras 6 barras da reserva.
+  A efetividade é pública (os tipos dos dois ativos já vão no DTO); o atributo
+  **não** — o `baseStats` só é preenchido pro time de QUEM está lendo, e o
+  filtro é por DONO, nunca por espécie. E é o base: o `BattlePokemon.stats`
+  (derivado, congelado no snapshot) continua fora do DTO.
+- **A sala do duelo é o único lugar do jogo sem navbar** — grupo de rota
+  `(arena)`, tela cheia, e por isso a saída é um link dentro da própria arena.
 - **Status e stat stage moram em `BattlePokemon.conditions`** (Json anulável) e
   a regra em `battle/domain/conditions.ts`. Três coisas não podem mudar sem
   quebrar o jogo: o slot não-volátil é **um só** (queimadura/veneno/paralisia/
