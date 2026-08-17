@@ -531,17 +531,19 @@ a { color: inherit; text-decoration: none; }
     0 calc(10 * var(--u))
   );
 }
-/* sem stats (catálogo): a arte cresce e ocupa o espaço das barras, então a
-   moldura mantém a mesma altura em toda tela em vez de ficar com um buraco. */
-.pcard[data-details="false"] { --art-h: calc(340 * var(--u)); }
-.pcard[data-details="false"] .pcard-scrim { top: calc(404 * var(--u)); }
+/* SEM BARRAS (catálogo, reserva da arena): a arte cresce e ocupa o espaço
+   delas, então a moldura mantém a mesma altura em toda tela em vez de ficar com
+   um buraco. Vale por `data-stats` e não por `data-details`: a reserva da arena
+   TEM nível (details) e não tem barra, e sem isso ficava o buraco. */
+.pcard[data-stats="false"] { --art-h: calc(340 * var(--u)); }
+.pcard[data-stats="false"] .pcard-scrim { top: calc(404 * var(--u)); }
 
 /* No grid, o rodapé leva BOTÕES (Montar/Soltar), bem mais altos que o "+ DECK"
    fininho do handoff. Com a arte em 232u as 6 barras não cabiam e o bloco
    transbordava PRA CIMA, escondendo o rótulo HP atrás dos chips de tipo.
    A arte encolhe pra abrir o espaço que os botões tomaram. */
-.pcard[data-size="grid"][data-details="true"] { --art-h: calc(205 * var(--u)); }
-.pcard[data-size="grid"][data-details="true"] .pcard-scrim { top: calc(270 * var(--u)); }
+.pcard[data-size="grid"][data-stats="true"] { --art-h: calc(205 * var(--u)); }
+.pcard[data-size="grid"][data-stats="true"] .pcard-scrim { top: calc(270 * var(--u)); }
 
 /* A ARTE DO POKÉMON, dentro do .pcard-over (z11) — ACIMA do prisma. */
 .pcard-over img {
@@ -800,8 +802,8 @@ a { color: inherit; text-decoration: none; }
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   background: rgba(9, 12, 18, 0.55);
   border: 1px solid var(--color-edge);
   clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
@@ -854,7 +856,27 @@ a { color: inherit; text-decoration: none; }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ── relatório de combate ────────────────────────────────────── */
+/* ── painel da esquerda: estado do round + relatório ─────────── */
+
+/* Mais opaco que o `hud-panel` padrão: o feed é TEXTO CORRIDO por cima de um
+   palco 3D que muda de cor a cada golpe, e a 80% as linhas sumiam quando um
+   sprite claro passava atrás. As placas de HP podem ser translúcidas porque o
+   que elas mostram é barra e número grande; texto de 13px não pode. */
+.feed-panel {
+  background: color-mix(in srgb, var(--color-panel) 94%, transparent);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+}
+/* a barra de cima (rodada · relógio · sair) e a sub-barra (estado do oponente)
+   se separam do feed por fundo, não por mais uma borda — o painel já tem a sua */
+.feed-bar {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-edge) 80%, var(--color-bg));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-energy) 10%, transparent), transparent);
+}
+.feed-substrip {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-edge) 60%, var(--color-bg));
+  background: rgba(0, 0, 0, 0.32);
+}
+
 .feed-line {
   display: flex;
   align-items: flex-start;
@@ -863,7 +885,35 @@ a { color: inherit; text-decoration: none; }
   border-left: 2px solid transparent;
 }
 .feed-line[data-last] { border-left-color: var(--color-flare); }
-.feed-line[data-round] { justify-content: center; opacity: 0.75; }
+/* o que já passou recua um pouco pra a linha nova ser a que salta */
+.feed-line:not([data-last]) { opacity: 0.72; }
+.feed-line[data-round] { justify-content: center; opacity: 0.6; padding-top: 4px; }
+
+/* separador de rodada: o texto no meio, com fio dos dois lados. Antes eram dois
+   travessões digitados no JSX — que não se alinham quando o nome da rodada muda
+   de tamanho. */
+.feed-round {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  white-space: nowrap;
+}
+.feed-round::before,
+.feed-round::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-edge), transparent);
+}
+
+/* barra de rolagem do feed: fina e da cor do painel. A padrão do SO é larga o
+   bastante pra comer a coluna do dano. */
+.feed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge) transparent;
+  overscroll-behavior: contain;
+}
 .feed-tag {
   display: inline-block;
   margin-right: 4px;
@@ -892,142 +942,133 @@ a { color: inherit; text-decoration: none; }
   animation: playable-pulse 1.8s ease-in-out infinite;
 }
 
-/* ── gaveta de reservas (canto de baixo à direita) ───────────── */
-.reserve-dock {
-  position: relative;
+/* ══════════════════════════════════════════════════════════════
+   BANCO DE RESERVAS (batalha). O meu time, SEMPRE visível, FLUTUANDO
+   no palco — sem painel em volta: a carta já tem moldura, e uma dentro
+   da outra só empilhava borda.
+
+   As cartas são a versão COM os 6 atributos, EMPILHADAS na HORIZONTAL:
+   cada uma cobre a anterior e sobra a coluna da esquerda dela. É a pilha
+   que devolve a largura, e é essa largura que paga uma carta grande o
+   bastante pra os atributos serem legíveis quando ela abre.
+
+   As medidas (--rr-hidden, --rr-sliver, --rr-hp-top) vêm do componente
+   pra morarem junto da largura da carta (pokeCardView).
+   ══════════════════════════════════════════════════════════════ */
+.rrail {
   display: flex;
-  justify-content: flex-end;
-}
-.reserve-panel {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 8px);
-  width: 25rem;
-  max-width: 88vw;
-  opacity: 0;
-  transform: translateY(14px) scale(0.96);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
   transform-origin: bottom right;
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.24s var(--ease-snap);
-}
-/* abre no hover/foco da ficha — e fica aberta quando o React manda (troca forçada) */
-.reserve-dock:hover .reserve-panel,
-.reserve-dock:focus-within .reserve-panel,
-.reserve-dock[data-open] .reserve-panel {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
-.reserve-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
-  color: var(--color-ink);
-  background: color-mix(in srgb, var(--color-panel-2) 88%, transparent);
-  border: 1px solid var(--color-edge);
-  backdrop-filter: blur(7px);
-  cursor: pointer;
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-  transition: border-color 0.15s, background 0.15s, transform 0.15s var(--ease-snap);
-}
-.reserve-dock:hover .reserve-chip,
-.reserve-dock:focus-within .reserve-chip,
-.reserve-dock[data-open] .reserve-chip {
-  border-color: color-mix(in srgb, var(--color-flare) 60%, var(--color-edge));
-  background: color-mix(in srgb, var(--color-flare) 14%, var(--color-panel-2));
-  transform: translateY(-2px);
-}
-.reserve-chip-icon {
-  width: 12px;
-  height: 14px;
-  border: 1px solid var(--color-flare);
-  box-shadow: 3px -3px 0 -1px color-mix(in srgb, var(--color-flare) 55%, transparent);
-}
-.reserve-chip-count {
-  min-width: 20px;
-  padding: 0 5px;
-  font-family: var(--font-title);
-  font-size: 12px;
-  text-align: center;
-  color: #241a05;
-  background: var(--color-flare);
-}
-/* dentro da gaveta a carta em foco sobe MENOS: a placa tem clip-path, e o
-   pulo cheio do leque seria decepado na borda do painel */
-.reserve-panel .rhand {
-  padding-top: 30px;
-  padding-inline: 10px;
-}
-.reserve-panel .rhand-slot:not([disabled]):hover,
-.reserve-panel .rhand-slot:not([disabled]):focus-visible {
-  transform: rotate(0deg) translateY(-16px) scale(1.18);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   LEQUE DE RESERVAS (batalha). As cartas mini abrem em leque dentro
-   da gaveta, sobrepostas e inclinadas. O ATIVO não entra aqui — ele
-   está no palco 3D. --rot e --lift vêm do componente (posição na mão).
-   ══════════════════════════════════════════════════════════════ */
-.rhand {
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  padding-top: 26px; /* espaço pra carta subir no hover sem cortar */
+/* No celular a pilha inteira encolhe em vez de sumir: escondê-la tiraria a
+   ÚNICA forma de trocar de pokémon — e na troca forçada, a única jogada
+   possível. Ancorada na quina de baixo à direita, ela só fica menor. */
+@media (max-width: 640px) {
+  .rrail { transform: scale(0.5); }
 }
-.rhand-slot {
+
+/* o aviso: texto solto com sombra, sem placa (ver o comentário no componente) */
+.rrail-hint {
+  display: flex;
+  gap: 10px;
+  padding-right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px #000, 0 0 12px rgba(0, 0, 0, 0.8);
+}
+
+/* A PILHA, da esquerda pra direita. A margem negativa é EXATAMENTE o que fica
+   escondido, então a fatia à mostra é sempre --rr-sliver. */
+.rrail-list {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+}
+.rrail-item {
   position: relative;
-  margin-inline: -18px; /* a sobreposição do leque */
+  /* o atraso só existe na VOLTA: a carta termina de encolher antes de descer
+     de camada, senão ela pisca por baixo da vizinha no meio da animação */
+  transition: z-index 0s linear 0.3s;
+}
+.rrail-item + .rrail-item {
+  margin-left: calc(-1 * var(--rr-hidden, 108px));
+}
+.rrail-item:hover,
+.rrail-item:focus-within {
+  z-index: 40;
+  transition-delay: 0s;
+}
+
+.rrail-slot {
+  position: relative;
+  display: block;
   border: 0;
   padding: 0;
   background: none;
+  /* A ABERTURA: a carta sobe e cresce a partir da BASE, então ela nunca desce
+     na direção do console (que é a decisão do round e não pode ser tapada). O
+     easing é o ease-snap do sistema — passa um tico do ponto e assenta, que é o
+     que dá o movimento macio em vez do corte seco de um ease comum. */
   transform-origin: bottom center;
-  transform: rotate(var(--rot, 0deg)) translateY(var(--lift, 0px));
-  transition: transform 0.25s var(--ease-snap), filter 0.25s ease;
+  transition: transform 0.3s var(--ease-snap), filter 0.2s ease;
+  will-change: transform;
 }
-.rhand-slot:not([disabled]) { cursor: pointer; }
-.rhand-slot:not([disabled]):hover,
-.rhand-slot:not([disabled]):focus-visible {
-  transform: rotate(0deg) translateY(-26px) scale(1.28);
-  z-index: 50;
+.rrail-slot:not([disabled]) { cursor: pointer; }
+.rrail-slot:hover,
+.rrail-slot:focus-visible {
+  /* 1.6 é o que leva o rótulo do atributo (12u, ~6px nesta largura) pros ~10px
+     em que ele se lê. */
+  transform: translateY(-14px) scale(1.6);
+  outline: none;
 }
-/* nocauteado: cinza e caído pra fora do leque */
-.rhand-slot[data-fainted] {
-  filter: grayscale(1) brightness(0.5);
-  transform: rotate(var(--rot, 0deg)) translateY(16px);
-}
+/* nocauteado: cinza. Continua na pilha de propósito — sumir faria o jogador
+   perder a conta de quantos ainda tem. */
+.rrail-slot[data-fainted] { filter: grayscale(1) brightness(0.5); }
 /* vivo mas não trocável agora (já joguei o round): meio-termo */
-.rhand-slot[disabled]:not([data-fainted]) { filter: brightness(0.75); }
+.rrail-slot[disabled]:not([data-fainted]) { filter: brightness(0.78); }
 
-/* barra fina de HP sobre a moldura — reserva guarda dano entre trocas, e é
-   isso que decide a troca */
-.rhand-hp {
+/* troca forçada: a pilha É a jogada, então ela se anuncia. Em drop-shadow e não
+   box-shadow porque a carta tem clip-path — a sombra de caixa desenharia um
+   retângulo por cima do chanfro. */
+@keyframes rrail-call {
+  0%, 100% { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-flare) 55%, transparent)); }
+  50% { filter: drop-shadow(0 0 18px var(--color-flare)); }
+}
+.rrail[data-forced] .rrail-slot:not([disabled]) { animation: rrail-call 1.6s ease-in-out infinite; }
+
+/* O medidor de vida, na fatia à mostra: abaixo do cabeçalho (--rr-hp-top) e
+   dentro da largura que a pilha não cobre (--rr-sliver). Cobrindo a carta
+   inteira, o trecho da direita ficava escondido e a leitura mentia. O número
+   sai no title: nesta largura ele daria ~7px, e a cor já diz o que se lê de
+   relance. */
+.rrail-hp {
   position: absolute;
   z-index: 20;
   left: 8px;
-  right: 8px;
-  bottom: 7px;
-  height: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  top: var(--rr-hp-top, 29px);
+  width: calc(var(--rr-sliver, 72px) - 16px);
+  height: 5px;
+  background: rgba(0, 0, 0, 0.72);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
 }
-.rhand-hp > span {
+.rrail-hp > span {
   display: block;
   height: 100%;
   transition: width 0.4s var(--ease-snap);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rhand-slot {
-    margin-inline: 3px;
-    transform: none;
-    transition: none;
-  }
-  .rhand-slot:not([disabled]):hover,
-  .rhand-slot:not([disabled]):focus-visible { transform: none; }
-  .rhand-slot[data-fainted] { transform: none; }
+  .rrail-slot,
+  .rrail-slot:hover,
+  .rrail-slot:focus-visible { transform: none; transition: none; }
+  .rrail-item { transition: none; }
+  .rrail[data-forced] .rrail-slot:not([disabled]) { animation: none; }
 }
-
 
 /* ── barra de HP/stat segmentada (barra de EXP de MMORPG) ──── */
 .bar-track {
@@ -1183,8 +1224,8 @@ a { color: inherit; text-decoration: none; }
     0 1px 0 rgba(255, 255, 255, 0.07) inset,
     0 20px 44px rgba(0, 0, 0, 0.62);
   clip-path: polygon(
-    20px 0, calc(100% - 20px) 0, 100% 20px, 100% calc(100% - 20px),
-    calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px), 0 20px
+    15px 0, calc(100% - 15px) 0, 100% 15px, 100% calc(100% - 15px),
+    calc(100% - 15px) 100%, 15px 100%, 0 calc(100% - 15px), 0 15px
   );
 }
 
@@ -1219,11 +1260,16 @@ a { color: inherit; text-decoration: none; }
 .cmd-cell {
   position: relative;
   overflow: hidden;
-  flex: 1 1 0;
+  /* Base + teto, não `1 1 0`: com `0` as células dividiam a largura FIXA do
+     console entre si, então um pokémon com 3 cartas ganhava três células
+     gigantes. Agora cada uma pede ~165px, o console se mede por elas e o teto
+     impede que sobrem esticadas quando o time tem poucas cartas. */
+  flex: 1 1 165px;
+  max-width: 215px;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 11px 13px 9px;
+  padding: 8px 10px 8px;
   border: 0;
   border-right: 1px solid color-mix(in srgb, var(--color-edge) 70%, var(--color-bg));
   background: linear-gradient(180deg, transparent 38%, color-mix(in srgb, var(--type-c) 16%, transparent) 100%);
@@ -1238,7 +1284,7 @@ a { color: inherit; text-decoration: none; }
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
-  height: 3px;
+  height: 2px;
   background: var(--type-c, var(--color-edge));
   box-shadow: 0 0 12px color-mix(in srgb, var(--type-c) 55%, transparent);
 }
@@ -1246,10 +1292,10 @@ a { color: inherit; text-decoration: none; }
 .cmd-cell::after {
   content: "";
   position: absolute;
-  right: -22px;
-  bottom: -34px;
-  width: 104px;
-  height: 104px;
+  right: -18px;
+  bottom: -28px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--type-c), transparent 68%);
   opacity: 0.16;
@@ -1316,7 +1362,7 @@ a { color: inherit; text-decoration: none; }
 .cmd-orb::after {
   content: "";
   position: absolute;
-  inset: 4px;
+  inset: 3px;
   border-radius: 50%;
   border: 1px dashed rgba(255, 255, 255, 0.35);
 }
@@ -1325,8 +1371,8 @@ a { color: inherit; text-decoration: none; }
    é a comparação que decide a jogada, então não podem ser desenhos diferentes. */
 .cmd-pip {
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #d8f7ff, var(--color-energy) 60%, #0b5f80);
   box-shadow: 0 0 9px color-mix(in srgb, var(--color-energy) 70%, transparent);
@@ -1339,7 +1385,7 @@ a { color: inherit; text-decoration: none; }
   background: radial-gradient(circle at 35% 30%, #ffd4d4, var(--color-bad) 60%, #7a1f1f);
   box-shadow: 0 0 8px color-mix(in srgb, var(--color-bad) 60%, transparent);
 }
-.cmd-pip--rail { width: 15px; height: 15px; }
+.cmd-pip--rail { width: 12px; height: 12px; }
 
 @keyframes cmd-cast {
   0% { transform: translateY(0) scale(1); }

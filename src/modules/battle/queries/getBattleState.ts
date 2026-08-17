@@ -1,7 +1,6 @@
 import { loadBattleForResolve, resolveIfDue } from "../commands/resolveTurn";
 import { isParticipant } from "./battleAccess";
-import { battleTypeNames } from "./battleTypeNames";
-import { loadTypeChart } from "./loadTypeChart";
+import { loadBattleDTOContext } from "./battleDTOContext";
 import { toBattleDTO } from "./toBattleDTO";
 
 // Estado completo da partida (times dos dois lados), já no formato que a UI
@@ -26,11 +25,9 @@ export async function getBattleState(battleId: string, userId: string) {
   const resolved = await resolveIfDue(battle);
   if (!resolved) return { error: "not_found" as const };
 
-  // A matriz de tipos serve pro selo de vantagem das cartas. Custa UMA consulta
-  // no espelho (`Type`, ~18 linhas) e não entra no caminho quente: quem bate
-  // aqui é a página e o refetch de round, não o polling de 2s — esse é o
-  // /status, que devolve só os contadores.
-  const chart = await loadTypeChart(battleTypeNames(resolved));
+  // Matriz de tipos (selo de vantagem) + base stats do MEU time (as barras da
+  // carta de reserva). Ver loadBattleDTOContext.
+  const ctx = await loadBattleDTOContext(resolved, userId);
 
-  return { battle: toBattleDTO(resolved, Date.now(), chart) };
+  return { battle: toBattleDTO(resolved, ctx) };
 }

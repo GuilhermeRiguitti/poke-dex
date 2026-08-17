@@ -1,4 +1,4 @@
-import { bstOf, rarityTier } from "@/src/modules/pokemon";
+import { bstOf, rarityTier, type BaseStats } from "@/src/modules/pokemon";
 import { TURN_TIMEOUT_MS, remainingTurnMs } from "../domain/turnClock";
 import { STAGE_STATS, normalizeConditions } from "../domain/conditions";
 import { ENERGY_MAX, energyCostOf } from "../domain/energy";
@@ -125,6 +125,8 @@ function toPokemonDTO(
   chart: TypeEffectivenessMap | null,
   /** tipos do ativo ADVERSÁRIO — é contra ele que a efetividade é medida */
   defenderTypes: string[] | null,
+  /** base stats da espécie; só chega preenchido pro time de QUEM está lendo */
+  baseStats: BaseStats | null,
 ): BattlePokemonDTO {
   // types/moves são colunas Json; quem escreveu foi buildDuelSnapshot, então a
   // forma é conhecida — o cast é a leitura desse contrato.
@@ -147,9 +149,16 @@ function toPokemonDTO(
     // calculada do servidor porque `bstOf` carrega a tabela dos 1025 BSTs e a
     // arena é código de cliente.
     rarity: rarityTier(bstOf(row.pokemonId)),
-    // stats NÃO entram: a carta de reserva é `mini` (não desenha barras), e
-    // este DTO leva os pokémon dos DOIS lados — mandar stat daqui entregaria
-    // os números exatos do oponente. Mesma razão do cardSlot, logo abaixo.
+    // Os base stats da ESPÉCIE — é o que a carta de reserva desenha nas 6
+    // barras. Só vem preenchido pro time de quem está lendo (`viewerUserId`):
+    // este DTO leva os pokémon dos DOIS lados, e mandar isso do oponente
+    // entregaria os números exatos dele. Mesma razão do cardSlot, logo abaixo.
+    //
+    // Base, não derivado: o derivado (`BattlePokemon.stats`) é o snapshot
+    // congelado e continua fora do DTO. A carta deriva de (base, nível), e o
+    // nível também está aqui — então o número que ela mostra é o mesmo que o
+    // motor usa, sem o snapshot precisar sair.
+    baseStats,
   };
 }
 
@@ -160,13 +169,17 @@ function toParticipantDTO(
   now: number,
   chart: TypeEffectivenessMap | null,
   defenderTypes: string[] | null,
+  /** null = não é o time de quem está lendo → nenhum base stat sai daqui */
+  baseStats: Map<number, BaseStats> | null,
 ): ParticipantDTO {
   const present = isPresent(row.lastSeenAt, floor, new Date(now));
   return {
     id: row.id,
     userId: row.userId,
     activeSlot: row.activeSlot,
-    pokemons: row.pokemons.map((p) => toPokemonDTO(p, chart, defenderTypes)),
+    pokemons: row.pokemons.map((p) =>
+      toPokemonDTO(p, chart, defenderTypes, baseStats?.get(p.pokemonId) ?? null),
+    ),
     energy: row.energy,
     energyMax: ENERGY_MAX,
     present,
@@ -183,19 +196,31 @@ function activeTypesOf(p: BattleRow["participants"][number]): string[] | null {
   return active ? ((active.types as string[]) ?? []) : null;
 }
 
-// `now` é parâmetro pra o teste poder cravar o instante — em produção é sempre
-// o relógio do servidor, que é justamente o ponto do countdown (ver turnEndsInMs
-// em ui/types.ts).
-//
-// `chart` é OPCIONAL de propósito: quem não passa a matriz recebe
-// `effectiveness: null` em toda carta e a tela simplesmente não desenha o selo
-// de vantagem — em vez de o mapper virar assíncrono e arrastar uma consulta pra
-// dentro da fronteira de serialização, que tem que continuar pura e testável.
-export function toBattleDTO(
-  row: BattleRow,
-  now = Date.now(),
-  chart: TypeEffectivenessMap | null = null,
-): BattleDTO {
+/** O que o mapper aceita além da linha. Tudo opcional — ver toBattleDTO. */
+export interface BattleDTOContext {
+  /**
+   * O instante da montagem. Parâmetro pra o teste poder cravá-lo — em produção
+   * é sempre o relógio do servidor, que é justamente o ponto do countdown (ver
+   * turnEndsInMs em ui/types.ts).
+   */
+  now?: number;
+  /** matriz de efetividade (queries/loadTypeChart) */
+  typeChart?: TypeEffectivenessMap | null;
+  /**
+   * Quem está lendo, e os base stats do time DELE
+   * (queries/loadBaseStats). Sem isso nenhum lado leva base stat — é o que
+   * garante que o time do oponente nunca sai com número de atributo.
+   */
+  viewer?: { userId: string; baseStats: Map<number, BaseStats> } | null;
+}
+
+// Tudo no contexto é OPCIONAL de propósito: sem matriz, `effectiveness` vira
+// `null` e a tela não desenha o selo de vantagem; sem viewer, `baseStats` vira
+// `null` e a carta não desenha barras. É o que mantém o mapper SÍNCRONO e puro
+// — quem faz consulta é quem chama, do lado de fora da fronteira de
+// serialização.
+export function toBattleDTO(row: BattleRow, ctx: BattleDTOContext = {}): BattleDTO {
+  const { now = Date.now(), typeChart: chart = null, viewer = null } = ctx;
   // A efetividade de um lado se mede contra o ATIVO do outro. Em partida de 2
   // isso é só "o outro participante"; com um lado só (estado degenerado), fica
   // sem defensor e o campo vira null em vez de mentir 1x.
@@ -214,7 +239,14 @@ export function toBattleDTO(
     turnEndsInMs: remainingTurnMs(row.turnStartedAt, now),
     turnTimeoutMs: TURN_TIMEOUT_MS,
     participants: row.participants.map((p, i) =>
-      toParticipantDTO(p, row.createdAt, now, chart, defenderTypes[i]),
+      toParticipantDTO(
+        p,
+        row.createdAt,
+        now,
+        chart,
+        defenderTypes[i],
+        viewer && viewer.userId === p.userId ? viewer.baseStats : null,
+      ),
     ),
     turnLogs: row.turnLogs.map((log) => ({
       turnNumber: log.turnNumber,

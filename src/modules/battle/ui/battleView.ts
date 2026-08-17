@@ -1,4 +1,5 @@
 import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
+import type { BaseStats } from "@/src/modules/pokemon/domain/leveling";
 import type { MoveEffect } from "../domain/moveEffect";
 import type { BattleDTO, BattleEventDTO, BattlePokemonDTO, BattleStatusDTO, MonConditionsDTO } from "./types";
 
@@ -243,6 +244,12 @@ export interface PartyMemberView {
   /** HP em número, pra carta dizer "42/110" — o hpPct é só a barra */
   currentHp: number;
   maxHp: number;
+  /**
+   * Base stats da espécie, pra carta grande do trilho desenhar as 6 barras.
+   * `null` no time do OPONENTE sempre (o DTO não manda) — e a carta dele
+   * simplesmente não abre atributo, em vez de mostrar zero.
+   */
+  baseStats: BaseStats | null;
 }
 
 export type DuelLogKind =
@@ -367,6 +374,34 @@ export function turnClockView(remainingMs: number, timeoutMs: number): TurnClock
     urgency: left <= CRITICAL_MS ? "critical" : left <= WARN_MS ? "warn" : "calm",
     expired: left <= 0,
   };
+}
+
+/**
+ * O estado do OPONENTE em uma linha — o que o cabeçalho do relatório mostra.
+ *
+ * A desconexão TROCA o rótulo em vez de somar mais um: um oponente que sumiu
+ * não está escolhendo nada, e continuar dizendo que está faz o jogador esperar à
+ * toa. O contador dá a informação que falta — quanto tempo até ele ganhar por
+ * ausência.
+ */
+export interface OpponentStatusView {
+  text: string;
+  tone: "bad" | "ok" | "dim";
+}
+
+export function opponentStatusView(state: {
+  oppAbsentMs: number | null;
+  opponentReady: boolean;
+}): OpponentStatusView {
+  if (state.oppAbsentMs !== null) {
+    return {
+      text: `⏻ sem sinal — vitória em ${Math.ceil(state.oppAbsentMs / 1000)}s`,
+      tone: "bad",
+    };
+  }
+  return state.opponentReady
+    ? { text: "● oponente pronto", tone: "ok" }
+    : { text: "○ oponente escolhendo", tone: "dim" };
 }
 
 // O modo da MINHA vez no round:
@@ -706,6 +741,7 @@ export function selectDuelView(battle: BattleDTO, myUserId: string): DuelView | 
         rarity: m.rarity,
         currentHp: m.currentHp,
         maxHp: m.maxHp,
+        baseStats: m.baseStats,
       }));
 
   const someUsable = myMon.moves.some((mv) => mv.currentPp > 0);

@@ -1,6 +1,5 @@
 import { prisma } from "@/src/lib/prisma";
-import { battleTypeNames } from "./battleTypeNames";
-import { loadTypeChart } from "./loadTypeChart";
+import { loadBattleDTOContext } from "./battleDTOContext";
 import { toBattleDTO } from "./toBattleDTO";
 
 // É o que o render server-side da página usa. getBattleState (o irmão desta
@@ -35,9 +34,10 @@ export async function readBattleState(battleId: string, userId: string) {
   const isParticipant = battle.participants.some((p) => p.userId === userId);
   if (!isParticipant) return { error: "forbidden" as const };
 
-  // Só leitura, como o resto da função: a matriz vem do espelho (`Type`), que é
-  // banco e não rede — nada aqui pode derrubar o render da página.
-  const chart = await loadTypeChart(battleTypeNames(battle));
+  // Só leitura, como o resto da função: as duas consultas do contexto batem no
+  // espelho (`Type`/`Pokemon`), que é banco e não rede — nada aqui pode
+  // derrubar o render da página.
+  const ctx = await loadBattleDTOContext(battle, userId);
 
-  return { battle: toBattleDTO(battle, Date.now(), chart) };
+  return { battle: toBattleDTO(battle, ctx) };
 }

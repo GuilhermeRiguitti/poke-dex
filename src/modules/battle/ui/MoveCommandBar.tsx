@@ -93,22 +93,22 @@ export function MoveCell({
       aria-label={`${name} · ${card.type} · ${cls.short} · poder ${card.power ?? "sem dano"} · ${card.currentPp} de ${card.maxPp} usos · custa ${card.energyCost} de energia${adv ? ` · ${adv.top} ${adv.bottom}` : ""}`}
     >
       {/* 1. identificação */}
-      <span className="relative flex items-center gap-[7px]">
+      <span className="relative flex items-center gap-1.5">
         {shortcut != null && (
           <span
-            className="plate shrink-0 px-[7px] font-title text-[11px] tracking-wide text-bg"
+            className="plate shrink-0 px-1.5 font-title text-[10px] tracking-wide text-bg"
             style={{ background: "var(--type-c)" }}
             aria-hidden
           >
             <span className="plate-inner">{shortcut}</span>
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate font-title text-sm uppercase tracking-wide text-ink">
+        <span className="min-w-0 flex-1 truncate font-title text-xs uppercase tracking-wide text-ink">
           {name}
         </span>
         <span
           title={cls.hint}
-          className="shrink-0 px-[5px] font-title text-[9px] tracking-widest text-bg"
+          className="shrink-0 px-1 font-title text-[8px] tracking-widest text-bg"
           style={{ backgroundColor: cls.color }}
         >
           {cls.short}
@@ -116,27 +116,27 @@ export function MoveCell({
       </span>
 
       {/* 2. o número que decide: poder, com o emblema do tipo do lado */}
-      <span className="relative mt-2.5 flex items-center gap-[11px]">
+      <span className="relative mt-1.5 flex items-center gap-2">
         <span className="cmd-orb" title={card.type} aria-hidden>
-          <span className="font-title text-[10px] uppercase tracking-wide text-black/85">
+          <span className="font-title text-[9px] uppercase tracking-wide text-black/85">
             {card.type.slice(0, 3)}
           </span>
         </span>
         <span className="flex flex-col leading-[0.82]">
           <span
-            className="font-title text-[40px]"
-            style={{ color: "var(--type-c)", textShadow: "0 0 18px color-mix(in srgb, var(--type-c) 55%, transparent)" }}
+            className="font-title text-[30px]"
+            style={{ color: "var(--type-c)", textShadow: "0 0 14px color-mix(in srgb, var(--type-c) 55%, transparent)" }}
           >
             {card.power ?? "—"}
           </span>
-          <span className="mt-1 text-[8px] font-bold uppercase tracking-[0.2em] text-ink-dim">
+          <span className="mt-0.5 text-[7px] font-bold uppercase tracking-[0.18em] text-ink-dim">
             {card.power != null ? "Poder" : "Sem dano"}
           </span>
         </span>
         {adv && (
           <span
             title={adv.hint}
-            className="ml-auto shrink-0 px-[5px] py-0.5 text-center font-title text-[9px] uppercase leading-[1.15] tracking-widest"
+            className="ml-auto shrink-0 px-1 py-px text-center font-title text-[8px] uppercase leading-[1.15] tracking-widest"
             style={{
               color: adv.color,
               border: `1px solid color-mix(in srgb, ${adv.color} 45%, transparent)`,
@@ -151,16 +151,16 @@ export function MoveCell({
       </span>
 
       {/* 3. usos + o que a carta faz além de bater */}
-      <span className="relative mt-2.5 flex items-baseline gap-1.5">
+      <span className="relative mt-1.5 flex items-baseline gap-1">
         <span
-          className={`shrink-0 whitespace-nowrap font-title text-[13px] tracking-wide tabular-nums ${noPp ? "text-bad" : "text-ink"}`}
+          className={`shrink-0 whitespace-nowrap font-title text-[11px] tracking-wide tabular-nums ${noPp ? "text-bad" : "text-ink"}`}
           title="Usos restantes deste golpe"
         >
           {card.currentPp}/{card.maxPp}
         </span>
-        <span className="shrink-0 text-[8px] font-bold uppercase tracking-[0.18em] text-ink-dim">usos</span>
+        <span className="shrink-0 text-[7px] font-bold uppercase tracking-[0.15em] text-ink-dim">usos</span>
         <span
-          className={`min-w-0 flex-1 truncate text-right text-[10px] font-semibold ${
+          className={`min-w-0 flex-1 truncate text-right text-[9px] font-semibold ${
             card.disabledReason ? "text-bad" : card.effectLabel ? "text-energy" : "text-ink-dim/50"
           }`}
           title={nota || "Esta carta ainda não tem efeito no jogo"}
@@ -170,12 +170,12 @@ export function MoveCell({
       </span>
 
       {/* 4. custo, na mesma gema do trilho lá embaixo */}
-      <span className="relative mt-2 flex h-4 items-center gap-1" title={`Custa ${card.energyCost} de energia`}>
+      <span className="relative mt-1.5 flex h-3 items-center gap-1" title={`Custa ${card.energyCost} de energia`}>
         {Array.from({ length: card.energyCost }, (_, i) => (
           <span key={i} className="cmd-pip" data-bad={card.disabledReason === "energy" || undefined} />
         ))}
         <span
-          className={`ml-[5px] shrink-0 whitespace-nowrap text-[9px] font-bold uppercase tracking-wider ${
+          className={`ml-1 shrink-0 whitespace-nowrap text-[8px] font-bold uppercase tracking-wider ${
             card.disabledReason ? "text-bad" : "text-ink-dim"
           }`}
         >
@@ -228,14 +228,14 @@ export default function MoveCommandBar({
   const temTrilho = energy != null && energyMax != null;
 
   return (
-    <div className="cmd-console w-[min(66rem,96vw)]">
-      <div className="cmd-head flex items-center gap-2.5 px-6 py-1.5">
-        <span className="h-[7px] w-[7px] rotate-45 bg-energy shadow-[0_0_10px_var(--color-energy)]" aria-hidden />
-        <span className="shrink-0 font-title text-[11px] uppercase tracking-[0.24em] text-energy">
+    <div className="cmd-console w-fit max-w-[min(58rem,96vw)]">
+      <div className="cmd-head flex items-center gap-2 px-4 py-1">
+        <span className="h-1.5 w-1.5 rotate-45 bg-energy shadow-[0_0_10px_var(--color-energy)]" aria-hidden />
+        <span className="shrink-0 font-title text-[10px] uppercase tracking-[0.18em] text-energy">
           Escolha a jogada
         </span>
         <span className="cmd-dash hidden flex-1 sm:block" aria-hidden />
-        <span className="hidden shrink-0 font-title text-[11px] uppercase tracking-[0.24em] text-ink-dim sm:block">
+        <span className="hidden shrink-0 font-title text-[10px] uppercase tracking-[0.18em] text-ink-dim sm:block">
           Turno simultâneo
         </span>
       </div>
@@ -255,20 +255,20 @@ export default function MoveCommandBar({
       </div>
 
       {temTrilho && (
-        <div className="cmd-rail flex items-center gap-3.5 px-6 pb-2 pt-1.5">
-          <span className="shrink-0 font-title text-[11px] uppercase tracking-[0.24em] text-ink-dim">
+        <div className="cmd-rail flex items-center gap-2.5 px-4 pb-1.5 pt-1">
+          <span className="shrink-0 font-title text-[10px] uppercase tracking-[0.18em] text-ink-dim">
             Energia
           </span>
-          <span className="flex items-center gap-[7px]" title={`${energy} de ${energyMax} de energia`}>
+          <span className="flex items-center gap-1.5" title={`${energy} de ${energyMax} de energia`}>
             {Array.from({ length: energyMax }, (_, i) => (
               <span key={i} className="cmd-pip cmd-pip--rail" data-empty={i >= energy || undefined} />
             ))}
           </span>
-          <span className="shrink-0 font-title text-xs tracking-wider tabular-nums text-energy">
+          <span className="shrink-0 font-title text-[11px] tracking-wider tabular-nums text-energy">
             {energy} / {energyMax}
           </span>
           <span className="cmd-dash--flow hidden flex-1 sm:block" aria-hidden />
-          <span className="hidden shrink-0 text-[11px] font-bold uppercase tracking-wider text-ink-dim lg:block">
+          <span className="hidden shrink-0 text-[10px] font-bold uppercase tracking-wider text-ink-dim lg:block">
             +1 por rodada · trocar gasta o turno
           </span>
         </div>

@@ -26,9 +26,10 @@ export interface PokeCardDetails {
    * Os base stats crus da espécie. A carta deriva pelo nível pro número e usa a
    * base pra barra (ver statBars).
    *
-   * OPCIONAL porque a batalha não manda: lá a carta é `mini` (que nem desenha
-   * barras) e o DTO do duelo carrega os pokémon dos DOIS lados — mandar stat
-   * por ali entregaria os números exatos do oponente.
+   * OPCIONAL porque nem toda tela tem: o catálogo lê a PokéAPI ao vivo, e na
+   * batalha o DTO só manda os do MEU time (o do oponente vem `null` — atributo
+   * do adversário não sai do servidor). Sem ele a carta não desenha as barras e
+   * a arte cresce pra ocupar o lugar delas (`data-stats`).
    */
   baseStats?: BaseStats;
 }
@@ -83,6 +84,11 @@ export default function PokeCard({
   const bars = details && details.baseStats ? statBars(details.baseStats, details.level) : [];
   const label = name.replace(/-/g, " ");
 
+  // `data-stats` é separado do `data-details` porque são perguntas diferentes:
+  // `details` diz se a carta veio do nosso banco (tem Lv), `stats` diz se ela
+  // DESENHA as 6 barras. A reserva da arena tem nível e NÃO tem barra — e é a
+  // barra que decide a altura da janela de arte, então sem esse par a carta
+  // ficava com um buraco embaixo.
   return (
     <HoloCard intensity={holoIntensity(rarity)} className={className}>
       <div
@@ -90,6 +96,7 @@ export default function PokeCard({
         data-metal={cardMetal(rarity)}
         data-size={size}
         data-details={details ? "true" : "false"}
+        data-stats={bars.length > 0 ? "true" : "false"}
         data-top={top || undefined}
         data-highlighted={highlighted || undefined}
         style={
