@@ -4,6 +4,7 @@ import {
   duelCalloutFor,
   duelLogMark,
   moveEffectLabel,
+  opponentStatusView,
   selectDuelView,
   turnClockView,
   type DuelLogLine,
@@ -30,6 +31,7 @@ function mon(over: Partial<BattleDTO["participants"][number]["pokemons"][number]
     ],
     conditions: { status: null, confused: false, seeded: false, stages: [] },
     rarity: "common" as const,
+    baseStats: null,
     ...over,
   };
 }
@@ -294,6 +296,27 @@ describe("duelLogMark", () => {
   it("rodada e troca têm marcador próprio", () => {
     expect(duelLogMark(line({ kind: "round", actor: null })).glyph).toBe("◆");
     expect(duelLogMark(line({ kind: "switch" })).tone).toBe("energy");
+  });
+});
+
+// O cabeçalho do relatório mostra UMA linha sobre o outro lado. Ela é pura
+// porque o que ela decide não é cosmético: "sem sinal" TROCA o rótulo em vez de
+// somar, senão a tela diz que o oponente está escolhendo enquanto ele já sumiu
+// — e o jogador espera à toa em vez de saber que vai ganhar por ausência.
+describe("opponentStatusView", () => {
+  it("sumiço vence 'pronto' e vira contagem regressiva", () => {
+    const v = opponentStatusView({ oppAbsentMs: 12_400, opponentReady: true });
+    expect(v.tone).toBe("bad");
+    expect(v.text).toContain("13s"); // arredonda pra CIMA: 12,4s ainda são 13
+    expect(v.text).not.toContain("pronto");
+  });
+
+  it("presente e já jogou", () => {
+    expect(opponentStatusView({ oppAbsentMs: null, opponentReady: true })).toMatchObject({ tone: "ok" });
+  });
+
+  it("presente e ainda escolhendo", () => {
+    expect(opponentStatusView({ oppAbsentMs: null, opponentReady: false })).toMatchObject({ tone: "dim" });
   });
 });
 

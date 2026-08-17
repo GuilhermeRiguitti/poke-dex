@@ -21,9 +21,10 @@ export default async function BattlePage({ params }: BattlePageProps) {
   if ("error" in result) notFound();
 
   return (
-    // Full-bleed abaixo da navbar (h-16). Sem max-width de propósito — o palco 3D é
-    // o CENÁRIO da tela toda, e travar a largura deixaria tarja preta em monitor largo.
-    <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden bg-bg">
+    // TELA CHEIA, sem navbar (ver o layout do grupo (arena)): o palco 3D é o
+    // CENÁRIO, não um quadro. Sem max-width de propósito — travar a largura
+    // deixaria tarja preta em monitor largo.
+    <div className="fixed inset-0 overflow-hidden bg-bg">
       <BattleRoom battleId={id} myUserId={session.user.id} initialBattle={result.battle} />
     </div>
   );

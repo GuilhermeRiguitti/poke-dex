@@ -6,19 +6,22 @@ import CombatLog from "./CombatLog";
 import CombatantPanel from "./CombatantPanel";
 import DuelCallout from "./DuelCallout";
 import MoveCommandBar from "./MoveCommandBar";
-import ReserveDrawer from "./ReserveDrawer";
-import TurnClock from "./TurnClock";
+import ReserveRail from "./ReserveRail";
 import { duelCalloutFor, type DuelMonView, type DuelTurnFx, type DuelView } from "./battleView";
 
 // A ARENA: o palco 3D ocupa a TELA INTEIRA (é o cenário, não um quadro) e o HUD
 // flutua por cima, empurrado pras quinas — o meio fica livre pros dois Pokémon
 // e pro balão de dano.
 //
-//   canto ↖ rodada + estado        topo ↑ o que fazer agora
+//   painel ↖ rodada + relógio + saída + estado + relatório ("o que passou")
+//   topo ↑ o que fazer agora
 //   canto ↗ placa do oponente + time dele
-//   canto ↙ minha placa + relatório de combate
-//   rodapé ↓ barra de golpes (a decisão do round)
-//   canto ↘ gaveta de reservas (a troca, guardada a um hover)
+//   canto ↙ minha placa
+//   rodapé ↓ console de golpes (a decisão do round)
+//   coluna → trilho de reservas (a troca, sempre na tela)
+//
+// A sala é TELA CHEIA e não tem navbar (grupo de rota (arena)) — por isso a
+// saída é um link daqui, no alto da coluna esquerda.
 //
 // A regra de apresentação continua pura em battleView.ts (DuelTurnFx,
 // duelCalloutFor, duelLogMark). Aqui é costura + movimento. Se o WebGL falhar,
@@ -152,42 +155,22 @@ export default function DuelArena({
 
       {/* HUD flutuante. A camada não captura o mouse; cada peça reativa o seu. */}
       <div className={`pointer-events-none absolute inset-0 ${shakeScreen}`}>
-        {/* ↖ rodada + estado do oponente */}
-        <div className="absolute left-4 top-4 flex flex-col items-start gap-1.5">
-          <span className="plate border border-edge bg-panel-2/85 px-3 py-1 backdrop-blur-sm">
-            <span className="plate-inner font-title text-xs uppercase tracking-wider">Rodada {view.round}</span>
-          </span>
-          {!view.isOver && (
-            // key por round: o relógio remonta a cada rodada e já nasce no
-            // valor do servidor, sem esperar o primeiro tique.
-            <TurnClock
-              key={view.round}
-              turnEndsInMs={view.turnEndsInMs}
-              turnTimeoutMs={view.turnTimeoutMs}
-              running={!view.isOver}
-            />
-          )}
-          {!view.isOver && (
-            /* A desconexão TROCA o rótulo de "escolhendo": um oponente que sumiu
-               não está escolhendo nada, e ficar dizendo que está faz o jogador
-               esperar à toa. O contador dá a informação que falta — quanto tempo
-               até ele ganhar por ausência. */
-            <span
-              className={`font-title text-[10px] uppercase tracking-widest ${
-                view.oppAbsentMs !== null
-                  ? "text-bad"
-                  : view.opponentReady
-                    ? "text-ok"
-                    : "text-ink-dim"
-              }`}
-            >
-              {view.oppAbsentMs !== null
-                ? `⏻ oponente sem sinal — vitória em ${Math.ceil(view.oppAbsentMs / 1000)}s`
-                : view.opponentReady
-                  ? "● oponente pronto"
-                  : "○ oponente escolhendo"}
-            </span>
-          )}
+        {/* ↖ o PAINEL da esquerda: rodada, relógio, saída, estado do oponente e
+            o relatório — tudo num frame só (ver CombatLog). Antes eram quatro
+            peças soltas empilhadas na quina, cada uma com o seu fundo, todas
+            por cima do palco.
+            No celular ele sai: a largura não dá pra ele e pra placa de HP, e
+            quem decide a jogada é a placa. */}
+        <div className="pointer-events-auto absolute left-3 top-3 hidden w-[min(23rem,34vw)] sm:left-4 sm:top-4 sm:block">
+          <CombatLog
+            lines={view.logLines}
+            round={view.round}
+            isOver={view.isOver}
+            turnEndsInMs={view.turnEndsInMs}
+            turnTimeoutMs={view.turnTimeoutMs}
+            oppAbsentMs={view.oppAbsentMs}
+            opponentReady={view.opponentReady}
+          />
         </div>
 
         {/* ↑ o que fazer agora */}
@@ -212,15 +195,9 @@ export default function DuelArena({
           />
         </div>
 
-        {/* ↙ minha placa + relatório de combate.
-            No celular a coluna sobe pra cima da barra de golpes (não há
-            largura pra ficarem lado a lado) e o relatório sai — a informação
-            que decide a jogada é a placa de HP, não o histórico. */}
-        <div className="pointer-events-auto absolute bottom-28 left-3 flex w-[min(26rem,55vw)] flex-col gap-2 sm:bottom-4 sm:left-4 sm:w-[min(26rem,42vw)]">
+        {/* ↙ minha placa */}
+        <div className="pointer-events-auto absolute bottom-28 left-3 w-[min(26rem,55vw)] sm:bottom-4 sm:left-4 sm:w-[min(23rem,34vw)]">
           <CombatantPanel mon={view.me} side="me" energy={view.myEnergy} energyMax={view.energyMax} />
-          <div className="hidden sm:block">
-            <CombatLog lines={view.logLines} />
-          </div>
         </div>
 
         {/* ↓ a decisão do round: a barra de golpes */}
@@ -243,10 +220,13 @@ export default function DuelArena({
           </div>
         )}
 
-        {/* ↘ a troca, guardada na gaveta */}
+        {/* ↘ a troca: o banco de reservas, SEMPRE visível, flutuando no palco.
+            Fica ACIMA da faixa do console (bottom-52) e não abaixo: o console é
+            a decisão do round e não pode ser tapado — nem pela carta que a
+            pilha levanta no hover, que é o motivo de ela crescer pra CIMA. */}
         {!view.isOver && (
-          <div className="pointer-events-auto absolute bottom-28 right-3 sm:bottom-4 sm:right-4">
-            <ReserveDrawer
+          <div className="pointer-events-auto absolute bottom-52 right-3 sm:right-4">
+            <ReserveRail
               party={view.myParty}
               disabled={forcedSwitch ? submitting : locked}
               canSwitch={view.canSwitch}

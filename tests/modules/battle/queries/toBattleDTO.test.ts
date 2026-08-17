@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toBattleDTO } from "@/src/modules/battle/queries/toBattleDTO";
+import type { BaseStats } from "@/src/modules/pokemon";
 
 // A linha que resolveIfDue lê vem com `actions` dentro — a carta que o oponente
 // escolheu pro round que ainda NÃO resolveu. As rotas fazem
@@ -150,7 +151,7 @@ describe("toBattleDTO", () => {
   it("leva quanto RESTA do round, contado com o relógio do servidor", () => {
     const now = Date.now();
     const row = { ...rowMidTurn(), turnStartedAt: new Date(now - 30_000) };
-    const dto = toBattleDTO(row, now);
+    const dto = toBattleDTO(row, { now });
 
     expect(dto.turnTimeoutMs).toBe(90_000);
     expect(dto.turnEndsInMs).toBe(60_000);
@@ -163,7 +164,7 @@ describe("toBattleDTO", () => {
   it("turno já vencido chega zerado, não negativo", () => {
     const now = Date.now();
     const row = { ...rowMidTurn(), turnStartedAt: new Date(now - 90_000 * 40) };
-    expect(toBattleDTO(row, now).turnEndsInMs).toBe(0);
+    expect(toBattleDTO(row, { now }).turnEndsInMs).toBe(0);
   });
 
   // A efetividade vem MASTIGADA do servidor porque a matriz mora na tabela
@@ -186,18 +187,18 @@ describe("toBattleDTO", () => {
     }
 
     it("mede a carta contra quem está EM CAMPO do outro lado", () => {
-      const dto = toBattleDTO(duel(["water"]), Date.now(), chart);
+      const dto = toBattleDTO(duel(["water"]), { typeChart: chart });
       expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBe(2);
     });
 
     it("multiplica os dois tipos do defensor", () => {
       // water 2x × grass 0.5x = 1x — neutro de verdade, e a tela não desenha selo.
-      const dto = toBattleDTO(duel(["water", "grass"]), Date.now(), chart);
+      const dto = toBattleDTO(duel(["water", "grass"]), { typeChart: chart });
       expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBe(1);
     });
 
     it("imunidade chega como 0, não como neutro", () => {
-      const dto = toBattleDTO(duel(["ground"]), Date.now(), chart);
+      const dto = toBattleDTO(duel(["ground"]), { typeChart: chart });
       expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBe(0);
     });
 
@@ -211,8 +212,53 @@ describe("toBattleDTO", () => {
       const move = (row.participants[0].pokemons[0].moves as Record<string, unknown>[])[0];
       move.damageClass = "status";
       move.power = null;
-      const dto = toBattleDTO(row, Date.now(), chart);
+      const dto = toBattleDTO(row, { typeChart: chart });
       expect(dto.participants[0].pokemons[0].moves[0].effectiveness).toBeNull();
+    });
+  });
+
+  // A carta de reserva desenha os 6 atributos, e pra isso precisa dos base
+  // stats da espécie. Eles saem SÓ pro time de quem está lendo: o DTO leva os
+  // dois lados, e atributo do adversário é a mesma classe de vazamento que o
+  // cardSlot — dava pra montar o counter exato sabendo a Velocidade dele.
+  describe("base stats (as barras da carta de reserva)", () => {
+    const PIKACHU: BaseStats = { hp: 35, atk: 55, def: 40, spa: 50, spd: 50, spe: 90 };
+
+    function duel() {
+      const row = rowMidTurn();
+      const opp = JSON.parse(JSON.stringify(row.participants[0])) as (typeof row.participants)[number];
+      opp.id = "part-opp";
+      opp.userId = "zeta";
+      opp.lastSeenAt = new Date();
+      row.participants.push(opp);
+      return row;
+    }
+
+    const viewer = { userId: "alpha", baseStats: new Map([[25, PIKACHU]]) };
+
+    it("entrega os base stats do MEU time", () => {
+      const dto = toBattleDTO(duel(), { viewer });
+      expect(dto.participants[0].pokemons[0].baseStats).toEqual(PIKACHU);
+    });
+
+    it("NÃO entrega os do oponente — nem com a espécie no mesmo mapa", () => {
+      const dto = toBattleDTO(duel(), { viewer });
+      // Os dois lados têm Pikachu (mesmo pokemonId 25) e o mapa carregado tem a
+      // linha dele: se o filtro fosse por espécie em vez de por DONO, o lado do
+      // oponente vazaria aqui.
+      expect(dto.participants[1].pokemons[0].baseStats).toBeNull();
+    });
+
+    it("sem viewer, ninguém leva atributo", () => {
+      const dto = toBattleDTO(duel());
+      expect(dto.participants[0].pokemons[0].baseStats).toBeNull();
+      expect(dto.participants[1].pokemons[0].baseStats).toBeNull();
+    });
+
+    it("o stat DERIVADO do snapshot continua fora do DTO", () => {
+      const dto = toBattleDTO(duel(), { viewer });
+      expect(dto.participants[0].pokemons[0]).not.toHaveProperty("stats");
+      expect(JSON.stringify(dto)).not.toContain("specialAttack");
     });
   });
 

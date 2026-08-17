@@ -2,6 +2,7 @@ import type { NonVolatileAilment } from "../domain/conditions";
 import type { MoveEffect, StageStat } from "../domain/moveEffect";
 import type { LearnsetMoveDTO } from "@/src/modules/pokemon/ui/types";
 import type { RarityTier } from "@/src/modules/pokemon/domain/rarity";
+import type { BaseStats } from "@/src/modules/pokemon/domain/leveling";
 
 // Contrato de dados entre o servidor e a UI da batalha (duelo simultâneo).
 //
@@ -84,6 +85,16 @@ export interface BattlePokemonDTO {
    * escolher uma cor seria peso à toa.
    */
   rarity: RarityTier;
+  /**
+   * Base stats da ESPÉCIE — o que a carta de reserva precisa pra desenhar as 6
+   * barras (a barra é o base; o número é o derivado pelo `level`, que também
+   * está aqui).
+   *
+   * `null` em TODO o time do oponente, sempre: este DTO leva os dois lados, e
+   * atributo do adversário é a mesma classe de vazamento que o `cardSlot`.
+   * Também é `null` quando a leitura não pediu (ver BattleDTOContext.viewer).
+   */
+  baseStats: BaseStats | null;
 }
 
 export interface ParticipantDTO {

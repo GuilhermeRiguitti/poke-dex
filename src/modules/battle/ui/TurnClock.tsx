@@ -24,11 +24,18 @@ export default function TurnClock({
   turnEndsInMs,
   turnTimeoutMs,
   running,
+  bare = false,
 }: {
   turnEndsInMs: number;
   turnTimeoutMs: number;
   /** partida em andamento (acabou → nada a contar) */
   running: boolean;
+  /**
+   * Sem a placa inclinada em volta. É como ele entra no cabeçalho do relatório
+   * de combate: lá o frame já é do painel, e uma placa dentro de outra vira
+   * moldura sobre moldura.
+   */
+  bare?: boolean;
 }) {
   const remaining = useTurnClock(turnEndsInMs, running);
   const clock = turnClockView(remaining, turnTimeoutMs);
@@ -38,9 +45,9 @@ export default function TurnClock({
     <span
       role="timer"
       aria-label={clock.expired ? "Tempo do turno esgotado" : `Tempo restante do turno: ${clock.text}`}
-      className="plate border border-edge bg-panel-2/85 px-3 py-1 backdrop-blur-sm"
+      className={bare ? "" : "plate border border-edge bg-panel-2/85 px-3 py-1 backdrop-blur-sm"}
     >
-      <span className="plate-inner flex items-center gap-2">
+      <span className={`flex items-center gap-2 ${bare ? "" : "plate-inner"}`}>
         <span
           className={`font-title text-xs tabular-nums tracking-wider ${clock.urgency === "critical" && !clock.expired ? "animate-pulse" : ""}`}
           style={{ color }}

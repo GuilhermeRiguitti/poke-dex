@@ -28,8 +28,8 @@ export function cardMetal(tier: RarityTier): CardMetal {
   return RARITY_METAL[tier];
 }
 
-/** Os três tamanhos da mesma carta. A geometria toda sai de --card-w. */
-export type PokeCardSize = "full" | "grid" | "mini";
+/** Os tamanhos da mesma carta. A geometria toda sai de --card-w. */
+export type PokeCardSize = "full" | "grid" | "duel" | "mini";
 
 export const CARD_WIDTH: Record<PokeCardSize, number> = {
   full: 340, // a proporção original do handoff — o pacote
@@ -37,8 +37,64 @@ export const CARD_WIDTH: Record<PokeCardSize, number> = {
   // = 1100). Era 210 e sobrava espaço à direita — e a 210 o texto do handoff,
   // que é calibrado pra 340, ficava pequeno demais pra ler.
   grid: 260, // coleção e catálogo
-  mini: 96, // vaga do deck e reserva na batalha
+  // O trilho de reservas da arena, e é a carta COM os 6 atributos — é pra isso
+  // que ela é empilhada: a pilha devolve a altura que 5 cartas inteiras
+  // tomariam, e é essa altura que paga uma carta larga o bastante pra os
+  // atributos existirem.
+  //
+  // 180 sai da conta da pilha HORIZONTAL (ver RESERVE_VISIBLE): 5 reservas
+  // ocupam `180 × (1 + 4 × 0,4) = 468px` de largura e 265 de altura — o que
+  // cabe na faixa livre da direita, ACIMA do console (a faixa do console é
+  // intocável, é ela que decide o round).
+  duel: 180,
+  mini: 96, // vaga do deck
 };
+
+/** A proporção da carta: a altura sai da largura, em toda tela. */
+export const CARD_RATIO = 500 / 340;
+
+/**
+ * Quanto de LARGURA de cada carta da pilha fica à mostra (a seguinte cobre o
+ * resto). A pilha é horizontal, então a fatia visível é a coluna da ESQUERDA da
+ * carta: começo do nome, o medidor de vida e uma lasca da arte.
+ *
+ * 0,4 é o meio termo: menos e a fatia não identifica o pokémon, mais e as cinco
+ * reservas passam da faixa livre da direita.
+ *
+ * Mora aqui junto de `CARD_WIDTH` porque os dois se equilibram: a largura da
+ * pilha é `W × (1 + 4 × isto)`, então subir um obriga a baixar o outro.
+ */
+export const RESERVE_VISIBLE = 0.4;
+
+/** Altura da carta do trilho, em px. */
+export function duelCardHeightPx(): number {
+  return Math.round(CARD_WIDTH.duel * CARD_RATIO);
+}
+
+/** A FATIA à mostra de cada carta empilhada — largura, em px. */
+export function reserveSliverPx(): number {
+  return Math.round(CARD_WIDTH.duel * RESERVE_VISIBLE);
+}
+
+/**
+ * O que a carta seguinte esconde da anterior, em px — a margem negativa da
+ * pilha. Em PX e não em %: percentual aqui é fácil de errar, e o número tem que
+ * bater exatamente com a largura da carta.
+ */
+export function reserveHiddenPx(): number {
+  return CARD_WIDTH.duel - reserveSliverPx();
+}
+
+/**
+ * Onde o medidor de vida entra na carta do trilho: logo ABAIXO do fio que fecha
+ * o cabeçalho (16u de padding + ~26u de cabeçalho + 8u do fio ≈ 54u).
+ *
+ * Dentro da fatia à mostra, e não na borda, de propósito: encostado na borda
+ * ele parecia pertencer à carta vizinha, não a esta.
+ */
+export function reserveHpTopPx(): number {
+  return Math.round((CARD_WIDTH.duel / 340) * 54);
+}
 
 /** Teto do PREENCHIMENTO da barra. O número mostrado NÃO é travado. */
 const STAT_MAX_PCT = 100;
